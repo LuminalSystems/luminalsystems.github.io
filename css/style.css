@@ -1,0 +1,64 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #000000;
+    font-family: 'Inter', 'Roboto Mono', sans-serif;
+    color: #00BBF9;
+}
+
+canvas#particles-js {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 1;
+}
+
+main.content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    top: 20%;
+}
+
+h1 {
+    font-size: 3em;
+    color: #9B5DE5;
+    text-shadow: 0 0 10px #9B5DE5;
+    margin-bottom: 0.5em;
+}
+
+p {
+    font-size: 1.2em;
+    color: #00F5D4;
+    text-shadow: 0 0 5px #00F5D4;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 2em;
+}
+
+nav ul li {
+    display: inline-block;
+    margin: 0 15px;
+}
+
+nav ul li a {
+    color: #00BBF9;
+    text-decoration: none;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+}
+
+nav ul li a:hover {
+    color: #9B5DE5;
+    text-shadow: 0 0 15px #9B5DE5;
+}
