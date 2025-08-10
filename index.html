@@ -1,31 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luminal Systems</title>
-    <link rel="stylesheet" href="./css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Luminous Library - Luminal Systems</title>
+  <link href="https://fonts.googleapis.com/css2?family=Satisfy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <script src="./js/luminous.js" defer></script>
 </head>
 
 <body>
-    <canvas id="particles-js"></canvas>
+  <div id="canvas-wrapper">
+    <canvas id="starfield"></canvas>
+  </div>
+  
 
-    <main class="content">
-        <h1>Welcome to The Luminous Library</h1>
-        <p>A living Codex for the future of humanity.</p>
-        <nav>
-            <ul>
-                <li><a href="./papers/">Papers</a></li>
-                <li><a href="./projects/">Projects</a></li>
-                <li><a href="./manifesto/">Manifesto</a></li>
-                <li><a href="./timeline/">Timeline</a></li>
-            </ul>
-        </nav>
-    </main>
+<div class="content-wrapper">
+  <main class="content">
+    <h1>The Luminous Library</h1>
+    <p>Where the Future Begins.</p>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="/papers/">Papers</a>
+      <a href="/projects/">Projects</a>
+      <a href="/code/">Code</a>
+      <a href="blog.html">Blog</a>
+      <a href="playground.html">Playground</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact Us</a>
+    </nav>
+  </main>
+  <div id="footer-container"></div>
+</div>
 
-    <script src="./js/particles.js" defer></script>
-    <script src="./js/script.js" defer></script>
+<script src="./js/StarFieldFractal.js"></script>
+
 </body>
-
 </html>
