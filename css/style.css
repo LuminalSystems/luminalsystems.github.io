@@ -1,64 +1,253 @@
+/* === Reset & Base === */
 body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    background: #000000;
-    font-family: 'Inter', 'Roboto Mono', sans-serif;
-    color: #00BBF9;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #000000;
+  color: #00ffee;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
-canvas#particles-js {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 1;
+#canvas-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100vh - 80px); /* leaves room for footer */
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Canvas for the Myers Fractal */
+canvas#starfield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+  display: flex; 
+  flex-direction: column; 
+  justify-content: space-between;
+}
+
+
+/* separate canvas for additional effects when I add them */ 
+canvas#particlefield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1;
+}
+
+canvas#testfractal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+}
+
+/* === ROUNDED UI STYLING === */
+nav, canvas, #control-panel, #footer-container, .fractal-box, .theme-toggle {
+  border-radius: 12px;
+}
+
+/* Begin body of main content */
+.content-wrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
 }
 
 main.content {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    top: 20%;
-}
-
-h1 {
-    font-size: 3em;
-    color: #9B5DE5;
-    text-shadow: 0 0 10px #9B5DE5;
-    margin-bottom: 0.5em;
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  top: 20%;
+  flex: 1;
 }
 
 p {
-    font-size: 1.2em;
-    color: #00F5D4;
-    text-shadow: 0 0 5px #00F5D4;
+  font-size: 1.2em;
+  color: #00F5D4;
+  text-shadow: 0 0 5px #00F5D4;
 }
 
-nav ul {
-    list-style: none;
-    padding: 0;
-    margin-top: 2em;
+/* === Navigation === */
+nav {
+  background-color: #111;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
 }
 
-nav ul li {
-    display: inline-block;
-    margin: 0 15px;
+nav a {
+  color: #00ccff;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s ease;
+}
+nav a:hover {
+  color: #ff66ff;
 }
 
-nav ul li a {
-    color: #00BBF9;
-    text-decoration: none;
-    font-size: 1.1em;
-    transition: all 0.3s ease;
+/* Settings Panel */
+#settingsPanel {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border: 1px solid white;
+    border-radius: 8px;
+    display: none;
+    z-index: 10;
 }
 
-nav ul li a:hover {
-    color: #9B5DE5;
-    text-shadow: 0 0 15px #9B5DE5;
+#settingsPanel label {
+    display: block;
+    margin-bottom: 10px;
+}
+
+/* === Headers === */
+h1, h2, h3 {
+  font-family: 'Orbitron', sans-serif;
+  color: #cc99ff;
+  text-align: center;
+  text-shadow: 0 0 8px #cc99ff;
+  margin-top: 1rem;
+}
+
+/* === Section Containers === */
+.bio-card, .contact-container {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 0 10px #0ff2;
+  padding: 2rem;
+  max-width: 900px;
+  margin: 2rem auto;
+  overflow-y: auto;
+  max-height: 80vh;
+  animation: fadeUp 0.8s ease-out;
+}
+
+.bio-card h2 {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* === Contact Form === */
+.contact-container input,
+.contact-container textarea {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0 1rem 0;
+  border: none;
+  border-radius: 6px;
+  background-color: #2a2a2a;
+  color: #00ffee;
+  font-size: 1rem;
+}
+
+.contact-container label {
+  font-weight: bold;
+  display: block;
+  margin-top: 1rem;
+  color: #00ccff;
+}
+
+.contact-container button {
+  background-color: #444;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.contact-container button:hover {
+  background-color: #00ccff;
+  color: #000;
+}
+
+footer {
+  background-color: rgba(0, 0, 0, 0.6); /* Helps separation if needed */
+  color: #ccc;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
+}
+
+.footer-line {
+  margin: 0.2rem;
+}
+.footer-line:first-child {
+  font-family: 'Satisfy', cursive;
+  font-size: 1.3rem;
+}
+
+/* === Responsive === */
+@media screen and (max-width: 768px) {
+  nav {
+    gap: 12px;
+  }
+  .bio-card, .contact-container {
+    margin: 1rem;
+    padding: 1rem;
+  }
+  .footer-line:first-child {
+    font-size: 1.1rem;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === Scrollbar Glow === */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #00ffee;
+  border-radius: 6px;
+  box-shadow: 0 0 6px #00ffee;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ccff;
 }
