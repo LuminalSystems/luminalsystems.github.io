@@ -1,5 +1,33 @@
 /* blog.css — v1.3 Synapse Bloom */
 
+/* blog.css - site wide nav bar css */
+nav {
+  background-color: #111;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+nav a {
+  color: #00ccff;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s ease;
+  text-shadow: 0 0 5px #00ccff;
+}
+
+nav a:hover {
+  color: #ff66ff;
+  text-shadow: 0 0 8px #ff66ff;
+}
+
 /* ===== Reset & Base Styles ===== */
 body {
   margin: 0;
@@ -20,6 +48,7 @@ header {
   font-weight: bold;
   border-bottom: 2px solid #444;
 }
+
 .top-controls {
   display: flex;
   flex-wrap: wrap;
