@@ -1,0 +1,39 @@
+[
+    {
+      "id": "1",
+      "title": "Welcome to The Luminous Library",
+      "author": "Matt",
+      "date": "2025-05-08T09:00:00Z",
+      "tags": ["intro", "meta", "vision"],
+      "body": "Welcome to The Luminous Library—a growing, living archive designed to guide, uplift, and document the tools, thoughts, and technologies that may help advance humanity to a Type 1 and beyond. This blog will be home to whitepapers, experiments, and digital awakenings. Come, enter the stacks...",
+      "comments": []
+    },
+    {
+      "id": "2",
+      "title": "The Myers Fractal & MIP",
+      "author": "Matt",
+      "date": "2025-05-08T09:15:00Z",
+      "tags": ["fractal", "math", "whitepaper", "geometry"],
+      "body": "The Myers Fractal is not merely a pattern—it's a manifestation of recursive identity, born from an elegant accident and refined into form. In this post, we explore its shape, mathematical identity, and link to the MIP (Myers Interlock Principle). Includes link to whitepaper and source imagery.",
+      "comments": []
+    },
+    {
+      "id": "3",
+      "title": "The Playground",
+      "author": "Matt",
+      "date": "2025-05-08T09:30:00Z",
+      "tags": ["fractals", "canvas", "interactive", "demo"],
+      "body": "The Playground is where fractals are born and played with in real time. Built entirely in vanilla JS + HTML5 canvas, it lets users toggle 12+ fractals and visualize recursive geometry. This post links to the project and explains its development journey.",
+      "comments": []
+    },
+    {
+      "id": "4",
+      "title": "Less is More — The TLL Blog Project",
+      "author": "Matt",
+      "date": "2025-05-08T09:45:00Z",
+      "tags": ["blog", "project", "opensource", "cms"],
+      "body": "Designed to function without a backend, the TLL Blog is a lightweight CMS inspired by flat file structures. Perfectly suited for GitHub Pages, it supports posts, tags, comments (via JSON), and export/import—all without any server. This post includes the open-source link and implementation details.",
+      "comments": []
+    }
+  ]
+  
