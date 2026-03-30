@@ -25,13 +25,6 @@ function submitPost() {
     return;
   }
 
-  if (typeof TLL_PostEngine?.addPost === "function") { 
-    TLL_PostEngine.addPost(title, body, tags);
-    closeEditor();
-  } else {
-    console.error("TLL_PostEngine.addPost is not a function.");
-  }
-
   const post = {
     id: Date.now(),
     title,
@@ -41,12 +34,17 @@ function submitPost() {
     slug: title.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
   };
 
-  TLL_PostEngine.addPost(post);
-  closeEditor();
-  document.dispatchEvent(new Event("reloadPosts"));
+  if (typeof TLL_PostEngine?.addPost === "function") { 
+    TLL_PostEngine.addPost(post);
+    closeEditor();
+    document.dispatchEvent(new Event("reloadPosts"));
+  } else {
+    console.error("TLL_PostEngine.addPost is not a function.");
+  }
 }
 
-// Expose to global scope for onclick handlers
+
+// 🔥 Expose to global scope for onclick handlers
 window.TLL_Editor = {
   launchPostEditor: openPostEditor,
   closeEditor,
@@ -60,4 +58,3 @@ window.addEventListener("DOMContentLoaded", () => {
     newPostBtn.addEventListener("click", openPostEditor);
   }
 });
-

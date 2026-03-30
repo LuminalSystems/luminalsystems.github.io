@@ -31,8 +31,7 @@ window.TLL_CommentEngine = (() => {
   }
 
   function addComment(postId, parentId, author, content) {
-    const posts = getAllPosts();
-    const post = posts.find(p => p.id === postId);
+    const post = TLL_PostEngine.getPostById(postId);
     if (!post) return;
 
     post.comments = Array.isArray(post.comments) ? post.comments : [];
@@ -54,7 +53,7 @@ window.TLL_CommentEngine = (() => {
       post.comments.push(newComment);
     }
 
-    saveAllPosts(posts);
+    TLL_PostEngine.updatePost(post);
     renderComments(postId);
   }
 

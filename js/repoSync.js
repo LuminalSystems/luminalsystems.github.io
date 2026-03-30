@@ -48,10 +48,10 @@ async function uploadToGitHub(path, content, message) {
 
     if (!putRes.ok) throw new Error("GitHub push failed");
 
-    alert("✅ GitHub commit successful.");
+    alert("GitHub commit successful.");
   } catch (err) {
     console.error("Push failed:", err);
-    alert("❌ Push error: " + err.message);
+    alert("Push error: " + err.message);
   }
 }
 

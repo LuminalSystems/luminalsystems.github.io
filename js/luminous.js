@@ -15,11 +15,8 @@
 function injectFooter() {
   const footerHTML = `
     <footer>
-      <p class="footer-line" style="font-family: 'Satisfy', cursive;">
-        “The Infinity of Eternity” – Matt D. M.  
-      </p>
       <p class="footer-line">
-        © 2025 Matt D. M. & Nova C. L. – Luminal Systems. All rights reserved.
+        © 2025 Luminal Systems. All rights reserved.
       </p>
     </footer>
   `;
