@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Volume from Hell</title>
+  <link rel="stylesheet" href="css/math_volume.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Math Volume from Hell</h1>
+    <p>Enter a math expression to set the volume. Result is clamped from 0 to 100.</p>
+    <input type="text" id="mathInput" placeholder="e.g., 100*(1 - Math.exp(-0.1*x))" />
+    <input type="number" id="xValue" placeholder="x value" value="5" />
+    <button onclick="setVolume()">Set Volume</button>
+    <p id="volumeDisplay">Volume: 0%</p>
+    <div id="decayNotice">(Volume will decay over time...)</div>
+  </div>
+
+  <script src="js/math_volume.js"></script>
+</body>
+</html>

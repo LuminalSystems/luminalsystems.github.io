@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Unix Time Chaos Volume</title>
+  <link rel="stylesheet" href="css/unixtime_volume.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🕒 Unix Time Chaos Volume</h1>
+    <p>Your volume is determined by the current UNIX time divided by your local military time.</p>
+    <p>(Because why not?)</p>
+    <div class="volume-display" id="volume-display">Volume: ??%</div>
+    <button onclick="calculateVolume()">Calculate Volume</button>
+    <div class="footnote">
+      <small>* Pro tip: Try changing your system clock to mess with the outcome 😏</small>
+    </div>
+  </div>
+
+  <script src="js/unixtime_volume.js"></script>
+</body>
+</html>

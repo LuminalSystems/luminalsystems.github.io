@@ -1,0 +1,54 @@
+  body {
+    background-color: #121212;
+    color: #eee;
+    font-family: monospace;
+    text-align: center;
+    padding: 40px;
+  }
+
+  #cubeContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .bigCube {
+    background-color: #444;
+    padding: 40px 60px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.6);
+    transition: all 0.3s ease-in-out;
+  }
+
+  .bigCube:hover {
+    transform: scale(1.05);
+    background-color: #666;
+  }
+
+  .miniCube {
+    width: 40px;
+    height: 40px;
+    background-color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #fff;
+    transition: 0.2s;
+  }
+
+  .miniCube:hover {
+    background-color: #777;
+  }
+
+  #volumeDisplay {
+    margin-top: 20px;
+    font-size: 20px;
+  }
