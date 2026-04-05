@@ -22,16 +22,15 @@
   </nav>
     <nav class="top-controls">
       <input type="text" id="searchInput" placeholder="Search..." oninput="runSearch(this.value)">
-      <button id="newPostBtn">New Post</button>
       <select onchange="TLL_ThemeEngine.setTheme(this.value)">
-        <option value="dark">Dark</option>
+        <option value="dark" selected>Dark</option>
         <option value="light">Light</option>
         <option value="neon">Neon</option>
         <option value="solarpunk">SolarPunk</option>
         <option value="arcane">Arcane</option>
         <option value="neuralflux">NeuralFlux</option>
         <option value="infravoid">InfraVoid</option>
-        <option value="aetherglass" selected>AetherGlass</option>
+        <option value="aetherglass">AetherGlass</option>
       </select>
       <label><input type="checkbox" onchange="toggleRemoteMode(this.checked)"> Remote Mode</label>
     </nav>
@@ -41,9 +40,6 @@
   <main id="blogContent"></main>
 
   <div class="toolbar">
-    <button onclick="TLL_ExportImport.exportTLLData()">Export</button>
-    <input type="file" onchange="TLL_ExportImport.importTLLData(this.files[0])" />
-    <button onclick="TLL_RepoSync.simulatePush()">Sim Git Push</button>
     <button id="clearTagBtn" onclick="clearTagFilter()" style="display:none;">Clear Tag</button>
   </div>
 
