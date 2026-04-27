@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Luminal Ledger - Blog</title>
+  <!-- <link rel="stylesheet" href="./css/blog.css" /> -->
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body id="theme-dark">
+  <header>
+    <h1>The Luminal Ledger</h1>
+        <nav>
+    <a href="index.html">Home</a>
+    <a href="/papers/">Papers</a>
+    <a href="/projects/">Projects</a>
+    <a href="/code/">Code</a>
+    <a href="blog.html">Blog</a>
+    <a href="playground.html">Playground</a>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact Us</a>
+  </nav>
+    <nav class="top-controls">
+      <input type="text" id="searchInput" placeholder="Search..." oninput="runSearch(this.value)">
+      <button id="newPostBtn">New Post</button>
+      <select onchange="TLL_ThemeEngine.setTheme(this.value)">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="neon">Neon</option>
+        <option value="solarpunk">SolarPunk</option>
+        <option value="arcane">Arcane</option>
+        <option value="neuralflux">NeuralFlux</option>
+        <option value="infravoid">InfraVoid</option>
+        <option value="aetherglass" selected>AetherGlass</option>
+      </select>
+      <label><input type="checkbox" onchange="toggleRemoteMode(this.checked)"> Remote Mode</label>
+    </nav>
+  </header>
+
+  <div id="tagChips" class="tag-chips"></div>
+  <main id="blogContent"></main>
+
+  <div class="toolbar">
+    <button onclick="TLL_ExportImport.exportTLLData()">Export</button>
+    <input type="file" onchange="TLL_ExportImport.importTLLData(this.files[0])" />
+    <button onclick="TLL_RepoSync.simulatePush()">Sim Git Push</button>
+    <button id="clearTagBtn" onclick="clearTagFilter()" style="display:none;">Clear Tag</button>
+  </div>
+
+  <div id="remoteModeBadge" style="position:fixed;bottom:1rem;right:1rem;padding:0.5rem 1rem;font-size:0.8rem;border-radius:6px;background:#222;color:#88f;border:1px solid #88f;display:none;z-index:9999;">
+    Remote Mode Enabled
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Luminal Systems. All rights reserved.</p>
+  </footer>
+
+  <script>
+    let currentPage = 1;
+    const perPage = 5;
+    let lazyMode = false;
+    let activeTag = null;
+    let searchQuery = "";
+
+    function toggleRemoteMode(enabled) {
+      if (enabled) {
+        TLL_PostEngine.enableRemoteMode();
+        TLL_CommentEngine.enableRemoteMode();
+        document.getElementById("remoteModeBadge").style.display = "block";
+      } else {
+        TLL_PostEngine.disableRemoteMode();
+        TLL_CommentEngine.disableRemoteMode();
+        document.getElementById("remoteModeBadge").style.display = "none";
+      }
+      location.reload();
+    }
+
+    async function renderAllPosts() {
+      const container = document.getElementById("blogContent");
+      if (!container) return;
+      
+      container.innerHTML = "";
+
+      const all = await TLL_PostEngine.getAllPosts();
+      const filtered = filterPosts(all);
+      const posts = lazyMode ? filtered.reverse() : TLL_PostEngine.getPostsPaginated(currentPage, perPage, filtered);
+
+      buildTagChips(all);
+
+      posts.forEach(post => {
+        const el = document.createElement("div");
+        el.className = "post-card";
+        el.id = post.slug;
+        el.innerHTML = `
+          <h2>${post.title}</h2>
+          <p><em>${new Date(post.date).toLocaleString()}</em></p>
+          <div class="content">${marked.parse(post.body)}</div>
+          <p class="post-tags"><strong>Tags:</strong> ${post.tags.map(tag => `<span class="tag">${tag}</span>`).join(", ")}</p>
+          <div id="comments-${post.id}" class="comments"></div>
+        `;
+        container.appendChild(el);
+        TLL_CommentEngine.renderComments(post.id);
+      });
+
+      if (!lazyMode) renderPaginationControls(filtered.length);
+    }
+
+    function renderPaginationControls(totalCount) {
+      const total = Math.ceil(totalCount / perPage);
+      const nav = document.createElement("div");
+      nav.className = "pagination";
+      nav.innerHTML = `
+        <button ${currentPage === 1 ? "disabled" : ""} onclick="changePage(-1)">Prev</button>
+        <span>Page ${currentPage} of ${total}</span>
+        <button ${currentPage === total ? "disabled" : ""} onclick="changePage(1)">Next</button>
+        <label><input type="checkbox" onchange="toggleLazyMode(this.checked)"> Lazy Mode</label>
+      `;
+      document.getElementById("blogContent").appendChild(nav);
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderAllPosts();
+    }
+
+    function toggleLazyMode(state) {
+      lazyMode = state;
+      renderAllPosts();
+    }
+
+    function buildTagChips(posts) {
+      const container = document.getElementById("tagChips");
+      const unique = [...new Set(posts.flatMap(p => p.tags))];
+      container.innerHTML = unique.map(tag =>
+        `<button onclick="toggleTag('${tag}')" class="${activeTag === tag ? 'active-tag' : ''}">${tag}</button>`
+      ).join("");
+      document.getElementById("clearTagBtn").style.display = activeTag ? "inline-block" : "none";
+    }
+
+    function toggleTag(tag) {
+      activeTag = (activeTag === tag) ? null : tag;
+      renderAllPosts();
+    }
+
+    function clearTagFilter() {
+      activeTag = null;
+      searchQuery = "";
+      document.getElementById("searchInput").value = "";
+      renderAllPosts();
+    }
+
+    function runSearch(query) {
+      searchQuery = query;
+      renderAllPosts();
+    }
+
+    function filterPosts(posts) {
+      return posts.filter(p =>
+        (!activeTag || p.tags.includes(activeTag)) &&
+        (!searchQuery || p.title.includes(searchQuery) || p.body.includes(searchQuery))
+      );
+    }
+
+    window.addEventListener("reloadPosts", () => renderAllPosts());
+    window.addEventListener("DOMContentLoaded", () => renderAllPosts());
+  </script>
+
+  <div id="postEditorPanel" class="editor-overlay">
+    <input type="text" id="postTitle" placeholder="Post title" />
+    <textarea id="postBody" placeholder="Write your post..."></textarea>
+    <input type="text" id="postTags" placeholder="Comma-separated tags" />
+    <button onclick="TLL_Editor.submitPost()">Submit</button>
+    <button onclick="TLL_Editor.closeEditor()">Cancel</button>
+  </div>
+
+
+  <!-- Scripts -->
+  <script src="./js/postEngine.js"></script>
+  <script src="./js/commentEngine.js"></script>
+  <script src="./js/repoSync.js"></script>
+  <script src="./js/editorPanel.js"></script>
+  <script src="./js/themeToggle.js"></script>
+  <script src="./js/exportImport.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  
+</body>
+</html>

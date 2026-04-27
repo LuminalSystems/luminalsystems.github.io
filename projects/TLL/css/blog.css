@@ -1,0 +1,341 @@
+/* blog.css — v1.3 Synapse Bloom */
+
+/* blog.css - site wide nav bar css */
+nav {
+  background-color: #111;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+nav a {
+  color: #00ccff;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s ease;
+  text-shadow: 0 0 5px #00ccff;
+}
+
+nav a:hover {
+  color: #ff66ff;
+  text-shadow: 0 0 8px #ff66ff;
+}
+
+/* ===== Reset & Base Styles ===== */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  transition: background 0.6s ease, color 0.4s ease;
+  line-height: 1.6;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+/* ===== Header ===== */
+header {
+  padding: 1.5rem 2rem 1rem;
+  font-size: 2rem;
+  font-weight: bold;
+  border-bottom: 2px solid #444;
+}
+
+.top-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* ===== Post Card ===== */
+.post-card {
+  margin: 1rem 2rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 20px rgba(0,0,0,0.08);
+}
+.post-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 25px rgba(0,0,0,0.15);
+}
+
+/* ===== Tag Chips ===== */
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 2rem;
+}
+.tag-chips button {
+  background: #444;
+  color: #eee;
+  border-radius: 20px;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+}
+.tag-chips .active-tag {
+  background: #0ff;
+  color: #000;
+  font-weight: bold;
+}
+
+/* ===== Post Tags ===== */
+.post-tags {
+  margin-top: 1rem;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ===== Comment Section ===== */
+.comments {
+  margin-top: 1.25rem;
+}
+.comment {
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  border-left: 3px solid #888;
+  border-radius: 0.5rem;
+  background: rgba(255,255,255,0.02);
+  margin-left: calc(var(--depth, 0) * 20px);
+  transition: all 0.3s ease;
+}
+
+/* ===== Comment Reply Box ===== */
+.comment-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.comment-box input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #111;
+  color: #0ff;
+}
+.comment-box button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ===== Pagination ===== */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem auto;
+  flex-wrap: wrap;
+}
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ===== Editor Modal ===== */
+.editor-overlay {
+  position: fixed;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #fff;
+  padding: 2rem;
+  border-radius: 1rem;
+  z-index: 9999;
+  box-shadow: 0 0 20px #0ff;
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.4s ease-in-out;
+}
+.editor-overlay.show {
+  display: flex !important;
+}
+.editor-overlay input,
+.editor-overlay textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #111;
+  color: #0ff;
+}
+.editor-overlay button {
+  align-self: flex-end;
+}
+
+/* ===== Footer ===== */
+footer {
+  margin-top: 2rem;
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+/* ===== Transition Hooks ===== */
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+
+/* ====== THEME: Dark ====== */
+body#theme-dark {
+  background: #111;
+  color: #eee;
+}
+body#theme-dark button,
+body#theme-dark select {
+  background: #222;
+  color: #eee;
+  border: 1px solid #444;
+}
+
+/* ====== THEME: Light ====== */
+body#theme-light {
+  background: #f4f4f4;
+  color: #222;
+}
+body#theme-light button,
+body#theme-light select {
+  background: #fff;
+  color: #222;
+  border: 1px solid #ccc;
+}
+
+/* ====== THEME: Neon ====== */
+body#theme-neon {
+  background: #000;
+  color: #0ff;
+}
+body#theme-neon button,
+body#theme-neon select {
+  background: #111;
+  color: #0ff;
+  border: 1px solid #0ff;
+}
+
+/* ====== THEME: SolarPunk ====== */
+body#theme-solarpunk {
+  background: #eef6ec;
+  color: #365a35;
+}
+body#theme-solarpunk button,
+body#theme-solarpunk select {
+  background: #cdeac0;
+  color: #365a35;
+  border: 1px solid #9ccc9c;
+}
+.post-card#theme-solarpunk {
+  background: #f7fff5;
+  border: 1px solid #b9deb9;
+}
+
+/* ====== THEME: Arcane ====== */
+body#theme-arcane {
+  background: #1a0f2f;
+  color: #ddcaff;
+}
+body#theme-arcane button,
+body#theme-arcane select {
+  background: #2a1946;
+  color: #ddcaff;
+  border: 1px solid #7c5fe9;
+}
+.post-card#theme-arcane {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid #5c3ca7;
+  box-shadow: 0 0 10px #7a40ff;
+}
+
+/* ====== THEME: NeuralFlux ====== */
+body#theme-neuralflux {
+  background: #0a0a0a;
+  color: #00f6ff;
+}
+body#theme-neuralflux button,
+body#theme-neuralflux select {
+  background: #111;
+  color: #00f6ff;
+  border: 1px solid #00cfff;
+}
+.post-card#theme-neuralflux {
+  background: #000;
+  border: 1px solid #0ff;
+  box-shadow: 0 0 20px #00f6ff99;
+}
+
+/* ====== THEME: InfraVoid ====== */
+body#theme-infravoid {
+  background: #050000;
+  color: #ff4141;
+}
+body#theme-infravoid button,
+body#theme-infravoid select {
+  background: #200000;
+  color: #ff4e4e;
+  border: 1px solid #ff2e2e;
+}
+.post-card#theme-infravoid {
+  background: rgba(255,0,0,0.05);
+  border: 1px solid #ff2e2e88;
+  box-shadow: 0 0 30px #ff000033;
+}
+
+/* ===== AETHERGLASS — Expanded ===== */
+body#theme-aetherglass {
+  background: radial-gradient(ellipse at 40% 60%, rgba(33, 45, 77, 0.9), rgba(15, 20, 40, 0.98)),
+              radial-gradient(circle at top right, rgba(144, 199, 255, 0.03), transparent),
+              radial-gradient(circle at bottom left, rgba(97, 151, 255, 0.06), transparent);
+  background-size: 100% 100%;
+  color: #e2eafc;
+  backdrop-filter: blur(12px);
+}
+body#theme-aetherglass .post-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,200,255,0.08);
+  box-shadow: 0 0 30px rgba(88,188,255,0.1);
+  backdrop-filter: blur(10px);
+}
+body#theme-aetherglass button,
+body#theme-aetherglass select {
+  background: rgba(255,255,255,0.06);
+  color: #a9d4ff;
+  border: 1px solid #88c0ff44;
+  backdrop-filter: blur(8px);
+}
+body#theme-aetherglass .editor-overlay {
+  background: rgba(20, 20, 30, 0.9);
+  border: 1px solid rgba(144, 188, 255, 0.3);
+  box-shadow: 0 0 35px rgba(130, 200, 255, 0.2);
+  backdrop-filter: blur(12px);
+  animation: aetherFloat 12s infinite alternate ease-in-out;
+}
+@keyframes aetherFloat {
+  0%   { transform: translateX(-50%) translateY(0px); }
+  100% { transform: translateX(-50%) translateY(10px); }
+}
