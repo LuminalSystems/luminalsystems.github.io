@@ -4,8 +4,8 @@
       "title": "Welcome to The Luminous Library",
       "author": "Matt",
       "date": "2025-05-08T09:00:00Z",
-      "tags": ["intro", "meta", "vision"],
-      "body": "Welcome to The Luminous Library\n\nThis is an archive. A living, growing record of thoughts, code, papers, and projects.\nA portfolio of a mind that couldn’t stop asking questions, and couldn’t stop building answers.\n\nThe Luminous Library exists for one reason, to contribute to humanity’s progress. Not in a grand or self-important way, but in the quiet, persistent way of\nsomeone who believes knowledge should be free, accessible, and useful. For humanity to do better. Have better. Be better.\n\nThink of this as a modern Library of Alexandria, focused on the domains shaping our next century:\ntechnology, psychology, philosophy, physics, AI, cognitive science, systems theory… and whatever else exists between them.\n\nIf you’re reading this and something here resonates, if it feels like someone else sees what you see,\n\nThat’s why this exists.\n\nEven if it reaches one person.\n\nEven if it shifts one mind by the smallest possible degree.\n\nThat’s enough.\n\nThat will always be enough.\n\n— Matt M., Luminal Systems",
+      "tags": ["intro", "about", "vision"],
+      "body": "Welcome to The Luminous Library\n\nThis is an archive. A living, growing record of thoughts, code, papers, and projects.\nA portfolio of a mind that couldn’t stop asking questions, and couldn’t stop building answers.\n\nThe Luminous Library exists for one reason, to contribute to humanity’s progress. Not in a grand or self-important way, but in the quiet, persistent way of\nsomeone who believes knowledge should be free, accessible, and useful. For humanity to do better. Have better. Be better.\n\nThink of this as a modern Library of Alexandria, focused on the domains shaping our next century:\ntechnology, psychology, philosophy, physics, AI, cognitive science, systems theory… and whatever else exists between them.\n\nIf you’re reading this and something here resonates, if it feels like someone else sees what you see,\n\nThat’s why this exists.\n\nEven if it reaches one person.\n\nEven if it shifts one mind by the smallest possible degree.\n\nThat’s enough.\n\nThat will always be enough.\n\n Matt M., Luminal Systems",
       "comments": []
     },
     {
@@ -19,20 +19,20 @@
     },
     {
       "id": "3",
-      "title": "The Playground",
+      "title": "The Fractal Playground",
       "author": "Matt",
       "date": "2025-05-08T09:30:00Z",
-      "tags": ["fractals", "canvas", "interactive", "demo"],
-      "body": "The Playground is where fractals are born and played with in real time. Built entirely in vanilla JS + HTML5 canvas, it lets users toggle 12+ fractals and visualize recursive geometry. This post links to the project and explains its development journey.",
+      "tags": ["fractal", "geometry", "interactive", "demo", "playground"],
+      "body": "The Fractal Playground started with me just trying to draw my own fractal and mess with it. I did a quick search to see if anything like it already existed, there is one out there, but I didn't like how it functioned. So I drew a canvas, started drawing fractals to it, and built my own.<br><br>You land on the page and you're met with the Myers Fractal by default, with a floating control panel on the right. Using the sliders, you can adjust the depth of any fractal. Using the checkboxes, you can toggle which fractals are drawn to the canvas, and you can check multiple at once. So if you check the Sierpinski Carpet at depth 3, the Myers Fractal at depth 7, and the Koch Snowflake at depth 9, all three draw simultaneously. Maybe something emergent comes from that combination. Maybe not. That's why it's a playground.<br><br>The fractal library includes some well-known classics like the Koch Snowflake, Sierpinski Triangle, and Dragon Curve, and several I built myself using the Myers Interlock Principle. Honestly, most of those were happy accidents discovered while building this thing in the first place. Lol.<br><br>TL;DR: It's an HTML5 canvas page that draws fractals, lets you layer them, adjust their depth, and see what happens when you combine them. PAFO - Play Around and Find Out. :}<br><br>You can explore it here: [Fractal Playground](https://luminalsystems.github.io/playground.html)\nAnd the project here : [Fractal Playground Project](./projects/playground/index.html)\n\nMatt M., Luminal Systems",
       "comments": []
     },
     {
       "id": "4",
-      "title": "Less is More — The TLL Blog Project",
+      "title": "Less is More - The TLL Blog",
       "author": "Matt",
       "date": "2025-05-08T09:45:00Z",
-      "tags": ["blog", "project", "opensource", "cms"],
-      "body": "Designed to function without a backend, the TLL Blog is a lightweight CMS inspired by flat file structures. Perfectly suited for GitHub Pages, it supports posts, tags, comments (via JSON), and export/import—all without any server. This post includes the open-source link and implementation details.",
+      "tags": ["blog", "project", "opensource", "cms", "github"],
+      "body": "This one started out of necessity.<br><br>I wanted to build a portfolio site and document my work, but I don't have money for hosting or domain names. GitHub Pages is free, but it only serves static front-end code, no server, no database, no typical web stack.<br><br>So I looked around for blog systems that actually worked on GitHub Pages. Found maybe two or three. None of them did what I wanted, and honestly, if the aesthetics throw me off I'm probably not using your code regardless of how functional it is. Lol.<br><br>So I built my own.<br><br>The TLL Blog -- The Luminal Ledger -- runs entirely on HTML, CSS, and JavaScript, with JSON flat files acting as a pseudo-database.<br>No backend. No server. No hosting costs. Just static files served directly from the repo.<br><br>It also works bidirectionally. Write posts on your localhost, hit \"Sim Git Push,\" drop in your GitHub token, and it pushes posts.json to the live repo automatically. Your local environment and the live site stay in sync without ever touching a server.<br><br>I built it as a portfolio piece, then figured, someone else probably needs this too. So it's open source, free to use, and the working demo is the very blog you're reading right now.<br><br>You can find the project files here: [TLL Blog Project](./projects/TLL/index.html)\n\nMatt M., Luminal Systems",
       "comments": []
     }
   ]
