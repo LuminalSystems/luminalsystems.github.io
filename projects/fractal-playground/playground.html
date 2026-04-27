@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fractal Playground</title>
+  <link rel="stylesheet" href="/css/playground.css" />
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Satisfy&display=swap" rel="stylesheet">
+
+  <meta property="og:title" content="Fractal Playground - Luminal Systems" />
+  <meta property="og:description" content="Explore a library of generative fractals, including the original Myers Fractal." />
+  <meta property="og:image" content="https://luminalsystems.github.io/images/myersfractal.png" />
+  <meta property="og:url" content="https://luminalsystems.github.io/playground.html" />
+  
+
+</head>
+<body>
+  <main>
+    <h1>Fractal Playground</h1>
+    <div id="nav-bar"></div>
+  </main>
+
+<!-- Toggle Button -->
+<button id="togglePanel" class="toggle-btn">+ Show Controls</button>
+
+<!-- Collapsible Control Panel -->
+<div id="controlPanel" class="control-panel hidden">
+  
+  <h2>Fractal Controls</h2>
+  <button id="resetBtn" class="reset-btn">Reset All</button>
+
+
+  <div class="fractal-control" title="Classic triangular recursion. Infinite voids within voids.">
+    <label><input type="checkbox" id="triangle"> Sierpinski Triangle</label>
+    <input type="range" id="depthTriangle" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Carpet of shrinking squares, recursively subdivided.">
+    <label><input type="checkbox" id="carpet"> Sierpinski Carpet</label>
+    <input type="range" id="depthCarpet" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Tri-fold recursive snowflake curve, sharp and icy.">
+    <label><input type="checkbox" id="snowflake"> Koch Snowflake</label>
+    <input type="range" id="depthSnowflake" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Curved path that folds in on itself with each iteration.">
+    <label><input type="checkbox" id="dragon"> Dragon Curve</label>
+    <input type="range" id="depthDragon" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Branching binary tree, recursive and symmetrical.">
+    <label><input type="checkbox" id="tree"> Tree</label>
+    <input type="range" id="depthTree" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Recursive H-shapes, forming a nested grid structure.">
+    <label><input type="checkbox" id="htree"> H-Tree</label>
+    <input type="range" id="depthHTree" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Fusion of H-tree and tree structures — creative synthesis.">
+    <label><input type="checkbox" id="myers" checked> Myers Fractal</label>
+    <input type="range" id="depthMyers" min="1" max="13" value="9">
+  </div>
+  
+  <div class="fractal-control" title="Recursive cross-shape branching in all directions.">
+    <label><input type="checkbox" id="crossx"> Cross-X</label>
+    <input type="range" id="depthCrossx" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Recursive floral pattern built from tree symmetry.">
+    <label><input type="checkbox" id="flower"> Flower</label>
+    <input type="range" id="depthFlower" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Snowflake-inspired starburst built from angled recursion.">
+    <label><input type="checkbox" id="starflake"> StarFlake</label>
+    <input type="range" id="depthStarflake" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Radiating recursive flower formed by angular symmetry.">
+    <label><input type="checkbox" id="lotus"> Lotus Fractal</label>
+    <input type="range" id="depthLotus" min="1" max="13" value="5">
+  </div>
+  
+  <div class="fractal-control" title="Multi-directional burst of energy, recursive brilliance.">
+    <label><input type="checkbox" id="sunburst"> Sunburst</label>
+    <input type="range" id="depthSunburst" min="1" max="13" value="5">
+  </div>
+  
+</div>
+
+<canvas id="canvas" width="1600" height="900"></canvas>
+
+  <div id="footer-container"></div>
+
+  <script type="module">
+    import {
+      drawTree,
+      drawHTree,
+      drawSierpinskiTriangle,
+      drawSierpinskiCarpet,
+      drawKochSnowflake,
+      drawDragonCurve,
+      drawMyersFractal,
+      drawCrossX,
+      drawFlowerFractal,
+      drawStarFlake,
+      drawLotusFractal,
+      drawSunburst
+    } from '/js/fractalLibrary.js';
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let zoom = 1;
+    let rotation = 0;
+    let mouseY = 0;
+
+    document.addEventListener("mousemove", e => {
+      mouseY = e.clientY;
+    });
+
+    function renderFractals() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(zoom, zoom);
+      ctx.rotate(rotation);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      const depths = {
+        tree: parseInt(document.getElementById("depthTree")?.value) || 5,
+        htree: parseInt(document.getElementById("depthHTree")?.value) || 5,
+        triangle: parseInt(document.getElementById("depthTriangle")?.value) || 5,
+        carpet: parseInt(document.getElementById("depthCarpet")?.value) || 5,
+        snowflake: parseInt(document.getElementById("depthSnowflake")?.value) || 5,
+        dragon: parseInt(document.getElementById("depthDragon")?.value) || 5,
+        myers: parseInt(document.getElementById("depthMyers")?.value) || 5,
+        crossx: parseInt(document.getElementById("depthCrossx")?.value) || 5,
+        flower: parseInt(document.getElementById("depthFlower")?.value) || 5,
+        starflake: parseInt(document.getElementById("depthStarflake")?.value) || 5,
+        lotus: parseInt(document.getElementById("depthLotus")?.value) || 5,
+        sunburst: parseInt(document.getElementById("depthSunburst")?.value) || 5
+      };
+
+      const fractals = {
+        tree: ctx => drawTree(ctx, depths.tree),
+        htree: ctx => drawHTree(ctx, depths.htree),
+        triangle: ctx => drawSierpinskiTriangle(ctx, depths.triangle),
+        carpet: ctx => drawSierpinskiCarpet(ctx, depths.carpet),
+        snowflake: ctx => drawKochSnowflake(ctx, depths.snowflake),
+        dragon: ctx => drawDragonCurve(ctx, depths.dragon),
+        myers: ctx => drawMyersFractal(ctx, depths.myers),
+        crossx: ctx => drawCrossX(ctx, depths.crossx),
+        flower: ctx => drawFlowerFractal(ctx, depths.flower),
+        starflake: ctx => drawStarFlake(ctx, depths.starflake),
+        lotus: ctx => drawLotusFractal(ctx, depths.lotus),
+        sunburst: ctx => drawSunburst(ctx, depths.sunburst)
+      };
+
+      for (const id in fractals) {
+        const checkbox = document.getElementById(id);
+        if (checkbox?.checked) {
+          try {
+            fractals[id](ctx);
+          } catch (e) {
+            console.error(`Error drawing ${id}:`, e);
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function animate() {
+      renderFractals();
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+
+  const toggleBtn = document.getElementById("togglePanel");
+  const controlPanel = document.getElementById("controlPanel");
+
+  toggleBtn.addEventListener("click", () => {
+    controlPanel.classList.toggle("hidden");
+    toggleBtn.textContent = controlPanel.classList.contains("hidden")
+      ? "+ Show Controls"
+      : "− Hide Controls";
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+  const checkboxes = document.querySelectorAll('#controlPanel input[type="checkbox"]');
+  const sliders = document.querySelectorAll('#controlPanel input[type="range"]');
+
+  checkboxes.forEach(cb => cb.checked = false);
+  sliders.forEach(sl => sl.value = 5);
+
+  // Set Myers Fractal by default
+  document.getElementById("myers").checked = true;
+  document.getElementById("depthMyers").value = 9;
+
+  renderFractals();
+});
+</script>
+
+
+</body>
+</html>
