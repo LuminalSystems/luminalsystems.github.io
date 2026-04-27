@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Viewer - Luminal Systems</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="../js/luminous.js" defer></script>
+</head>
+<body id="paper-viewer">
+  <div id="nav-bar"></div>
+
+  <section class="bio-card">
+    <h1 id="paper-entry">Loading...</h1>
+    <div id="readme-section" class="readme-content">
+      </div>
+
+    <div class="code-wrapper">
+      <pre><code id="code-display" class="language-markdown">
+      // Initializing Luminal Logic...
+      </code></pre>
+    </div>
+  </section>
+
+  <div id="footer-container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const paperId = params.get('id');
+
+    async function loadPaper() {
+      try {
+        const response = await fetch('./papers.json');
+        const papers = await response.json();
+        const data = papers[paperId];
+
+        if (data) {
+          document.title = `${data.title} - Luminal Systems`;
+          document.getElementById('paper-entry').innerText = data.title;
+          document.getElementById('readme-section').innerHTML = `<p>${data.description}</p>`;
+
+          const codeRes = await fetch(data.filePath);
+          const codeText = await codeRes.text();
+
+          if (data.filePath.endsWith('.md')) {
+            document.getElementById('code-display').style.display = 'none';
+            document.querySelector('.code-wrapper').innerHTML = 
+              `<div class="rendered-content">${marked.parse(codeText)}</div>`;
+          } else {
+            const display = document.getElementById('code-display');
+            display.textContent = codeText;
+            Prism.highlightElement(display);
+          }
+        }
+      } catch (err) {
+        document.getElementById('paper-entry').innerText = "Paper Not Found :{} ";
+      }
+    }
+
+    window.onload = loadPaper;
+  </script>
+</body>
+</html>

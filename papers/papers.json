@@ -1,0 +1,12 @@
+{
+  "myers-fractal": {
+    "title": "Myers Fractal & Interlock Principle",
+    "description": "A detailed paper on The Myers Fractal, and the governing interlock principle behind it.",
+    "filePath": "./myers-fractal/the-myers-fractal.md"
+  },
+  "whatever-paper": {
+    "title": "Whatever Paper I decide to put next",
+    "description": "Whatever paper I decide goes second is going here.",
+    "filePath": "/"
+  }
+}
