@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Viewer - Luminal Systems</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="../js/luminous.js" defer></script>
+</head>
+<body id="project-viewer">
+  <div id="nav-bar"></div>
+
+  <section class="bio-card">
+    <h1 id="project-title">Loading...</h1>
+    <div id="readme-section" class="readme-content">
+      </div>
+
+    <div class="code-toolbar" style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <button onclick="copyCode()" class="action-btn">📋 Copy Code</button>
+      <a id="dl-btn" href="#" download class="action-btn" style="text-decoration: none;">⬇️ Download</a>
+    </div>
+
+    <div class="code-wrapper">
+      <pre><code id="code-display" class="language-javascript">
+      // Initializing Luminal Logic...
+      </code></pre>
+    </div>
+  </section>
+
+  <div id="footer-container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('id');
+
+    async function loadProject() {
+      try {
+        const response = await fetch('./projects.json');
+        const projects = await response.json();
+        const data = projects[projectId];
+
+        if (data) {
+          document.title = `${data.title} - Luminal Systems`;
+          document.getElementById('project-title').innerText = data.title;
+          document.getElementById('readme-section').innerHTML = `<p>${data.description}</p>`;
+          
+          // Setup Download
+          const dlBtn = document.getElementById('dl-btn');
+          dlBtn.href = data.filePath;
+          dlBtn.download = data.filePath.split('/').pop();
+
+          // Fetch and Display Code
+          const codeRes = await fetch(data.filePath);
+          const codeText = await codeRes.text();
+          const display = document.getElementById('code-display');
+          display.textContent = codeText;
+          
+          // Re-run Prism highlighting
+          Prism.highlightElement(display);
+        }
+      } catch (err) {
+        document.getElementById('project-title').innerText = "Project Not Found";
+      }
+    }
+
+    function copyCode() {
+      const code = document.getElementById('code-display').textContent;
+      navigator.clipboard.writeText(code);
+      alert("Code copied to clipboard!");
+    }
+
+    window.onload = loadProject;
+  </script>
+</body>
+</html>

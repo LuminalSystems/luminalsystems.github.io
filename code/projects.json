@@ -1,0 +1,12 @@
+{
+  "grade-calc": {
+    "title": "Blackboard Grade Calculator",
+    "description": "A userscript that calculates your current and projected grades directly on Blackboard.",
+    "filePath": "BlackboardGradeCalculator.js"
+  },
+  "archiver": {
+    "title": "Blackboard Archival Script",
+    "description": "Archives your Blackboard course content before access expires.",
+    "filePath": "BlackboardArchiver.js"
+  }
+}

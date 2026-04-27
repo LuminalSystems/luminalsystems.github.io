@@ -1,6 +1,6 @@
 /*** 
  * 
- * This file is intended to server as the site's main functionalism. 
+ * This file is intended to serve as the site's main functionalism. 
  * @Author Luminal Systems
  * 
  * There is no copyright on this file. If you want to use it, go for it. 
@@ -9,6 +9,26 @@
  * Open source and I encourage people to learn from anything they can on here. 
  * 
 ***/
+
+// Injects the navbar for navigation. Prevents me from having to copy paste 
+// or write it out a dozen and one times. Also means less updates if I change the nav. 
+function injectNav() {
+  const baseURL = "https://luminalsystems.github.io";
+  const navbarHTML = `
+  <nav>
+    <a href="/">Home</a>
+    <a href="/papers/">Papers</a>
+    <a href="/projects/">Projects</a>
+    <a href="/code/">Code</a>
+    <a href="${baseURL}/blog.html">Blog</a>
+    <a href="${baseURL}/playground.html">Playground</a>
+    <a href="${baseURL}/about.html">About</a>
+    <a href="${baseURL}/contact.html">Contact Us</a>
+  </nav>
+  `;
+  const container = document.getElementById('nav-bar');
+  if (container) container.innerHTML = navbarHTML;
+}
 
 // Injects a footer at the bottom of every page so you don't have to 
 // Manually change every single page with a footer if you ever change it. 
@@ -24,8 +44,21 @@ function injectFooter() {
   if (container) container.innerHTML = footerHTML;
 }
 
+/*
+// Camera Reel type functionality - Though this one is specific to 
+// The Myers Fractal, it can be modified ever so slightly, but this 
+// was built for the express intent of displaying the Myers Fractal.
+const depths = Array.from({length: 13}, (_, i) => 
+  `./images/myers-fractal/myers-fractal-depth-${i+1}.png`);
 
-
+const reel = document.getElementById('scroll-reel');
+depths.forEach(src => {
+  const img = document.createElement('img');
+  img.src = src;
+  img.className = 'reel-image';
+  reel.appendChild(img);
+});
+*/
   // This is the cite engine for citing papers on Luminal Systems, The Luminous Library. 
   // This function will be changed and updated/upgraded in the coming future. 
 function cite(paperTitle, authors, year, link) {
@@ -37,6 +70,9 @@ function cite(paperTitle, authors, year, link) {
     `;
   }
   
+
+  // Call injectNav at the end of each HTML page. 
+  injectNav();
   // Call injectFooter() at the end of each HTML file's <script>
   injectFooter();
   

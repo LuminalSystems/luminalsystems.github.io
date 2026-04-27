@@ -1,97 +1,124 @@
-/* === Reset & Base === */
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #000000;
-  color: #00ffee;
-  overflow-x: hidden;
-  overflow-y: auto;
+/* =========================================================
+   Luminal Systems - Global Site Styles
+   Refactored foundation stylesheet
+   ========================================================= */
+
+/* ===== Reset / Base ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #000;
+  color: #00ffee;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ===== Theme Tokens ===== */
+:root {
+  --bg: #000000;
+  --surface: #1a1a1a;
+  --surface-soft: rgba(255, 255, 255, 0.03);
+  --surface-soft-hover: rgba(255, 255, 255, 0.05);
+  --text: #00ffee;
+  --text-soft: #00ccff;
+  --heading: #cc99ff;
+  --accent: #00ccff;
+  --accent-2: #ff66ff;
+  --link: #b88cff;
+  --link-hover: #d8b6ff;
+  --border: rgba(0, 204, 255, 0.35);
+  --glow: 0 0 10px rgba(0, 255, 255, 0.14);
+  --radius: 12px;
+  --radius-sm: 10px;
+  --max-content: 1200px;
+  --transition: 0.2s ease;
+}
+
+/* ===== Canvas / Background Layers ===== */
 #canvas-wrapper {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: calc(100vh - 80px); /* leaves room for footer */
+  inset: 0;
+  height: calc(100vh - 80px);
   overflow: hidden;
   z-index: 0;
 }
 
-/* Canvas for the Myers Fractal */
-canvas#starfield {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 1;
-  display: flex; 
-  flex-direction: column; 
-  justify-content: space-between;
-}
-
-
-/* separate canvas for additional effects when I add them */ 
-canvas#particlefield {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 1;
-}
-
+canvas#starfield,
+canvas#treeCanvas,
+canvas#particlefield,
 canvas#testfractal {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
   pointer-events: none;
   opacity: 1;
 }
 
-/* === ROUNDED UI STYLING === */
-nav, canvas, #control-panel, #footer-container, .fractal-box, .theme-toggle {
-  border-radius: 12px;
+canvas#starfield,
+canvas#treeCanvas,
+canvas#testfractal {
+  z-index: 0;
 }
 
-/* Begin body of main content */
+canvas#particlefield {
+  z-index: 1;
+}
+
+/* ===== Layout ===== */
 .content-wrapper {
   position: relative;
   z-index: 2;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 100vh;
 }
 
 main.content {
   position: relative;
   z-index: 2;
-  text-align: center;
-  top: 20%;
   flex: 1;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+/* ===== Typography ===== */
+h1,
+h2,
+h3 {
+  font-family: "Orbitron", sans-serif;
+  color: var(--heading);
+  text-align: center;
+  text-shadow: 0 0 8px var(--heading);
+  margin: 1rem 0;
 }
 
 p {
-  font-size: 1.2em;
-  color: #00F5D4;
-  text-shadow: 0 0 5px #00F5D4;
+  font-size: 1.1rem;
+  color: var(--text);
+  text-shadow: 0 0 5px rgba(0, 245, 212, 0.4);
+  margin: 0 0 1rem;
 }
 
-/* === Navigation === */
+/* ===== Navigation ===== */
 nav {
-  background-color: #111;
-  padding: 10px;
+  background: #111;
+  padding: 10px 16px;
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -99,75 +126,148 @@ nav {
   position: sticky;
   top: 0;
   z-index: 999;
+  border-radius: var(--radius);
+  margin: 0 auto 1rem;
+  max-width: 100%;
 }
 
 nav a {
-  color: #00ccff;
+  color: var(--accent);
   text-decoration: none;
-  font-weight: bold;
-  transition: color 0.2s ease;
-}
-nav a:hover {
-  color: #ff66ff;
+  font-weight: 700;
+  transition: color var(--transition), text-shadow var(--transition);
 }
 
-/* Settings Panel */
-#settingsPanel {
-    position: absolute;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border: 1px solid white;
-    border-radius: 8px;
-    display: none;
-    z-index: 10;
+nav a:hover,
+nav a:focus {
+  color: var(--accent-2);
+  text-shadow: 0 0 8px var(--accent-2);
 }
 
-#settingsPanel label {
-    display: block;
-    margin-bottom: 10px;
-}
-
-/* === Headers === */
-h1, h2, h3 {
-  font-family: 'Orbitron', sans-serif;
-  color: #cc99ff;
-  text-align: center;
-  text-shadow: 0 0 8px #cc99ff;
-  margin-top: 1rem;
-}
-
-/* === Section Containers === */
-.bio-card, .contact-container {
-  background-color: #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 0 0 10px #0ff2;
+/* ===== Shared Cards ===== */
+.bio-card,
+.contact-container {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--glow);
   padding: 2rem;
-  max-width: 900px;
+  max-width: var(--max-content);
   margin: 2rem auto;
-  overflow-y: auto;
-  max-height: 80vh;
   animation: fadeUp 0.8s ease-out;
 }
 
 .bio-card h2 {
-  text-align: center;
   font-size: 2rem;
   margin-bottom: 1rem;
 }
 
-/* === Contact Form === */
+/* ===== Inline Links ===== */
+.bio-card a,
+.content a,
+.paper-entry a,
+.projects-entry a,
+.code-entry a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(184, 140, 255, 0.35);
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.bio-card a:hover,
+.bio-card a:focus,
+.content a:hover,
+.content a:focus,
+.paper-entry a:hover,
+.paper-entry a:focus,
+.projects-entry a:hover,
+.projects-entry a:focus,
+.code-entry a:hover,
+.code-entry a:focus {
+  color: var(--link-hover);
+  border-bottom-color: rgba(216, 182, 255, 0.75);
+}
+
+/* ===== Directory Grids ===== */
+.papers-list,
+.projects-list,
+.code-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  align-items: start;
+}
+
+.paper-entry,
+.projects-entry,
+.code-entry {
+  text-align: left;
+  border-left: 3px solid var(--accent);
+  padding: 1rem 1rem 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  min-height: 100%;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.paper-entry:hover,
+.projects-entry:hover,
+.code-entry:hover {
+  background: var(--surface-soft-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.08);
+}
+
+.paper-entry h3,
+.projects-entry h3,
+.code-entry h3 {
+  margin: 0 0 0.5rem;
+  text-align: left;
+}
+
+.paper-entry p,
+.projects-entry p,
+.code-entry p {
+  margin-top: 0;
+  font-size: 0.98rem;
+  opacity: 0.92;
+}
+
+.paper-meta {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  opacity: 0.8;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.paper-tags,
+.project-tags,
+.code-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.tag {
+  background: rgba(0, 204, 255, 0.1);
+  border: 1px solid rgba(0, 204, 255, 0.27);
+  color: var(--accent);
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+/* ===== Contact Form ===== */
 .contact-container input,
 .contact-container textarea {
   width: 100%;
   padding: 0.75rem;
-  margin: 0.5rem 0 1rem 0;
+  margin: 0.5rem 0 1rem;
   border: none;
   border-radius: 6px;
-  background-color: #2a2a2a;
-  color: #00ffee;
+  background: #2a2a2a;
+  color: var(--text);
   font-size: 1rem;
 }
 
@@ -175,56 +275,72 @@ h1, h2, h3 {
   font-weight: bold;
   display: block;
   margin-top: 1rem;
-  color: #00ccff;
+  color: var(--accent);
 }
 
 .contact-container button {
-  background-color: #444;
+  background: #444;
   color: #fff;
   border: none;
   padding: 0.6rem 1.2rem;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  transition: background var(--transition), color var(--transition);
 }
 
 .contact-container button:hover {
-  background-color: #00ccff;
+  background: var(--accent);
   color: #000;
 }
 
+/* ===== Footer ===== */
 footer {
-  background-color: rgba(0, 0, 0, 0.6); /* Helps separation if needed */
-  color: #ccc;
-  padding: 1rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
   text-align: center;
   font-size: 0.9rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(2px);
 }
 
 .footer-line {
   margin: 0.2rem;
 }
+
 .footer-line:first-child {
-  font-family: 'Satisfy', cursive;
+  font-family: "Satisfy", cursive;
   font-size: 1.3rem;
 }
 
-/* === Responsive === */
-@media screen and (max-width: 768px) {
-  nav {
-    gap: 12px;
-  }
-  .bio-card, .contact-container {
-    margin: 1rem;
-    padding: 1rem;
-  }
-  .footer-line:first-child {
-    font-size: 1.1rem;
-  }
+/* ===== Settings Panel ===== */
+#settingsPanel {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  display: none;
+  z-index: 10;
 }
 
+#settingsPanel label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* ===== Utilities ===== */
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* ===== Animation ===== */
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -236,45 +352,85 @@ footer {
   }
 }
 
-/* === Scrollbar Glow === */
+@keyframes aetherFloat {
+  0% {
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    transform: translateX(-50%) translateY(10px);
+  }
+}
+
+/* ===== Scrollbar ===== */
 ::-webkit-scrollbar {
   width: 10px;
 }
+
 ::-webkit-scrollbar-track {
   background: #111;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #00ffee;
+  background: var(--text);
   border-radius: 6px;
-  box-shadow: 0 0 6px #00ffee;
+  box-shadow: 0 0 6px var(--text);
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #00ccff;
+  background: var(--accent);
 }
 
-/* ================================ */ 
-
-
-.top-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-/* ===== Post Card ===== */
+/* ===== Blog / Post Cards ===== */
 .post-card {
   margin: 1rem 2rem;
   padding: 1.25rem 1.5rem;
   border-radius: 1rem;
-  transition: all 0.3s ease;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 0 20px rgba(0,0,0,0.08);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  box-shadow: var(--glow);
+  transition: transform var(--transition), box-shadow var(--transition);
 }
+
 .post-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 0 25px rgba(0,0,0,0.15);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.15);
+}
+
+.post-card h2 {
+  text-align: center;
+}
+
+/* ===== Editor Overlay ===== */
+.editor-overlay {
+  position: fixed;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #fff;
+  padding: 2rem;
+  border-radius: 1rem;
+  z-index: 9999;
+  box-shadow: 0 0 20px #0ff;
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  width: 90%;
+  max-width: 600px;
+}
+
+.editor-overlay.show {
+  display: flex !important;
+}
+
+.editor-overlay input,
+.editor-overlay textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #111;
+  color: #0ff;
 }
 
 /* ===== Tag Chips ===== */
@@ -284,6 +440,7 @@ footer {
   gap: 0.5rem;
   margin: 1rem 2rem;
 }
+
 .tag-chips button {
   background: #444;
   color: #eee;
@@ -293,6 +450,7 @@ footer {
   border: none;
   cursor: pointer;
 }
+
 .tag-chips .active-tag {
   background: #0ff;
   color: #000;
@@ -306,38 +464,26 @@ footer {
   font-size: 0.9rem;
 }
 
-/* ===== Comment Section ===== */
+/* ===== Comments ===== */
 .comments {
   margin-top: 1.25rem;
 }
-.comment {
-  padding: 0.75rem 1rem;
-  margin-top: 0.75rem;
-  border-left: 3px solid #888;
-  border-radius: 0.5rem;
-  background: rgba(255,255,255,0.02);
-  margin-left: calc(var(--depth, 0) * 20px);
-  transition: all 0.3s ease;
-}
 
-/* ===== Comment Reply Box ===== */
-.comment-box {
+.reply-form {
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
 }
-.comment-box input {
+
+.reply-form input {
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid #555;
   background: #111;
   color: #0ff;
-}
-.comment-box button {
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
+  min-width: 120px;
 }
 
 /* ===== Pagination ===== */
@@ -360,60 +506,22 @@ footer {
   flex-wrap: wrap;
 }
 
-/* ===== Editor Modal ===== */
-.editor-overlay {
-  position: fixed;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #222;
-  color: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  z-index: 9999;
-  box-shadow: 0 0 20px #0ff;
-  display: none;
-  flex-direction: column;
-  gap: 1rem;
-  transition: all 0.4s ease-in-out;
-}
-.editor-overlay.show {
-  display: flex !important;
-}
-.editor-overlay input,
-.editor-overlay textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #555;
-  background: #111;
-  color: #0ff;
-}
-.editor-overlay button {
-  align-self: flex-end;
-}
-
-/* ===== Footer ===== */
-footer {
-  margin-top: 2rem;
-  padding: 2rem;
-  text-align: center;
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
-
-/* ===== Transition Hooks ===== */
-.fade-out {
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-
-/* ====== THEME: Dark ====== */
+/* ===== Theme: Dark ===== */
 body#theme-dark {
+  --bg: #111;
+  --surface: #1a1a1a;
+  --text: #eeeeee;
+  --text-soft: #00ccff;
+  --heading: #cc99ff;
+  --accent: #00ccff;
+  --accent-2: #ff66ff;
+  --link: #b88cff;
+  --link-hover: #d8b6ff;
+  --border: rgba(255, 255, 255, 0.08);
   background: #111;
   color: #eee;
 }
+
 body#theme-dark button,
 body#theme-dark select {
   background: #222;
@@ -421,11 +529,12 @@ body#theme-dark select {
   border: 1px solid #444;
 }
 
-/* ====== THEME: Light ====== */
+/* ===== Theme: Light ===== */
 body#theme-light {
   background: #f4f4f4;
   color: #222;
 }
+
 body#theme-light button,
 body#theme-light select {
   background: #fff;
@@ -433,11 +542,12 @@ body#theme-light select {
   border: 1px solid #ccc;
 }
 
-/* ====== THEME: Neon ====== */
+/* ===== Theme: Neon ===== */
 body#theme-neon {
   background: #000;
   color: #0ff;
 }
+
 body#theme-neon button,
 body#theme-neon select {
   background: #111;
@@ -445,103 +555,189 @@ body#theme-neon select {
   border: 1px solid #0ff;
 }
 
-/* ====== THEME: SolarPunk ====== */
+/* ===== Theme: SolarPunk ===== */
 body#theme-solarpunk {
   background: #eef6ec;
   color: #365a35;
 }
+
 body#theme-solarpunk button,
 body#theme-solarpunk select {
   background: #cdeac0;
   color: #365a35;
   border: 1px solid #9ccc9c;
 }
-.post-card#theme-solarpunk {
+
+body#theme-solarpunk .paper-entry,
+body#theme-solarpunk .projects-entry,
+body#theme-solarpunk .code-entry,
+body#theme-solarpunk .bio-card {
   background: #f7fff5;
-  border: 1px solid #b9deb9;
+  border-color: #b9deb9;
+  box-shadow: 0 0 10px rgba(121, 180, 121, 0.14);
 }
 
-/* ====== THEME: Arcane ====== */
+/* ===== Theme: Arcane ===== */
 body#theme-arcane {
   background: #1a0f2f;
   color: #ddcaff;
 }
+
 body#theme-arcane button,
 body#theme-arcane select {
   background: #2a1946;
   color: #ddcaff;
   border: 1px solid #7c5fe9;
 }
-.post-card#theme-arcane {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid #5c3ca7;
+
+body#theme-arcane .paper-entry,
+body#theme-arcane .projects-entry,
+body#theme-arcane .code-entry,
+body#theme-arcane .bio-card {
+  border-color: #5c3ca7;
   box-shadow: 0 0 10px #7a40ff;
 }
 
-/* ====== THEME: NeuralFlux ====== */
+/* ===== Theme: NeuralFlux ===== */
 body#theme-neuralflux {
   background: #0a0a0a;
   color: #00f6ff;
 }
+
 body#theme-neuralflux button,
 body#theme-neuralflux select {
   background: #111;
   color: #00f6ff;
   border: 1px solid #00cfff;
 }
-.post-card#theme-neuralflux {
+
+body#theme-neuralflux .paper-entry,
+body#theme-neuralflux .projects-entry,
+body#theme-neuralflux .code-entry,
+body#theme-neuralflux .bio-card {
   background: #000;
-  border: 1px solid #0ff;
-  box-shadow: 0 0 20px #00f6ff99;
+  border-color: #0ff;
+  box-shadow: 0 0 20px rgba(0, 246, 255, 0.2);
 }
 
-/* ====== THEME: InfraVoid ====== */
+/* ===== Theme: InfraVoid ===== */
 body#theme-infravoid {
   background: #050000;
   color: #ff4141;
 }
+
 body#theme-infravoid button,
 body#theme-infravoid select {
   background: #200000;
   color: #ff4e4e;
   border: 1px solid #ff2e2e;
 }
-.post-card#theme-infravoid {
-  background: rgba(255,0,0,0.05);
-  border: 1px solid #ff2e2e88;
-  box-shadow: 0 0 30px #ff000033;
+
+body#theme-infravoid .paper-entry,
+body#theme-infravoid .projects-entry,
+body#theme-infravoid .code-entry,
+body#theme-infravoid .bio-card {
+  background: rgba(255, 0, 0, 0.05);
+  border-color: rgba(255, 46, 46, 0.53);
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.2);
 }
 
-/* ===== AETHERGLASS — Expanded ===== */
+/* ===== Theme: AetherGlass ===== */
 body#theme-aetherglass {
-  background: radial-gradient(ellipse at 40% 60%, rgba(33, 45, 77, 0.9), rgba(15, 20, 40, 0.98)),
-              radial-gradient(circle at top right, rgba(144, 199, 255, 0.03), transparent),
-              radial-gradient(circle at bottom left, rgba(97, 151, 255, 0.06), transparent);
+  background:
+    radial-gradient(ellipse at 40% 60%, rgba(33, 45, 77, 0.9), rgba(15, 20, 40, 0.98)),
+    radial-gradient(circle at top right, rgba(144, 199, 255, 0.03), transparent),
+    radial-gradient(circle at bottom left, rgba(97, 151, 255, 0.06), transparent);
   background-size: 100% 100%;
   color: #e2eafc;
   backdrop-filter: blur(12px);
 }
-body#theme-aetherglass .post-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(200,200,255,0.08);
-  box-shadow: 0 0 30px rgba(88,188,255,0.1);
+
+body#theme-aetherglass .bio-card,
+body#theme-aetherglass .paper-entry,
+body#theme-aetherglass .projects-entry,
+body#theme-aetherglass .code-entry {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(200, 200, 255, 0.08);
+  box-shadow: 0 0 30px rgba(88, 188, 255, 0.1);
   backdrop-filter: blur(10px);
 }
+
 body#theme-aetherglass button,
 body#theme-aetherglass select {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   color: #a9d4ff;
   border: 1px solid #88c0ff44;
   backdrop-filter: blur(8px);
 }
-body#theme-aetherglass .editor-overlay {
-  background: rgba(20, 20, 30, 0.9);
-  border: 1px solid rgba(144, 188, 255, 0.3);
-  box-shadow: 0 0 35px rgba(130, 200, 255, 0.2);
-  backdrop-filter: blur(12px);
-  animation: aetherFloat 12s infinite alternate ease-in-out;
+
+/* ===== Light Theme Fixes ===== */
+body#theme-light .bio-card,
+body#theme-light .paper-entry,
+body#theme-light .projects-entry,
+body#theme-light .code-entry {
+  background: #ffffff;
+  color: #222;
 }
-@keyframes aetherFloat {
-  0%   { transform: translateX(-50%) translateY(0px); }
-  100% { transform: translateX(-50%) translateY(10px); }
+
+body#theme-light .paper-entry a,
+body#theme-light .projects-entry a,
+body#theme-light .bio-card a {
+  color: #5500cc;
+  border-bottom-color: rgba(85, 0, 204, 0.3);
+}
+
+body#theme-light p {
+  color: #333;
+  text-shadow: none;
+}
+
+body#theme-light h1,
+body#theme-light h2,
+body#theme-light h3 {
+  color: #440099;
+  text-shadow: none;
+} 
+
+body#theme-light nav,
+body#theme-solarpunk nav {
+  background: #ddd;
+}
+
+body#theme-light nav a,
+body#theme-solarpunk nav a {
+  color: #440099;
+  text-shadow: none;
+}
+
+body#theme-light nav a:hover,
+body#theme-solarpunk nav a:hover {
+  color: #770099;
+  text-shadow: none;
+}
+
+/* ===== Responsive ===== */
+@media screen and (max-width: 900px) {
+  .papers-list,
+  .projects-list,
+  .code-list {
+    grid-template-columns: 1fr;
+  }
+
+  .bio-card,
+  .contact-container {
+    margin: 1rem;
+    padding: 1rem;
+    max-width: 100%;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  nav {
+    gap: 12px;
+  }
+
+  .footer-line:first-child {
+    font-size: 1.1rem;
+  }
 }

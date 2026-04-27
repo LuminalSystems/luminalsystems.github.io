@@ -44,14 +44,13 @@ function submitPost() {
 }
 
 
-// 🔥 Expose to global scope for onclick handlers
+// Expose to global scope for onclick handlers
 window.TLL_Editor = {
   launchPostEditor: openPostEditor,
   closeEditor,
   submitPost
 };
 
-// Optional: wire up the New Post button
 window.addEventListener("DOMContentLoaded", () => {
   const newPostBtn = document.getElementById("newPostBtn");
   if (newPostBtn) {

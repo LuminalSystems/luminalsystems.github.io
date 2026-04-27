@@ -80,7 +80,7 @@ window.TLL_CommentEngine = (() => {
       wrapper.style.marginLeft = `${depth * 20}px`;
       wrapper.innerHTML = `
         <p><strong>${comment.author}</strong> <em>(${new Date(comment.date).toLocaleString()})</em></p>
-        <p>${comment.content}</p>
+        <p>${marked.parse(comment.content)}</p>
         <button class="reply-btn">Reply</button>
       `;
 

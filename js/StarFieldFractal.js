@@ -28,7 +28,7 @@ window.addEventListener('resize', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === '~') novaMode = true;
+    if (e.key === '~') novaMode = !novaMode;
     if (e.key === '#') latticeMode = !latticeMode;
     if (e.key === '!') isHTree = !isHTree;
 });
