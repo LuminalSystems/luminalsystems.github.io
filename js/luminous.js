@@ -44,21 +44,30 @@ function injectFooter() {
   if (container) container.innerHTML = footerHTML;
 }
 
-/*
-// Camera Reel type functionality - Though this one is specific to 
-// The Myers Fractal, it can be modified ever so slightly, but this 
-// was built for the express intent of displaying the Myers Fractal.
-const depths = Array.from({length: 13}, (_, i) => 
-  `./images/myers-fractal/myers-fractal-depth-${i+1}.png`);
 
-const reel = document.getElementById('scroll-reel');
-depths.forEach(src => {
-  const img = document.createElement('img');
-  img.src = src;
-  img.className = 'reel-image';
-  reel.appendChild(img);
-});
-*/
+// Function to generate camera reel for images using 
+// {directory} as a catch all for whatever dir it sits in
+// and the universal prefix "image-#" to call and loop through images
+function generateReel(directory, length) {
+  const depths = Array.from({length: length}, (_, i) => 
+    `${directory}image-${i+1}.png`); 
+
+  const reel = document.getElementById('scroll-reel');
+
+  depths.forEach(src => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.className = 'reel-image';
+
+    img.onclick = () => {
+      window.open(src, '_blank');
+    };
+
+    reel.appendChild(img);
+  });
+}
+
+
   // This is the cite engine for citing papers on Luminal Systems, The Luminous Library. 
   // This function will be changed and updated/upgraded in the coming future. 
 function cite(paperTitle, authors, year, link) {
@@ -75,4 +84,3 @@ function cite(paperTitle, authors, year, link) {
   injectNav();
   // Call injectFooter() at the end of each HTML file's <script>
   injectFooter();
-  
