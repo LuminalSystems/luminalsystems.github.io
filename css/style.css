@@ -741,3 +741,29 @@ body#theme-solarpunk nav a:hover {
     font-size: 1.1rem;
   }
 }
+
+/* ===== Camera Scroll Reel Function ===== */
+
+#scroll-reel {
+  display: flex;
+  overflow-x: auto; 
+  gap: 10px;
+  padding: 10px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.reel-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+  border: 2px solid transparent;
+}
+
+.reel-image:hover {
+  transform: scale(1.1);
+  border-color: #00ffff; 
+}
