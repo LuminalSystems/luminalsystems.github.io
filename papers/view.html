@@ -13,8 +13,8 @@
 
   <section class="bio-card">
     <h1 id="paper-entry">Loading...</h1>
-    <div id="readme-section" class="readme-content">
-      </div>
+    <div id="readme-section" class="readme-content"></div>
+    <div id="scroll-reel"></div>
 
     <div class="code-wrapper">
       <pre><code id="code-display" class="language-markdown">
@@ -43,6 +43,7 @@
           document.title = `${data.title} - Luminal Systems`;
           document.getElementById('paper-entry').innerText = data.title;
           document.getElementById('readme-section').innerHTML = `<p>${data.description}</p>`;
+          generateReel('../images/myers-fractal/', 10);
 
           const codeRes = await fetch(data.filePath);
           const codeText = await codeRes.text();
