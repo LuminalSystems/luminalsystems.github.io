@@ -7,6 +7,19 @@ const game = {
   centerX: canvas.width / 2,
   centerY: canvas.height / 2,
   arenaRadius: 220,
+  exitGap: {
+  start: 1.05,
+  end: 1.35
+},
+
+level: 1,
+score: 0,
+ballsLaunched: 0,
+ballsDied: 0,
+totalBounces: 0,
+longestBounceChain: 0,
+levelStartTime: performance.now(),
+lastEscapeTime: 0,
 
   spawn: {
     x: canvas.width / 2,
@@ -59,14 +72,21 @@ function updateAimAngle() {
 function launchBall() {
   if (game.currentBall) return;
 
+  game.ballsLaunched++;
+
   game.currentBall = {
     x: game.spawn.x,
     y: game.spawn.y,
     vx: Math.cos(game.aim.angle) * game.launchSpeed,
     vy: Math.sin(game.aim.angle) * game.launchSpeed,
     radius: game.ballRadius,
-    alive: true
+    alive: true,
+    bounceCount: 0
   };
+}
+
+function isExitAngle(angle) {
+  return angleInRange(angle, game.exitGap.start, game.exitGap.end);
 }
 
 function normalizeAngle(angle) {
@@ -125,6 +145,9 @@ function updateBall() {
       ball.vx = ball.vx - 2 * dot * nx;
       ball.vy = ball.vy - 2 * dot * ny;
 
+      ball.bounceCount++;
+      game.totalBounces++;
+
       // Stop processing more dead-ball collisions this frame
       break;
     }
@@ -137,6 +160,16 @@ function updateBall() {
 
   if (dist + ball.radius >= game.arenaRadius) {
     const angle = Math.atan2(dy, dx);
+
+    if (isExitAngle(angle)) {
+      game.score++;
+      game.level++;
+      game.lastEscapeTime = ((performance.now() - game.levelStartTime) / 1000).toFixed(2);
+      game.levelStartTime = performance.now();
+      game.currentBall = null;
+      game.deadBalls = [];
+      return;
+    }
 
     // Death on red segment
     if (isKillAngle(angle)) {
@@ -153,6 +186,8 @@ function updateBall() {
         radius: ball.radius
       });
 
+      game.ballsDied++;
+      game.longestBounceChain = Math.max(game.longestBounceChain, ball.bounceCount);
       game.currentBall = null;
       return;
     }
@@ -168,16 +203,49 @@ function updateBall() {
     const overlap = (dist + ball.radius) - game.arenaRadius;
     ball.x -= nx * overlap;
     ball.y -= ny * overlap;
+
+    ball.bounceCount++;
+    game.totalBounces++;
   }
 }
 
 function drawDeadBalls() {
   for (const deadBall of game.deadBalls) {
     ctx.save();
+
+    // fake floor shadow
+    ctx.beginPath();
+    ctx.ellipse(
+      deadBall.x + 4,
+      deadBall.y + 7,
+      deadBall.radius * 1.15,
+      deadBall.radius * 0.55,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fill();
+
+    // dead bumper body
+    const gradient = ctx.createRadialGradient(
+      deadBall.x - 3,
+      deadBall.y - 4,
+      2,
+      deadBall.x,
+      deadBall.y,
+      deadBall.radius
+    );
+
+    gradient.addColorStop(0, "#d4d4d4");
+    gradient.addColorStop(0.45, "#8f8f8f");
+    gradient.addColorStop(1, "#4a4a4a");
+
     ctx.beginPath();
     ctx.arc(deadBall.x, deadBall.y, deadBall.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#888888";
+    ctx.fillStyle = gradient;
     ctx.fill();
+
     ctx.restore();
   }
 }
@@ -189,15 +257,31 @@ function clearScreen() {
 function drawArena() {
   ctx.save();
 
-  // Base arena ring
+  // soft shadow below arena
+  ctx.beginPath();
+  ctx.arc(game.centerX + 8, game.centerY + 10, game.arenaRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  ctx.lineWidth = 10;
+  ctx.stroke();
+
+  // base arena glow
+  ctx.shadowColor = "#19d3ff";
+  ctx.shadowBlur = 18;
+
   ctx.beginPath();
   ctx.arc(game.centerX, game.centerY, game.arenaRadius, 0, Math.PI * 2);
   ctx.strokeStyle = "#19d3ff";
   ctx.lineWidth = 5;
   ctx.stroke();
 
-  // Draw deadly segments
+  ctx.shadowBlur = 0;
+
+  // deadly segments
   for (const segment of game.killSegments) {
+    ctx.save();
+    ctx.shadowColor = "#ff3355";
+    ctx.shadowBlur = 16;
+
     ctx.beginPath();
     ctx.arc(
       game.centerX,
@@ -209,21 +293,43 @@ function drawArena() {
     ctx.strokeStyle = "#ff3355";
     ctx.lineWidth = 8;
     ctx.stroke();
+
+    ctx.restore();
   }
 
   ctx.restore();
 }
 
 function drawExitGap() {
-  const gapStart = 1.05;
-  const gapEnd = 1.35;
-
   ctx.save();
+
   ctx.beginPath();
-  ctx.arc(game.centerX, game.centerY, game.arenaRadius, gapStart, gapEnd);
+  ctx.arc(
+    game.centerX,
+    game.centerY,
+    game.arenaRadius,
+    game.exitGap.start,
+    game.exitGap.end
+  );
   ctx.strokeStyle = "#050510";
-  ctx.lineWidth = 9;
+  ctx.lineWidth = 14;
   ctx.stroke();
+
+  ctx.shadowColor = "#ffffff";
+  ctx.shadowBlur = 10;
+
+  ctx.beginPath();
+  ctx.arc(
+    game.centerX,
+    game.centerY,
+    game.arenaRadius,
+    game.exitGap.start,
+    game.exitGap.end
+  );
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -273,11 +379,46 @@ function drawAimLine() {
 function drawBall() {
   if (!game.currentBall) return;
 
+  const ball = game.currentBall;
+
   ctx.save();
+
+  // fake floor shadow
   ctx.beginPath();
-  ctx.arc(game.currentBall.x, game.currentBall.y, game.currentBall.radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#2d6bff";
+  ctx.ellipse(
+    ball.x + 4,
+    ball.y + 8,
+    ball.radius * 1.2,
+    ball.radius * 0.55,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fill();
+
+  // glowing live ball
+  ctx.shadowColor = "#2d6bff";
+  ctx.shadowBlur = 18;
+
+  const gradient = ctx.createRadialGradient(
+    ball.x - 3,
+    ball.y - 4,
+    2,
+    ball.x,
+    ball.y,
+    ball.radius
+  );
+
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.35, "#6fa0ff");
+  gradient.addColorStop(1, "#1b3eff");
+
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -285,11 +426,24 @@ function drawHUD() {
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = "18px Arial";
+
   ctx.fillText("Musical Death Notes", 20, 30);
-  ctx.fillText("Phase 2: Launch Ball", 20, 55);
+  ctx.fillText("Phase 7: Exit + Stats", 20, 55);
+
+  ctx.font = "15px Arial";
+  ctx.fillText(`Level: ${game.level}`, 20, 90);
+  ctx.fillText(`Score: ${game.score}`, 20, 112);
+  ctx.fillText(`Launched: ${game.ballsLaunched}`, 20, 134);
+  ctx.fillText(`Deaths: ${game.ballsDied}`, 20, 156);
+  ctx.fillText(`Bounces: ${game.totalBounces}`, 20, 178);
+  ctx.fillText(`Longest Chain: ${game.longestBounceChain}`, 20, 200);
+
+  if (game.lastEscapeTime) {
+    ctx.fillText(`Last Escape: ${game.lastEscapeTime}s`, 20, 222);
+  }
 
   if (!game.currentBall) {
-    ctx.fillText("Click to launch", 20, 85);
+    ctx.fillText("Click to launch", 20, 250);
   }
 
   ctx.restore();
