@@ -1,1 +1,84 @@
-n/a
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fourier Square Wave Playground</title>
+<style>
+:root{--bg:#0d1020;--panel:#151a2f;--text:#f4f4f7;--muted:#aab0c5;--accent:#7dd3fc}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top,#18213f,var(--bg));color:var(--text);min-height:100vh;padding:20px}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:18px;max-width:1400px;margin:auto}.panel{background:rgba(21,26,47,.94);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+h1{margin:0 0 8px;font-size:clamp(1.5rem,3vw,2.3rem)}p,label{color:var(--muted);line-height:1.5}.controls{display:grid;gap:14px}label{display:grid;gap:6px;font-size:.92rem}
+input[type=range],input[type=number],select{width:100%}input[type=number],select{padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#0b0f22;color:var(--text)}
+button{border:none;border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--accent);color:#04111f;font-weight:700}.secondary{background:#26304f;color:var(--text);border:1px solid rgba(255,255,255,.14)}
+canvas{width:100%;height:620px;display:block;background:#050814;border-radius:14px;border:1px solid rgba(255,255,255,.12)}
+.equation{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding:12px;background:#090d1d;border-radius:12px;border:1px solid rgba(255,255,255,.1);font-size:clamp(.95rem,1.7vw,1.2rem)}
+.token{position:relative;padding:4px 8px;border-radius:8px;cursor:help;border:1px solid rgba(255,255,255,.18)}
+.token:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:125%;width:min(330px,80vw);padding:10px;background:#11182f;color:var(--text);border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:10;font-size:.86rem;line-height:1.35}
+.scale{background:rgba(125,211,252,.16)}.sum{background:rgba(196,181,253,.18)}.harmonic{background:rgba(251,191,36,.18)}.amp{background:rgba(74,222,128,.16)}.wave{background:rgba(248,113,113,.18)}.time{background:rgba(244,114,182,.18)}
+.readout{display:grid;gap:8px;margin-top:12px;color:var(--muted);font-size:.92rem}.readout code{color:var(--text);background:#090d1d;padding:2px 6px;border-radius:6px}.tiny{font-size:.8rem;color:var(--muted)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}canvas{height:520px}}
+</style>
+</head>
+<body>
+<div class="layout">
+<section class="panel">
+<h1>Fourier Playground</h1>
+<p>Build a square ish wave from spinning circles. Change the numbers and the harmonics mutate.</p>
+<div class="controls">
+<label>Harmonics / circles shown: <strong id="nLabel">9</strong><input id="harmonics" type="range" min="1" max="75" value="9"></label>
+<label>Step size in <code>ak + b ::</code><input id="step" type="number" min="1" max="25" value="2"></label>
+<label>Offset in <code>ak + b ::</code><input id="offset" type="number" min="0" max="25" value="1"></label>
+<label>Amplitude power in <code>1 / h^p ::</code><input id="power" type="number" min="0" max="4" step="0.1" value="1"></label>
+<label>Wave mode:<select id="mode"><option value="sin">sine: sin(h * t)</option><option value="cos">cosine: cos(h * t)</option></select></label>
+<label>Animation speed:<input id="speed" type="range" min="0" max="3" step="0.01" value="1"></label>
+<label>Vertical scale:<input id="yscale" type="range" min="30" max="170" value="95"></label>
+<button id="pauseBtn">Pause</button><button class="secondary" id="resetBtn">Reset to square wave</button>
+</div>
+<div class="readout">
+<div>Generated harmonics: <code id="harmonicList">1, 3, 5, 7...</code></div>
+<div>Current point: <code id="pointReadout">x=0, y=0</code></div>
+<div class="tiny">Default: <code>a=2, b=1, p=1</code> gives the classic odd harmonic square wave series / effect.</div>
+</div>
+</section>
+<section class="panel">
+<canvas id="canvas"></canvas>
+<div class="equation">
+<span class="token scale" data-tip="Overall scale. For a square wave, 4 divided by pi normalizes the height.">f<sub>N</sub>(t) = 4/π</span>
+<span class="token sum" data-tip="Sigma means add every generated wave together. k starts at 0 and stops at N-1. N is the number of circles/harmonics.">Σ<sub>k=0</sub><sup>N−1</sup></span>
+<span class="token amp" data-tip="Amplitude. Higher harmonics get smaller. p=1 gives 1/h. p=2 gives 1/h², which smooths the wave more.">1 / h<sup>p</sup></span>
+<span>*</span><span class="token wave" data-tip="The wave function. Sine gives the classic square wave build. Cosine shifts the phase.">sin</span><span>(</span>
+<span class="token harmonic" data-tip="h = ak + b. With a=2 and b=1, this generates 1,3,5,7,9... the odd harmonics.">h = ak + b</span>
+<span>*</span><span class="token time" data-tip="t is time. As t increases, every circle rotates. Higher h spins faster.">t</span><span>)</span>
+</div>
+</section>
+</div>
+<script>
+const canvas=document.getElementById("canvas"),ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+const harmonicsEl=$("harmonics"),stepEl=$("step"),offsetEl=$("offset"),powerEl=$("power"),modeEl=$("mode"),speedEl=$("speed"),yscaleEl=$("yscale");
+let t=0,running=true,trace=[];
+function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=window.devicePixelRatio||1;canvas.width=Math.floor(r.width*d);canvas.height=Math.floor(r.height*d);ctx.setTransform(d,0,0,d,0,0)}addEventListener("resize",resizeCanvas);resizeCanvas();
+function settings(){return{N:+harmonicsEl.value,a:Math.max(1,+stepEl.value||1),b:Math.max(0,+offsetEl.value||0),p:Math.max(0,+powerEl.value||0),speed:+speedEl.value,yscale:+yscaleEl.value,mode:modeEl.value}}
+function harmonic(k,a,b){return a*k+b}
+function waveValue(x,s){let sum=0;for(let k=0;k<s.N;k++){const h=harmonic(k,s.a,s.b);if(!h)continue;const amp=1/Math.pow(Math.abs(h),s.p);sum+=amp*(s.mode==="cos"?Math.cos(h*x):Math.sin(h*x))}return(4/Math.PI)*sum}
+function grid(w,h){ctx.save();ctx.strokeStyle="rgba(255,255,255,.08)";for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}ctx.restore()}
+function circle(x,y,r,c){ctx.beginPath();ctx.arc(x,y,Math.abs(r),0,Math.PI*2);ctx.strokeStyle=c;ctx.lineWidth=1.4;ctx.stroke()}
+function draw(){const r=canvas.getBoundingClientRect(),w=r.width,h=r.height,s=settings();ctx.clearRect(0,0,w,h);grid(w,h);
+const cx=Math.min(210,w*.25),cy=h/2,waveStart=cx+160,baseR=Math.min(85,w*.08),colors=["#7dd3fc","#c4b5fd","#facc15","#4ade80","#fb7185","#38bdf8"];
+ctx.strokeStyle="rgba(255,255,255,.35)";ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+let x=cx,y=cy;
+for(let k=0;k<s.N;k++){const hnum=harmonic(k,s.a,s.b);if(!hnum)continue;const amp=1/Math.pow(Math.abs(hnum),s.p),rad=baseR*amp,ang=hnum*t,px=x,py=y;
+x+=rad*Math.cos(ang);y+=rad*(s.mode==="cos"?Math.cos(ang):Math.sin(ang));const c=colors[k%colors.length];circle(px,py,rad,c);ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke();ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=c;ctx.fill()}
+trace.unshift(y);if(trace.length>w-waveStart-20)trace.pop();
+ctx.strokeStyle="#f8fafc";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(waveStart,y);ctx.stroke();ctx.setLineDash([]);
+ctx.strokeStyle="#7dd3fc";ctx.lineWidth=2;ctx.beginPath();trace.forEach((py,i)=>{const px=waveStart+i;if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py)});ctx.stroke();
+ctx.strokeStyle="rgba(250,204,21,.42)";ctx.lineWidth=1.5;ctx.beginPath();for(let px=waveStart;px<w;px++){const phase=t-(px-waveStart)/s.yscale,val=waveValue(phase,s),py=cy+val*s.yscale*.55;if(px===waveStart)ctx.moveTo(px,py);else ctx.lineTo(px,py)}ctx.stroke();
+$("nLabel").textContent=s.N;const list=Array.from({length:Math.min(s.N,14)},(_,k)=>harmonic(k,s.a,s.b));$("harmonicList").textContent=list.join(", ")+(s.N>14?", ...":"");$("pointReadout").textContent=`tip=(${x.toFixed(1)}, ${y.toFixed(1)}), t=${t.toFixed(2)}`;
+if(running)t+=.018*s.speed;requestAnimationFrame(draw)}
+[harmonicsEl,stepEl,offsetEl,powerEl,modeEl,speedEl,yscaleEl].forEach(el=>el.addEventListener("input",()=>trace=[]));
+$("pauseBtn").onclick=()=>{running=!running;$("pauseBtn").textContent=running?"Pause":"Resume"};$("resetBtn").onclick=()=>{harmonicsEl.value=9;stepEl.value=2;offsetEl.value=1;powerEl.value=1;modeEl.value="sin";speedEl.value=1;yscaleEl.value=95;t=0;trace=[]};
+draw();
+</script>
+</body>
+</html>
