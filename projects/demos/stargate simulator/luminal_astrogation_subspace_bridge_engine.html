@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luminal Astrogation & Subspace Bridge Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================================
+       LUMINAL AEROSPACE & SUBSPACE ENGINEERING DESIGN TOKENS
+       ============================================================================ */
+    :root {
+      --bg-obsidian: #060911;
+      --bg-panel: #0b101b;
+      --bg-surface: #111827;
+      --bg-input: #070b14;
+      --border-dim: rgba(148, 163, 184, 0.14);
+      --border-glow: rgba(56, 189, 248, 0.4);
+      --text-main: #f1f5f9;
+      --text-dim: #94a3b8;
+      --text-muted: #64748b;
+
+      --accent-cyan: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-violet: #a855f7;
+      --accent-emerald: #10b981;
+      --accent-crimson: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-obsidian);
+      color: var(--text-main);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    .mono, code, input, select {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.35);
+      border-radius: 999px;
+    }
+
+    /* ============================================================================
+       TOP HEADER BAR
+       ============================================================================ */
+    header.hud-header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      z-index: 30;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-emblem {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: radial-gradient(circle at 30% 30%, #38bdf8, #4f46e5 70%, #1e1b4b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(125, 211, 252, 0.45);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand-title {
+      font-size: 0.94rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .version-pill {
+      font-size: 0.64rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(168, 85, 247, 0.16);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.38);
+      letter-spacing: 0.06em;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    select.hud-select, button.hud-btn {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border: 1px solid var(--border-dim);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    select.hud-select:hover, button.hud-btn:hover:not(:disabled) {
+      border-color: var(--border-glow);
+      background: #182236;
+    }
+
+    button.hud-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.hud-btn-violet {
+      background: rgba(168, 85, 247, 0.16);
+      border-color: rgba(168, 85, 247, 0.45);
+      color: #e9d5ff;
+    }
+    button.hud-btn-violet:hover:not(:disabled) {
+      background: rgba(168, 85, 247, 0.28);
+    }
+
+    button.hud-btn-dial {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(125, 211, 252, 0.5);
+      color: #ffffff;
+      box-shadow: 0 2px 14px rgba(14, 165, 233, 0.35);
+    }
+    button.hud-btn-dial:hover:not(:disabled) {
+      background: linear-gradient(135deg, #38bdf8, #3b82f6);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.55);
+    }
+
+    button.hud-btn-abort {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: rgba(239, 68, 68, 0.48);
+      color: #fca5a5;
+    }
+    button.hud-btn-abort:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.28);
+    }
+
+    /* ============================================================================
+       MAIN 3-COLUMN AEROSPACE WORKSPACE
+       ============================================================================ */
+    main.workspace-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr 350px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    aside.side-panel {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    aside.side-panel.right-panel {
+      border-right: none;
+      border-left: 1px solid var(--border-dim);
+    }
+
+    .module-card {
+      background: rgba(17, 24, 39, 0.72);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .module-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-cyan);
+      border-bottom: 1px solid var(--border-dim);
+      padding-bottom: 6px;
+    }
+
+    .module-header.amber { color: var(--accent-amber); }
+    .module-header.violet { color: var(--accent-violet); }
+
+    /* UGS Coordinate Inputs */
+    .coord-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .input-box label {
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .input-box input, .eq-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: var(--text-main);
+      font-size: 0.78rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .input-box input:focus, .eq-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* 3D Quasar Star Map Canvas */
+    .quasar-map-wrap {
+      position: relative;
+      width: 100%;
+      height: 175px;
+      background: #04060c;
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    #quasarCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    #quasarCanvas:active {
+      cursor: grabbing;
+    }
+
+    .map-overlay-tag {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      font-size: 0.62rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      background: rgba(6, 9, 17, 0.78);
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* Waypoint Jump Slicer List */
+    .slice-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 0.72rem;
+    }
+
+    .waypoint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 195px;
+      overflow-y: auto;
+    }
+
+    .waypoint-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-input);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.7rem;
+      transition: all 0.2s ease;
+    }
+
+    .waypoint-row.locked {
+      border-color: rgba(16, 185, 129, 0.55);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .waypoint-row.error {
+      border-color: rgba(239, 68, 68, 0.65);
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .glyph-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.76rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* ============================================================================
+       CENTER STAGE: STARGATE CANVAS & HUD OVERLAYS
+       ============================================================================ */
+    section.gate-stage {
+      position: relative;
+      background: radial-gradient(circle at center, #0c1426 0%, #05070e 75%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #stargateCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Chevron Lock Strip at Top of Center Stage */
+    .chevron-hud-bar {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(11, 16, 27, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-dim);
+      border-radius: 999px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 15;
+    }
+
+    .chev-pip {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .chev-pip.engaged {
+      background: rgba(245, 158, 11, 0.22);
+      border-color: var(--accent-amber);
+      color: #fde68a;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
+    }
+
+    .chev-pip.failed {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--accent-crimson);
+      color: #fca5a5;
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
+    }
+
+    /* Floating MALP Wormhole Telemetry Card (Appears when Wormhole is Stable) */
+    .malp-card {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 460px;
+      background: rgba(9, 14, 24, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      z-index: 20;
+    }
+
+    .malp-card.visible {
+      display: flex;
+    }
+
+    .malp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .malp-stat {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 5px 7px;
+      border-radius: 6px;
+      border: 1px solid var(--border-dim);
+    }
+
+    /* ============================================================================
+       RIGHT PANEL: LIVE PHYSICS EQUATION EVALUATOR & CONTAINMENT TELEMETRY
+       ============================================================================ */
+    .var-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    .var-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-dim);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .eq-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .eq-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .eq-output {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 4px 7px;
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .status-ok { color: var(--accent-emerald); }
+    .status-warn { color: var(--accent-amber); }
+    .status-err { color: var(--accent-crimson); }
+
+    /* Containment Load Bar */
+    .containment-meter {
+      height: 8px;
+      width: 100%;
+      background: #070b14;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border-dim);
+    }
+
+    .containment-fill {
+      height: 100%;
+      width: 30%;
+      background: var(--accent-emerald);
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+
+    /* ============================================================================
+       BOTTOM TELEMETRY LOG CONSOLE
+       ============================================================================ */
+    footer.telemetry-footer {
+      height: 112px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border-dim);
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 30;
+    }
+
+    .log-stream {
+      flex: 1;
+      background: #05070d;
+      border: 1px solid var(--border-dim);
+      border-radius: 7px;
+      padding: 6px 10px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.71rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-line {
+      line-height: 1.35;
+      color: var(--text-dim);
+    }
+    .log-line.info { color: var(--accent-cyan); }
+    .log-line.success { color: var(--accent-emerald); }
+    .log-line.error { color: var(--accent-crimson); font-weight: 600; }
+
+    /* ============================================================================
+       CUSTOM UNOBTANIUM GATE BUILDER MODAL
+       ============================================================================ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 10, 0.82);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      padding: 16px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .builder-modal {
+      background: var(--bg-panel);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 620px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .material-palette {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .mat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-dim);
+      border-radius: 9px;
+      padding: 9px;
+      cursor: grab;
+      transition: all 0.16s ease;
+    }
+    .mat-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+
+    .ring-slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .ring-slot {
+      background: #060911;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 0.72rem;
+      min-height: 62px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .ring-slot.filled {
+      border-style: solid;
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    @media (max-width: 1100px) {
+      main.workspace-grid {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+      }
+      section.gate-stage {
+        min-height: 400px;
+      }
+      body {
+        overflow: auto;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP HEADER BAR
+       ========================================================================== -->
+  <header class="hud-header">
+    <div class="brand-cluster">
+      <div class="brand-emblem" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 1v3M12 20v3M1 12h3M20 12h3"></path>
+        </svg>
+      </div>
+      <div class="brand-title">
+        Luminal Astrogation &amp; Subspace Bridge Engine
+        <span class="version-pill">UGS-13 ASTRO-SOLVER</span>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <select class="hud-select" id="chassisSelect" title="Select Gate Chassis Architecture">
+        <option value="milkyway">Chassis: Milky Way (Naquadah • 1,200 TW)</option>
+        <option value="pegasus">Chassis: Pegasus Atlantis (Lantean • 3,500 TW)</option>
+        <option value="destiny">Chassis: Destiny Ancient (Weathered • 2,400 TW)</option>
+        <option value="luminal">Chassis: Luminal Systems (Unobtanium • 12,000 TW)</option>
+        <option value="custom">Chassis: Custom Built Ring</option>
+      </select>
+
+      <button class="hud-btn hud-btn-violet" id="btnOpenBuilder">
+        <span>🛠 Unobtanium Gate Builder</span>
+      </button>
+
+      <select class="hud-select" id="presetSelect" title="Load Astrogation & Physics Scenario">
+        <option value="">⚡ Load Target Preset...</option>
+        <option value="abydos">1. Abydos (7-Glyph Intra-Galactic • 28 kpc)</option>
+        <option value="atlantis">2. Atlantis Pegasus (8-Glyph Inter-Galactic • 920 kpc)</option>
+        <option value="destiny">3. Destiny Deep-Space (9-Glyph Cosmic • 6,400 kpc)</option>
+        <option value="overload">4. Intentional Overload / Failed Math Test</option>
+      </select>
+
+      <button class="hud-btn" id="btnToggleAudio" title="Toggle Web Audio Synthesizer">
+        <span>🔊 Audio: ON</span>
+      </button>
+
+      <button class="hud-btn hud-btn-dial" id="btnInitiateDial">
+        <span>▶ INITIATE DIALING SEQUENCE</span>
+      </button>
+
+      <button class="hud-btn hud-btn-abort" id="btnAbortGate">
+        <span>⛔ ABORT / CLOSE IRIS</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN 3-COLUMN WORKSPACE
+       ========================================================================== -->
+  <main class="workspace-grid">
+
+    <!-- ========================================================================
+         LEFT PANEL: UGS 13-QUASAR TRILATERATION & N-SECTION JUMP SLICER
+         ======================================================================== -->
+    <aside class="side-panel">
+      <div class="module-card">
+        <div class="module-header">
+          <span>1. UGS 13-Quasar Trilateration</span>
+          <span class="mono" style="color: var(--text-dim);">ORIGIN (0,0,0)</span>
+        </div>
+
+        <div class="coord-grid">
+          <div class="input-box">
+            <label for="coordX">Dest X (kpc)</label>
+            <input type="number" id="coordX" value="18" step="10" />
+          </div>
+          <div class="input-box">
+            <label for="coordY">Dest Y (kpc)</label>
+            <input type="number" id="coordY" value="-14" step="10" />
+          </div>
+          <div class="input-box">
+            <label for="coordZ">Dest Z (kpc)</label>
+            <input type="number" id="coordZ" value="16" step="10" />
+          </div>
+        </div>
+
+        <!-- Live 3D-Projected 13-Quasar Star Map -->
+        <div class="quasar-map-wrap">
+          <canvas id="quasarCanvas"></canvas>
+          <div class="map-overlay-tag">13 QUASAR VECTORS • DRAG TO ORBIT</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.71rem; color:var(--text-dim);">
+          <span>Euclidean Vector Distance (D):</span>
+          <strong class="mono" id="distReadout" style="color:var(--accent-cyan);">27.86 kpc</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.71rem; color:var(--text-dim);">
+          <span>13-Quasar Vertex Convergence:</span>
+          <strong class="mono" id="quasarLockStatus" style="color:var(--accent-emerald);">LOCKED (Δ 0.0001)</strong>
+        </div>
+      </div>
+
+      <!-- Dynamic N-Section Jump Slicer -->
+      <div class="module-card">
+        <div class="module-header amber">
+          <span>2. N-Section Trajectory Slicer</span>
+          <span class="mono" id="requiredGlyphBadge">REQ: 7 GLYPHS</span>
+        </div>
+
+        <div class="slice-controls">
+          <label for="sliceOverride" style="color:var(--text-dim);">Vector Partition Count:</label>
+          <select class="hud-select" id="sliceOverride" style="padding:3px 7px; font-size:0.7rem;">
+            <option value="auto">Auto-Slice (Match Distance)</option>
+            <option value="7">Force 7 Sections (Intra-Galactic)</option>
+            <option value="8">Force 8 Sections (Inter-Galactic)</option>
+            <option value="9">Force 9 Sections (Deep-Space)</option>
+          </select>
+        </div>
+
+        <div class="waypoint-list" id="waypointList"></div>
+      </div>
+    </aside>
+
+    <!-- ========================================================================
+         CENTER STAGE: STARGATE & EVENT HORIZON CANVAS
+         ======================================================================== -->
+    <section class="gate-stage" id="gateStage">
+      <div class="chevron-hud-bar" id="chevronHudBar"></div>
+
+      <canvas id="stargateCanvas"></canvas>
+
+      <!-- Live MALP Probe Telemetry Card -->
+      <div class="malp-card" id="malpCard">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.76rem; color:var(--accent-cyan);">📡 EINSTEIN-ROSEN SUBSPACE BRIDGE ACTIVE</strong>
+          <button class="hud-btn" id="btnSendMalp" style="padding:3px 8px; font-size:0.68rem;">🤖 Transmit MALP Probe</button>
+        </div>
+        <div class="malp-grid" id="malpTelemetryGrid"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         RIGHT PANEL: LIVE PHYSICS & EXOTIC ENERGY EQUATION CONSOLE
+         ======================================================================== -->
+    <aside class="side-panel right-panel">
+      <div class="module-card">
+        <div class="module-header violet">
+          <span>3. Subspace Physics Equation Parser</span>
+          <span class="mono">LIVE AST</span>
+        </div>
+
+        <div class="var-legend">
+          <span class="var-pill">D = dist(kpc)</span>
+          <span class="var-pill">N = glyphs</span>
+          <span class="var-pill">R = 3.35m</span>
+          <span class="var-pill">C = 299.79</span>
+        </div>
+
+        <!-- Equation 1: Bridge Power Requirement -->
+        <div class="eq-block">
+          <div class="eq-label-row">
+            <span>Subspace Power Draw (E_req in TW)</span>
+            <span class="mono" id="minPowerTag" style="font-size:0.65rem; color:var(--text-dim);">Min: 180 TW</span>
+          </div>
+          <input type="text" class="eq-input" id="eqPower" value="35 * Math.sqrt(D) * N" />
+          <div class="eq-output">
+            <span>Evaluated E_req:</span>
+            <strong id="outPower" class="status-ok">1,293.4 TW</strong>
+          </div>
+        </div>
+
+        <!-- Equation 2: Exotic Negative Energy Throat Flux -->
+        <div class="eq-block">
+          <div class="eq-label-row">
+            <span>Exotic Throat Flux (Phi_neg &lt; 0)</span>
+            <span style="font-size:0.65rem; color:var(--text-dim);">Must be negative</span>
+          </div>
+          <input type="text" class="eq-input" id="eqFlux" value="-1 * (R * R * N) / Math.log(D + 2)" />
+          <div class="eq-output">
+            <span>Evaluated Phi_neg:</span>
+            <strong id="outFlux" class="status-ok">-23.14 J/m³</strong>
+          </div>
+        </div>
+
+        <!-- Equation 3: Phase Resonance Harmonic -->
+        <div class="eq-block">
+          <div class="eq-label-row">
+            <span>Subspace Carrier Harmonic (THz)</span>
+            <span style="font-size:0.65rem; color:var(--text-dim);">100 - 950 THz</span>
+          </div>
+          <input type="text" class="eq-input" id="eqHarmonic" value="(N * 144.7) / R" />
+          <div class="eq-output">
+            <span>Carrier Freq:</span>
+            <strong id="outHarmonic" class="status-ok">302.36 THz</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hardware Containment & Pre-Flight Diagnostic -->
+      <div class="module-card">
+        <div class="module-header">
+          <span>4. Hardware Containment Rating</span>
+          <span class="mono" id="chassisMaxTag">MAX: 1,200 TW</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.71rem;">
+          <span style="color:var(--text-dim);">Active Hull Material:</span>
+          <strong class="mono" id="hullMatName">Naquadah Alloy</strong>
+        </div>
+
+        <div class="containment-meter">
+          <div class="containment-fill" id="containmentFill"></div>
+        </div>
+
+        <div id="preflightSummary" style="font-size:0.72rem; line-height:1.4; color:var(--text-dim); background:#070b14; padding:7px 9px; border-radius:6px; border:1px solid var(--border-dim);">
+          Checking physics telemetry...
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ==========================================================================
+       BOTTOM TELEMETRY LOG CONSOLE
+       ========================================================================== -->
+  <footer class="telemetry-footer">
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; font-weight:700; letter-spacing:0.08em; color:var(--text-dim);">
+      <span>📡 ASTROGATION &amp; SUBSPACE CONTAINMENT TELEMETRY LOG</span>
+      <button class="hud-btn" id="btnClearLog" style="padding:2px 7px; font-size:0.64rem;">Clear Log</button>
+    </div>
+    <div class="log-stream" id="logStream"></div>
+  </footer>
+
+  <!-- ==========================================================================
+       CUSTOM UNOBTANIUM GATE BUILDER MODAL
+       ========================================================================== -->
+  <div class="modal-overlay" id="builderModal">
+    <div class="builder-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h3 style="font-size:0.98rem; font-weight:700;">🛠 Custom Subspace Ring Structural Constructor</h3>
+          <p style="font-size:0.74rem; color:var(--text-dim);">Drag materials onto all 8 structural ring segments (or click a segment to cycle materials). Leaving any segment empty causes immediate containment failure!</p>
+        </div>
+        <button class="hud-btn" id="btnCloseBuilder">✕</button>
+      </div>
+
+      <div class="material-palette">
+        <div class="mat-card" draggable="true" data-mat="titanium">
+          <strong style="font-size:0.76rem; color:#94a3b8;">Titanium-Graphene</strong>
+          <div class="mono" style="font-size:0.68rem; color:var(--accent-crimson);">Max: 150 TW / seg</div>
+          <div style="font-size:0.66rem; color:var(--text-dim); margin-top:2px;">Melts under standard wormhole loads.</div>
+        </div>
+        <div class="mat-card" draggable="true" data-mat="naquadah">
+          <strong style="font-size:0.76rem; color:var(--accent-amber);">Naquadah Alloy</strong>
+          <div class="mono" style="font-size:0.68rem; color:var(--accent-amber);">Max: 1,500 TW / seg</div>
+          <div style="font-size:0.66rem; color:var(--text-dim); margin-top:2px;">Standard intra-galactic superconductor.</div>
+        </div>
+        <div class="mat-card" draggable="true" data-mat="unobtanium">
+          <strong style="font-size:0.76rem; color:var(--accent-violet);">Unobtanium Core</strong>
+          <div class="mono" style="font-size:0.68rem; color:var(--accent-emerald);">Max: 12,500 TW / seg</div>
+          <div style="font-size:0.66rem; color:var(--text-dim); margin-top:2px;">Zero-resistance deep-space containment.</div>
+        </div>
+      </div>
+
+      <div class="ring-slots-grid" id="ringSlotsGrid"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-dim); padding-top:10px;">
+        <div class="mono" style="font-size:0.75rem;">
+          Composite Rating: <strong id="builderTotalRating" style="color:var(--accent-cyan);">12,500 TW</strong>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="hud-btn" id="btnFillUnobtanium">Fill All Unobtanium</button>
+          <button class="hud-btn" id="btnClearSlots">Clear Segments</button>
+          <button class="hud-btn hud-btn-dial" id="btnApplyCustomGate">Apply Custom Chassis</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT SIMULATION ENGINE
+       ========================================================================== -->
+  <script>
+    /**
+     * LUMINAL ASTROGATION & SUBSPACE BRIDGE ENGINE
+     * 100% Client-Side HTML5 / CSS3 / Canvas 2D / Web Audio API
+     */
+
+    // --------------------------------------------------------------------------
+    // 1. CONSTANTS, GLYPHS & 13 REFERENCE QUASARS
+    // --------------------------------------------------------------------------
+    const GLYPHS = [
+      'ᐰ', 'ᐱ', 'ᐲ', 'ᐳ', 'ᐴ', 'ᐵ', 'ᐶ', 'ᐷ', 'ᐸ', 'ᐹ', 'ᐺ', 'ᐻ', 'ᐼ',
+      'ᐽ', 'ᐾ', 'ᐿ', 'ᑀ', 'ᑁ', 'ᑂ', 'ᑃ', 'ᑄ', 'ᑅ', 'ᑆ', 'ᑇ', 'ᑈ', 'ᑉ',
+      'ᑊ', 'ᑋ', 'ᑌ', 'ᑎ', 'ᑐ', 'ᑕ', 'ᑖ', 'ᑗ', 'ᑘ', 'ᑙ', 'ᑚ', 'ᑛ', 'ᑜ'
+    ];
+
+    // 13 Deep-Space Reference Quasars across surrounding galaxies for UGS Trilateration
+    const REFERENCE_QUASARS = [
+      { id: 'Q-01', name: '3C 273 (Virgo)', x: 620, y: 410, z: -290 },
+      { id: 'Q-02', name: 'TON 618 (Canes)', x: -840, y: 520, z: 610 },
+      { id: 'Q-03', name: 'PKS 1302-102', x: 310, y: -760, z: 480 },
+      { id: 'Q-04', name: 'APM 08279+5255', x: -510, y: -440, z: -720 },
+      { id: 'Q-05', name: 'ULAS J1120+0641', x: 920, y: 180, z: 540 },
+      { id: 'Q-06', name: 'OJ 287 (Cancer)', x: -240, y: 890, z: -310 },
+      { id: 'Q-07', name: '3C 48 (Triangulum)', x: 140, y: 340, z: 860 },
+      { id: 'Q-08', name: 'SDSS J0100+2802', x: -780, y: -190, z: 240 },
+      { id: 'Q-09', name: 'PG 1426+015', x: 470, y: 630, z: -610 },
+      { id: 'Q-10', name: 'HS 1946+7658', x: -160, y: -810, z: -450 },
+      { id: 'Q-11', name: 'QSO B1208+1011', x: 750, y: -390, z: -180 },
+      { id: 'Q-12', name: 'HE 0450-2958', x: -630, y: 270, z: -830 },
+      { id: 'Q-13', name: 'BRI 1335-0417', x: 290, y: -150, z: 910 }
+    ];
+
+    const CHASSIS_DEFS = {
+      milkyway: {
+        name: 'Milky Way (Naquadah)',
+        material: 'Naquadah Alloy',
+        maxPower: 1200,
+        ringColor: '#334155',
+        ringAccent: '#64748b',
+        chevIdle: '#475569',
+        chevActive: '#f59e0b',
+        puddleInner: '#38bdf8',
+        puddleOuter: '#1d4ed8',
+        rotateWholeGate: false
+      },
+      pegasus: {
+        name: 'Pegasus (Atlantis)',
+        material: 'Lantean Neutronium-Alloy',
+        maxPower: 3500,
+        ringColor: '#1e293b',
+        ringAccent: '#38bdf8',
+        chevIdle: '#334155',
+        chevActive: '#00f0ff',
+        puddleInner: '#67e8f9',
+        puddleOuter: '#0284c7',
+        rotateWholeGate: false
+      },
+      destiny: {
+        name: 'Destiny (Ancient)',
+        material: 'Forged Dark-Bronze Alloy',
+        maxPower: 2400,
+        ringColor: '#292524',
+        ringAccent: '#a8a29e',
+        chevIdle: '#44403c',
+        chevActive: '#fef08a',
+        puddleInner: '#f8fafc',
+        puddleOuter: '#94a3b8',
+        rotateWholeGate: true
+      },
+      luminal: {
+        name: 'Luminal Systems Custom',
+        material: 'Unobtanium-Obsidian Matrix',
+        maxPower: 12000,
+        ringColor: '#0f172a',
+        ringAccent: '#a855f7',
+        chevIdle: '#3b0764',
+        chevActive: '#c084fc',
+        puddleInner: '#e879f9',
+        puddleOuter: '#4f46e5',
+        rotateWholeGate: false
+      }
+    };
+
+    const MATERIALS = {
+      titanium: { label: 'Titanium-Graphene', maxPerSeg: 18.75, color: '#94a3b8' }, // 8 * 18.75 = 150 TW
+      naquadah: { label: 'Naquadah Alloy', maxPerSeg: 187.5, color: '#f59e0b' },    // 8 * 187.5 = 1500 TW
+      unobtanium: { label: 'Unobtanium Core', maxPerSeg: 1500, color: '#a855f7' }   // 8 * 1500 = 12000 TW
+    };
+
+    // --------------------------------------------------------------------------
+    // 2. APPLICATION STATE
+    // --------------------------------------------------------------------------
+    const State = {
+      chassisKey: 'milkyway',
+      customSlots: ['unobtanium', 'unobtanium', 'unobtanium', 'unobtanium', 'unobtanium', 'unobtanium', 'unobtanium', 'unobtanium'],
+      dest: { x: 18, y: -14, z: 16 },
+      sliceOverride: 'auto',
+      waypoints: [],
+      requiredGlyphs: 7,
+      activeGlyphCount: 7,
+      distance: 27.86,
+
+      // Physics evaluated values
+      physics: {
+        validSyntax: true,
+        eReq: 0,
+        phiNeg: 0,
+        harmonic: 0,
+        minRequiredPower: 120,
+        maxContainment: 1200,
+        hasStructuralGap: false
+      },
+
+      // Dialing & Wormhole Animation State
+      gateState: 'IDLE', // IDLE, DIALING, KAWOOSH, OPEN, MELTDOWN, FAILED
+      ringAngle: 0,
+      targetRingAngle: 0,
+      lockedChevrons: 0,
+      failedChevronIndex: -1,
+      kawooshProgress: 0,
+      puddleTime: 0,
+      sparks: [],
+      heatGlow: 0,
+
+      // 3D Star Map Orbit Angles
+      starMapYaw: 0.45,
+      starMapPitch: 0.28,
+      isDraggingMap: false,
+      lastMouse: { x: 0, y: 0 },
+
+      audioEnabled: true,
+      audioCtx: null
+    };
+
+    // --------------------------------------------------------------------------
+    // 3. WEB AUDIO SYNTHESIZER (MECHANICAL CLUNKS, HUMS & KAWOOSH)
+    // --------------------------------------------------------------------------
+    function playTone(type) {
+      if (!State.audioEnabled) return;
+      try {
+        if (!State.audioCtx) {
+          State.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ctx = State.audioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (type === 'chevron') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(52, now + 0.18);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.23);
+        } else if (type === 'kawoosh') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(65, now);
+          osc.frequency.exponentialRampToValueAtTime(280, now + 0.35);
+          osc.frequency.exponentialRampToValueAtTime(48, now + 1.2);
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 1.3);
+        } else if (type === 'fail') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(110, now);
+          osc.frequency.linearRampToValueAtTime(55, now + 0.4);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.46);
+        }
+      } catch (e) {
+        // Ignore audio errors if blocked by browser policy
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 4. DOM REFERENCES & LOGGING
+    // --------------------------------------------------------------------------
+    const dom = {
+      chassisSelect: document.getElementById('chassisSelect'),
+      presetSelect: document.getElementById('presetSelect'),
+      coordX: document.getElementById('coordX'),
+      coordY: document.getElementById('coordY'),
+      coordZ: document.getElementById('coordZ'),
+      distReadout: document.getElementById('distReadout'),
+      quasarLockStatus: document.getElementById('quasarLockStatus'),
+      requiredGlyphBadge: document.getElementById('requiredGlyphBadge'),
+      sliceOverride: document.getElementById('sliceOverride'),
+      waypointList: document.getElementById('waypointList'),
+      chevronHudBar: document.getElementById('chevronHudBar'),
+      eqPower: document.getElementById('eqPower'),
+      eqFlux: document.getElementById('eqFlux'),
+      eqHarmonic: document.getElementById('eqHarmonic'),
+      outPower: document.getElementById('outPower'),
+      outFlux: document.getElementById('outFlux'),
+      outHarmonic: document.getElementById('outHarmonic'),
+      minPowerTag: document.getElementById('minPowerTag'),
+      chassisMaxTag: document.getElementById('chassisMaxTag'),
+      hullMatName: document.getElementById('hullMatName'),
+      containmentFill: document.getElementById('containmentFill'),
+      preflightSummary: document.getElementById('preflightSummary'),
+      logStream: document.getElementById('logStream'),
+      malpCard: document.getElementById('malpCard'),
+      malpTelemetryGrid: document.getElementById('malpTelemetryGrid'),
+      quasarCanvas: document.getElementById('quasarCanvas'),
+      stargateCanvas: document.getElementById('stargateCanvas'),
+      builderModal: document.getElementById('builderModal'),
+      ringSlotsGrid: document.getElementById('ringSlotsGrid'),
+      builderTotalRating: document.getElementById('builderTotalRating')
+    };
+
+    const qCtx = dom.quasarCanvas.getContext('2d');
+    const gCtx = dom.stargateCanvas.getContext('2d');
+
+    function logTelemetry(msg, level = '') {
+      const line = document.createElement('div');
+      line.className = `log-line ${level}`;
+      const ts = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      line.textContent = `[${ts}] ${msg}`;
+      dom.logStream.prepend(line);
+    }
+
+    // --------------------------------------------------------------------------
+    // 5. UGS 13-QUASAR TRILATERATION & N-SECTION TRAJECTORY SLICER
+    // --------------------------------------------------------------------------
+    function recalculateAstrogation() {
+      const x = parseFloat(dom.coordX.value) || 0;
+      const y = parseFloat(dom.coordY.value) || 0;
+      const z = parseFloat(dom.coordZ.value) || 0;
+      State.dest = { x, y, z };
+
+      // Euclidean Distance D from Home Origin (0,0,0)
+      const dist = Math.sqrt(x * x + y * y + z * z);
+      State.distance = dist;
+      dom.distReadout.textContent = `${dist.toFixed(2)} kpc`;
+
+      // Determine required glyph count based on cosmic distance thresholds
+      let reqN = 7;
+      if (dist > 3000) reqN = 9;
+      else if (dist > 100) reqN = 8;
+      State.requiredGlyphs = reqN;
+      dom.requiredGlyphBadge.textContent = `REQ: ${reqN} GLYPHS`;
+
+      // Active slice count (auto or user forced)
+      const activeN = State.sliceOverride === 'auto' ? reqN : parseInt(State.sliceOverride, 10);
+      State.activeGlyphCount = activeN;
+
+      // Verify 13-Quasar vertex convergence (zero distance fails)
+      if (dist < 1) {
+        dom.quasarLockStatus.textContent = 'NULL VECTOR (0,0,0)';
+        dom.quasarLockStatus.style.color = 'var(--accent-crimson)';
+      } else {
+        dom.quasarLockStatus.textContent = `CONVERGED (13/13 QSO)`;
+        dom.quasarLockStatus.style.color = 'var(--accent-emerald)';
+      }
+
+      // Slice vector AB into N equal segments!
+      // Section 1 = Home (0,0,0), Sections 2..N-1 = Relay Waypoints, Section N = Destination (X,Y,Z)
+      const waypoints = [];
+      for (let i = 0; i < activeN; i++) {
+        const t = activeN === 1 ? 1 : i / (activeN - 1);
+        const wx = x * t;
+        const wy = y * t;
+        const wz = z * t;
+
+        // Deterministic glyph index hash from spatial coordinates
+        const hash = Math.abs(Math.round(wx * 7 + wy * 13 + wz * 19 + i * 5)) % GLYPHS.length;
+        let role = `Relay Sector ${i + 1}`;
+        if (i === 0) role = 'Origin Node (Home)';
+        else if (i === activeN - 1) role = 'Destination Vertex';
+
+        waypoints.push({
+          step: i + 1,
+          role,
+          coords: `(${wx.toFixed(0)}, ${wy.toFixed(0)}, ${wz.toFixed(0)})`,
+          glyphIndex: hash,
+          glyph: GLYPHS[hash]
+        });
+      }
+      State.waypoints = waypoints;
+
+      renderWaypointList();
+      renderChevronHud();
+      evaluatePhysicsEquations();
+    }
+
+    function renderWaypointList() {
+      dom.waypointList.innerHTML = '';
+      State.waypoints.forEach((wp, idx) => {
+        const row = document.createElement('div');
+        row.className = 'waypoint-row';
+        if (idx < State.lockedChevrons) row.classList.add('locked');
+        if (idx === State.failedChevronIndex) row.classList.add('error');
+
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:600; color:var(--text-main);">Sec ${wp.step}: ${wp.role}</div>
+            <div class="mono" style="font-size:0.64rem; color:var(--text-dim);">UGS ${wp.coords}</div>
+          </div>
+          <span class="glyph-chip">${wp.glyph} #${wp.glyphIndex + 1}</span>
+        `;
+        dom.waypointList.appendChild(row);
+      });
+    }
+
+    function renderChevronHud() {
+      dom.chevronHudBar.innerHTML = '';
+      for (let i = 0; i < State.activeGlyphCount; i++) {
+        const pip = document.createElement('div');
+        pip.className = 'chev-pip';
+        if (i < State.lockedChevrons) pip.classList.add('engaged');
+        if (i === State.failedChevronIndex) pip.classList.add('failed');
+        pip.textContent = `C${i + 1}`;
+        dom.chevronHudBar.appendChild(pip);
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. LIVE PHYSICS EQUATION PARSER & CONTAINMENT VALIDATOR
+    // --------------------------------------------------------------------------
+    function getActiveChassisSpecs() {
+      if (State.chassisKey === 'custom') {
+        const hasGap = State.customSlots.some(s => !s);
+        const totalMax = State.customSlots.reduce((sum, key) => sum + (key ? MATERIALS[key].maxPerSeg : 0), 0);
+        const uniqueMats = [...new Set(State.customSlots.filter(Boolean).map(k => MATERIALS[k].label))];
+        return {
+          name: 'Custom Composite Ring',
+          material: hasGap ? 'INCOMPLETE RING (GAP!)' : (uniqueMats.length === 1 ? uniqueMats[0] : 'Hybrid Composite'),
+          maxPower: totalMax,
+          hasStructuralGap: hasGap,
+          ringColor: '#1e293b',
+          ringAccent: '#38bdf8',
+          chevIdle: '#334155',
+          chevActive: '#a855f7',
+          puddleInner: '#38bdf8',
+          puddleOuter: '#312e81',
+          rotateWholeGate: false
+        };
+      }
+      return { ...CHASSIS_DEFS[State.chassisKey], hasStructuralGap: false };
+    }
+
+    function evaluatePhysicsEquations() {
+      const specs = getActiveChassisSpecs();
+      const D = Math.max(State.distance, 0.001);
+      const N = State.activeGlyphCount;
+      const R = 3.35; // Standard Stargate radius in meters
+      const C = 299.792;
+      const M = 1.618;
+
+      // Minimum power threshold scales with distance and glyph sections
+      const minPower = Math.round(15 * Math.sqrt(D) * N);
+      dom.minPowerTag.textContent = `Min: ${minPower.toLocaleString()} TW`;
+      dom.chassisMaxTag.textContent = `MAX: ${specs.maxPower.toLocaleString()} TW`;
+      dom.hullMatName.textContent = specs.material;
+
+      let eReq = NaN, phiNeg = NaN, harmonic = NaN;
+      let syntaxOk = true;
+
+      try {
+        const fnP = new Function('D', 'N', 'R', 'C', 'M', `return (${dom.eqPower.value});`);
+        eReq = Number(fnP(D, N, R, C, M));
+
+        const fnF = new Function('D', 'N', 'R', 'C', 'M', `return (${dom.eqFlux.value});`);
+        phiNeg = Number(fnF(D, N, R, C, M));
+
+        const fnH = new Function('D', 'N', 'R', 'C', 'M', `return (${dom.eqHarmonic.value});`);
+        harmonic = Number(fnH(D, N, R, C, M));
+
+        if (!isFinite(eReq) || !isFinite(phiNeg) || !isFinite(harmonic)) syntaxOk = false;
+      } catch (err) {
+        syntaxOk = false;
+      }
+
+      State.physics = {
+        validSyntax: syntaxOk,
+        eReq,
+        phiNeg,
+        harmonic,
+        minRequiredPower: minPower,
+        maxContainment: specs.maxPower,
+        hasStructuralGap: specs.hasStructuralGap
+      };
+
+      // Update UI Readouts
+      if (!syntaxOk) {
+        dom.outPower.textContent = 'SYNTAX ERROR';
+        dom.outPower.className = 'status-err';
+        dom.outFlux.textContent = 'SYNTAX ERROR';
+        dom.outFlux.className = 'status-err';
+        dom.outHarmonic.textContent = 'SYNTAX ERROR';
+        dom.outHarmonic.className = 'status-err';
+        dom.preflightSummary.innerHTML = `<span class="status-err">⛔ Equation AST parse error. Check math syntax.</span>`;
+        return;
+      }
+
+      dom.outPower.textContent = `${eReq.toFixed(1)} TW`;
+      dom.outPower.className = eReq > specs.maxPower ? 'status-err' : (eReq < minPower ? 'status-warn' : 'status-ok');
+
+      dom.outFlux.textContent = `${phiNeg.toFixed(2)} J/m³`;
+      dom.outFlux.className = phiNeg < 0 ? 'status-ok' : 'status-err';
+
+      dom.outHarmonic.textContent = `${harmonic.toFixed(2)} THz`;
+      dom.outHarmonic.className = (harmonic >= 100 && harmonic <= 950) ? 'status-ok' : 'status-warn';
+
+      // Containment Fill Bar
+      const ratio = Math.min(100, Math.max(4, (eReq / Math.max(specs.maxPower, 1)) * 100));
+      dom.containmentFill.style.width = `${ratio}%`;
+      dom.containmentFill.style.backgroundColor = eReq > specs.maxPower
+        ? 'var(--accent-crimson)'
+        : (eReq < minPower ? 'var(--accent-amber)' : 'var(--accent-emerald)');
+
+      // Pre-Flight Diagnostic Summary
+      const issues = [];
+      if (specs.hasStructuralGap) issues.push('Missing ring segments (Containment breach!)');
+      if (State.distance < 1) issues.push('Destination cannot be (0,0,0)');
+      if (State.activeGlyphCount !== State.requiredGlyphs) {
+        issues.push(`Slice mismatch: Distance requires ${State.requiredGlyphs} glyphs, set to ${State.activeGlyphCount}`);
+      }
+      if (eReq < minPower) issues.push(`Underpowered: Needs ≥ ${minPower} TW`);
+      if (eReq > specs.maxPower) issues.push(`OVERLOAD: ${eReq.toFixed(0)} TW exceeds ${specs.material} limit (${specs.maxPower} TW)`);
+      if (phiNeg >= 0) issues.push('Exotic flux Phi_neg must be < 0 to stabilize throat');
+      if (harmonic < 100 || harmonic > 950) issues.push('Carrier harmonic outside 100–950 THz window');
+
+      if (issues.length === 0) {
+        dom.preflightSummary.innerHTML = `<span class="status-ok">✓ ALL SUBSPACE PARAMETERS NOMINAL. Ready to dial ${State.activeGlyphCount}-glyph bridge.</span>`;
+      } else {
+        dom.preflightSummary.innerHTML = `<span class="status-warn">⚠ DIAGNOSTIC ALERTS:</span><br>• ${issues.join('<br>• ')}`;
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 7. DIALING SEQUENCE, FAILURE PHYSICS & WORMHOLE EXECUTION
+    // --------------------------------------------------------------------------
+    const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+    async function initiateDialingSequence() {
+      if (State.gateState === 'DIALING' || State.gateState === 'KAWOOSH') return;
+
+      recalculateAstrogation();
+      abortGate(true); // Reset clean before dialing
+
+      const p = State.physics;
+      if (!p.validSyntax) {
+        logTelemetry('ABORT: Cannot dial with invalid physics equation syntax.', 'error');
+        playTone('fail');
+        return;
+      }
+
+      if (p.hasStructuralGap) {
+        State.gateState = 'MELTDOWN';
+        State.heatGlow = 1;
+        spawnSparks(65);
+        playTone('fail');
+        logTelemetry('CRITICAL CONTAINMENT BREACH: Custom gate ring has missing segments! Plasma vented.', 'error');
+        return;
+      }
+
+      State.gateState = 'DIALING';
+      logTelemetry(`Initiating ${State.activeGlyphCount}-glyph dialing sequence to UGS (${State.dest.x}, ${State.dest.y}, ${State.dest.z})...`, 'info');
+
+      for (let i = 0; i < State.activeGlyphCount; i++) {
+        if (State.gateState !== 'DIALING') return; // Aborted mid-dial
+
+        const wp = State.waypoints[i];
+        // Spin ring to target glyph angle
+        const glyphAngle = (wp.glyphIndex / GLYPHS.length) * Math.PI * 2;
+        State.targetRingAngle = glyphAngle + (i % 2 === 0 ? Math.PI : -Math.PI);
+
+        await sleep(520);
+        if (State.gateState !== 'DIALING') return;
+
+        // Check mid-dial thermal overload if power > 2x chassis limit
+        if (p.eReq > p.maxContainment * 1.6 && i >= 2) {
+          triggerFailure(i, `THERMAL MELTDOWN AT CHEVRON ${i + 1}: ${p.eReq.toFixed(0)} TW vaporized ${dom.hullMatName.textContent}!`, true);
+          return;
+        }
+
+        // Final Chevron Validation Gate!
+        const isFinal = (i === State.activeGlyphCount - 1);
+        if (isFinal) {
+          if (State.distance < 1) {
+            triggerFailure(i, `CHEVRON ${i + 1} REJECTED: Point of origin cannot equal destination (0,0,0).`, false);
+            return;
+          }
+          if (State.activeGlyphCount !== State.requiredGlyphs) {
+            triggerFailure(i, `CHEVRON ${i + 1} LOCK FAILED: Trajectory sliced into ${State.activeGlyphCount} sections, but ${State.distance.toFixed(1)} kpc requires ${State.requiredGlyphs} glyphs. Vector terminated in void!`, false);
+            return;
+          }
+          if (p.eReq < p.minRequiredPower) {
+            triggerFailure(i, `CHEVRON ${i + 1} POWER STARVATION: ${p.eReq.toFixed(1)} TW insufficient (requires ${p.minRequiredPower} TW).`, false);
+            return;
+          }
+          if (p.eReq > p.maxContainment) {
+            triggerFailure(i, `CHEVRON ${i + 1} CONTAINMENT OVERLOAD: ${p.eReq.toFixed(1)} TW exceeded ${p.maxContainment} TW hull rating! Breakers tripped.`, true);
+            return;
+          }
+          if (p.phiNeg >= 0) {
+            triggerFailure(i, `THROAT COLLAPSE AT CHEVRON ${i + 1}: Exotic flux Phi_neg (${p.phiNeg.toFixed(2)}) is non-negative. Einstein-Rosen bridge pinched shut!`, false);
+            return;
+          }
+          if (p.harmonic < 100 || p.harmonic > 950) {
+            triggerFailure(i, `PHASE DECOHERENCE AT CHEVRON ${i + 1}: Carrier harmonic ${p.harmonic.toFixed(1)} THz out of subspace resonance band.`, false);
+            return;
+          }
+        }
+
+        // Lock Chevron!
+        State.lockedChevrons = i + 1;
+        playTone('chevron');
+        renderWaypointList();
+        renderChevronHud();
+        logTelemetry(`Chevron ${i + 1} locked [${wp.glyph}] → ${wp.role} at UGS ${wp.coords}`);
+      }
+
+      // ALL CHEVRONS LOCKED -> TRIGGER KAWOOSH & EVENT HORIZON!
+      State.gateState = 'KAWOOSH';
+      State.kawooshProgress = 0;
+      playTone('kawoosh');
+      logTelemetry(`ALL ${State.activeGlyphCount} CHEVRONS LOCKED! Subspace unstable vortex nucleating...`, 'success');
+
+      await sleep(950);
+      if (State.gateState === 'KAWOOSH') {
+        State.gateState = 'OPEN';
+        showMalpTelemetry();
+        logTelemetry(`WORMHOLE STABILIZED! Event horizon open to UGS (${State.dest.x}, ${State.dest.y}, ${State.dest.z}).`, 'success');
+      }
+    }
+
+    function triggerFailure(chevIdx, reason, isMeltdown) {
+      State.failedChevronIndex = chevIdx;
+      State.gateState = isMeltdown ? 'MELTDOWN' : 'FAILED';
+      if (isMeltdown) {
+        State.heatGlow = 1.0;
+        spawnSparks(75);
+      }
+      playTone('fail');
+      renderWaypointList();
+      renderChevronHud();
+      logTelemetry(reason, 'error');
+    }
+
+    function abortGate(silent = false) {
+      State.gateState = 'IDLE';
+      State.lockedChevrons = 0;
+      State.failedChevronIndex = -1;
+      State.kawooshProgress = 0;
+      dom.malpCard.classList.remove('visible');
+      renderWaypointList();
+      renderChevronHud();
+      if (!silent) {
+        playTone('chevron');
+        logTelemetry('Subspace bridge disengaged. Iris closed.', 'info');
+      }
+    }
+
+    function spawnSparks(count) {
+      const w = dom.stargateCanvas.clientWidth;
+      const h = dom.stargateCanvas.clientHeight;
+      const cx = w / 2;
+      const cy = h / 2;
+      const r = Math.min(w, h) * 0.34;
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        State.sparks.push({
+          x: cx + Math.cos(ang) * r,
+          y: cy + Math.sin(ang) * r,
+          vx: Math.cos(ang) * speed + (Math.random() - 0.5) * 3,
+          vy: Math.sin(ang) * speed + (Math.random() - 0.5) * 3,
+          life: 1.0
+        });
+      }
+    }
+
+    function showMalpTelemetry() {
+      const transitMs = (State.distance * 0.0042).toFixed(3);
+      const stability = Math.min(99.9, 94 + Math.abs(State.physics.phiNeg) * 0.12).toFixed(1);
+      const atmos = State.distance > 3000 ? 'Deep-Void / Shipboard' : (State.distance > 100 ? '78% N₂, 21% O₂ (Lantean)' : '76% N₂, 22% O₂, 2% Ar');
+
+      dom.malpTelemetryGrid.innerHTML = `
+        <div class="malp-stat">
+          <div style="color:var(--text-dim); font-size:0.6rem;">TRANSIT LATENCY</div>
+          <strong style="color:var(--accent-cyan);">${transitMs} sec</strong>
+        </div>
+        <div class="malp-stat">
+          <div style="color:var(--text-dim); font-size:0.6rem;">THROAT STABILITY</div>
+          <strong style="color:var(--accent-emerald);">${stability}%</strong>
+        </div>
+        <div class="malp-stat">
+          <div style="color:var(--text-dim); font-size:0.6rem;">REMOTE ATMOSPHERE</div>
+          <strong style="color:#e2e8f0;">${atmos}</strong>
+        </div>
+      `;
+      dom.malpCard.classList.add('visible');
+    }
+
+    // --------------------------------------------------------------------------
+    // 8. HTML5 CANVAS RENDERERS: STARGATE & 3D 13-QUASAR STAR MAP
+    // --------------------------------------------------------------------------
+    function resizeCanvases() {
+      const dpr = window.devicePixelRatio || 1;
+
+      const gRect = dom.stargateCanvas.parentElement.getBoundingClientRect();
+      dom.stargateCanvas.width = gRect.width * dpr;
+      dom.stargateCanvas.height = gRect.height * dpr;
+      gCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const qRect = dom.quasarCanvas.parentElement.getBoundingClientRect();
+      dom.quasarCanvas.width = qRect.width * dpr;
+      dom.quasarCanvas.height = qRect.height * dpr;
+      qCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function renderStargateLoop() {
+      const w = dom.stargateCanvas.clientWidth;
+      const h = dom.stargateCanvas.clientHeight;
+      gCtx.clearRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const outerR = Math.min(w, h) * 0.37;
+      const innerR = outerR * 0.78;
+      const specs = getActiveChassisSpecs();
+
+      // Smoothly interpolate ring rotation
+      State.ringAngle += (State.targetRingAngle - State.ringAngle) * 0.08;
+      if (State.heatGlow > 0) State.heatGlow = Math.max(0, State.heatGlow - 0.006);
+
+      gCtx.save();
+
+      // Subtle ambient subspace halo behind gate
+      const haloGrad = gCtx.createRadialGradient(cx, cy, innerR * 0.4, cx, cy, outerR * 1.35);
+      haloGrad.addColorStop(0, State.gateState === 'OPEN' ? 'rgba(56, 189, 248, 0.22)' : 'rgba(56, 189, 248, 0.05)');
+      haloGrad.addColorStop(1, 'transparent');
+      gCtx.fillStyle = haloGrad;
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, outerR * 1.35, 0, Math.PI * 2);
+      gCtx.fill();
+
+      // 1. EVENT HORIZON PUDDLE (When Open or Kawoosh)
+      if (State.gateState === 'OPEN' || State.gateState === 'KAWOOSH') {
+        State.puddleTime += 0.05;
+        if (State.gateState === 'KAWOOSH') {
+          State.kawooshProgress = Math.min(1, State.kawooshProgress + 0.035);
+        }
+
+        const puddleGrad = gCtx.createRadialGradient(cx, cy, 5, cx, cy, innerR);
+        puddleGrad.addColorStop(0, specs.puddleInner);
+        puddleGrad.addColorStop(0.65, specs.puddleOuter);
+        puddleGrad.addColorStop(1, '#090d16');
+
+        gCtx.fillStyle = puddleGrad;
+        gCtx.beginPath();
+        gCtx.arc(cx, cy, innerR, 0, Math.PI * 2);
+        gCtx.fill();
+
+        // Concentric liquid-mercury event horizon ripples
+        for (let rIdx = 1; rIdx <= 5; rIdx++) {
+          const waveR = ((State.puddleTime * 28 + rIdx * (innerR / 5)) % innerR);
+          const alpha = (1 - waveR / innerR) * 0.45;
+          gCtx.strokeStyle = `rgba(224, 242, 254, ${alpha})`;
+          gCtx.lineWidth = 2;
+          gCtx.beginPath();
+          gCtx.arc(cx, cy, waveR, 0, Math.PI * 2);
+          gCtx.stroke();
+        }
+
+        // Unstable Vortex ("Kawoosh") Burst Effect
+        if (State.gateState === 'KAWOOSH') {
+          const burstR = Math.sin(State.kawooshProgress * Math.PI) * innerR * 1.18;
+          gCtx.fillStyle = 'rgba(224, 242, 254, 0.65)';
+          gCtx.beginPath();
+          gCtx.arc(cx, cy, burstR, 0, Math.PI * 2);
+          gCtx.fill();
+        }
+      }
+
+      // 2. OUTER STRUCTURAL RING CHASSIS
+      gCtx.strokeStyle = State.heatGlow > 0.1
+        ? `rgba(239, 68, 68, ${0.5 + State.heatGlow * 0.5})`
+        : specs.ringColor;
+      gCtx.lineWidth = outerR - innerR;
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, (outerR + innerR) / 2, 0, Math.PI * 2);
+      gCtx.stroke();
+
+      // Outer & Inner Metallic Bevels
+      gCtx.strokeStyle = specs.ringAccent;
+      gCtx.lineWidth = 2;
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, outerR, 0, Math.PI * 2);
+      gCtx.stroke();
+
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, innerR, 0, Math.PI * 2);
+      gCtx.stroke();
+
+      // 3. ROTATING INNER GLYPH TRACK (39 GLYPHS)
+      const glyphTrackR = (outerR + innerR) / 2;
+      gCtx.save();
+      gCtx.translate(cx, cy);
+      gCtx.rotate(State.ringAngle);
+
+      gCtx.font = `700 ${Math.max(10, Math.round(outerR * 0.065))}px "JetBrains Mono", sans-serif`;
+      gCtx.textAlign = 'center';
+      gCtx.textBaseline = 'middle';
+
+      for (let i = 0; i < GLYPHS.length; i++) {
+        const theta = (i / GLYPHS.length) * Math.PI * 2 - Math.PI / 2;
+        const gx = Math.cos(theta) * glyphTrackR;
+        const gy = Math.sin(theta) * glyphTrackR;
+
+        gCtx.save();
+        gCtx.translate(gx, gy);
+        gCtx.rotate(theta + Math.PI / 2);
+        gCtx.fillStyle = State.gateState === 'OPEN' ? '#e0f2fe' : '#94a3b8';
+        gCtx.fillText(GLYPHS[i], 0, 0);
+        gCtx.restore();
+      }
+      gCtx.restore();
+
+      // 4. CHEVRON LOCKING HOUSINGS AROUND PERIMETER (7, 8, or 9 Chevrons)
+      const chevCount = State.activeGlyphCount;
+      for (let c = 0; c < chevCount; c++) {
+        const cAngle = (c / chevCount) * Math.PI * 2 - Math.PI / 2 + (specs.rotateWholeGate ? State.ringAngle : 0);
+        const chX = cx + Math.cos(cAngle) * (outerR + 4);
+        const chY = cy + Math.sin(cAngle) * (outerR + 4);
+
+        const isLocked = c < State.lockedChevrons;
+        const isFailed = c === State.failedChevronIndex;
+
+        gCtx.save();
+        gCtx.translate(chX, chY);
+        gCtx.rotate(cAngle + Math.PI / 2);
+
+        // Chevron Trapezoid Housing
+        gCtx.fillStyle = isFailed ? '#ef4444' : (isLocked ? specs.chevActive : specs.chevIdle);
+        gCtx.strokeStyle = '#0f172a';
+        gCtx.lineWidth = 2;
+
+        if (isLocked || isFailed) {
+          gCtx.shadowColor = isFailed ? '#ef4444' : specs.chevActive;
+          gCtx.shadowBlur = 16;
+        }
+
+        gCtx.beginPath();
+        gCtx.moveTo(-13, -10);
+        gCtx.lineTo(13, -10);
+        gCtx.lineTo(7, 12);
+        gCtx.lineTo(-7, 12);
+        gCtx.closePath();
+        gCtx.fill();
+        gCtx.stroke();
+
+        gCtx.restore();
+      }
+
+      // 5. THERMAL OVERLOAD SPARK PARTICLES
+      for (let i = State.sparks.length - 1; i >= 0; i--) {
+        const sp = State.sparks[i];
+        sp.x += sp.vx;
+        sp.y += sp.vy;
+        sp.vy += 0.14; // gravity
+        sp.life -= 0.025;
+        if (sp.life <= 0) {
+          State.sparks.splice(i, 1);
+          continue;
+        }
+        gCtx.fillStyle = `rgba(251, 191, 36, ${sp.life})`;
+        gCtx.beginPath();
+        gCtx.arc(sp.x, sp.y, 2.2, 0, Math.PI * 2);
+        gCtx.fill();
+      }
+
+      gCtx.restore();
+      requestAnimationFrame(renderStargateLoop);
+    }
+
+    // 3D-Projected 13-Quasar Trilateration Star Map
+    function project3D(x, y, z, w, h) {
+      const cosY = Math.cos(State.starMapYaw);
+      const sinY = Math.sin(State.starMapYaw);
+      const cosP = Math.cos(State.starMapPitch);
+      const sinP = Math.sin(State.starMapPitch);
+
+      // Rotate Y
+      const x1 = x * cosY - z * sinY;
+      const z1 = z * cosY + x * sinY;
+      // Rotate X
+      const y2 = y * cosP - z1 * sinP;
+      const z2 = z1 * cosP + y * sinP;
+
+      const scale = Math.min(w, h) * 0.00038;
+      return {
+        px: w / 2 + x1 * scale,
+        py: h / 2 - y2 * scale,
+        depth: z2
+      };
+    }
+
+    function renderQuasarMapLoop() {
+      const w = dom.quasarCanvas.clientWidth;
+      const h = dom.quasarCanvas.clientHeight;
+      qCtx.clearRect(0, 0, w, h);
+
+      if (!State.isDraggingMap) {
+        State.starMapYaw += 0.003;
+      }
+
+      const originP = project3D(0, 0, 0, w, h);
+      // Normalize destination coordinates onto star map scale
+      const normScale = State.distance > 1000 ? 0.12 : (State.distance > 200 ? 0.65 : 14);
+      const destP = project3D(State.dest.x * normScale, State.dest.y * normScale, State.dest.z * normScale, w, h);
+
+      // 1. Draw 13 Reference Quasars & Trilateration Vectors intersecting at Destination Vertex
+      REFERENCE_QUASARS.forEach((q) => {
+        const qp = project3D(q.x, q.y, q.z, w, h);
+
+        // Trilateration sightline from Quasar to Target Vertex
+        qCtx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+        qCtx.lineWidth = 1;
+        qCtx.beginPath();
+        qCtx.moveTo(qp.px, qp.py);
+        qCtx.lineTo(destP.px, destP.py);
+        qCtx.stroke();
+
+        // Quasar Star Dot
+        qCtx.fillStyle = '#38bdf8';
+        qCtx.beginPath();
+        qCtx.arc(qp.px, qp.py, 2.2, 0, Math.PI * 2);
+        qCtx.fill();
+      });
+
+      // 2. Draw Main Jump Trajectory Vector from Home (0,0,0) to Destination (X,Y,Z)
+      qCtx.strokeStyle = '#f59e0b';
+      qCtx.lineWidth = 2;
+      qCtx.beginPath();
+      qCtx.moveTo(originP.px, originP.py);
+      qCtx.lineTo(destP.px, destP.py);
+      qCtx.stroke();
+
+      // 3. Draw N Sliced Waypoint Nodes along Trajectory
+      const n = State.activeGlyphCount;
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 1 : i / (n - 1);
+        const wx = originP.px + (destP.px - originP.px) * t;
+        const wy = originP.py + (destP.py - originP.py) * t;
+
+        qCtx.fillStyle = i === 0 ? '#10b981' : (i === n - 1 ? '#a855f7' : '#fde047');
+        qCtx.beginPath();
+        qCtx.arc(wx, wy, i === 0 || i === n - 1 ? 4 : 2.5, 0, Math.PI * 2);
+        qCtx.fill();
+      }
+
+      requestAnimationFrame(renderQuasarMapLoop);
+    }
+
+    // --------------------------------------------------------------------------
+    // 9. CUSTOM UNOBTANIUM GATE BUILDER LOGIC
+    // --------------------------------------------------------------------------
+    function renderBuilderSlots() {
+      dom.ringSlotsGrid.innerHTML = '';
+      let totalTW = 0;
+
+      State.customSlots.forEach((matKey, idx) => {
+        const slotEl = document.createElement('div');
+        slotEl.className = `ring-slot ${matKey ? 'filled' : ''}`;
+        if (matKey) {
+          const mat = MATERIALS[matKey];
+          totalTW += mat.maxPerSeg;
+          slotEl.style.borderColor = mat.color;
+          slotEl.innerHTML = `
+            <strong style="color:${mat.color};">Seg ${idx + 1}: ${mat.label}</strong>
+            <span class="mono" style="font-size:0.65rem; color:var(--text-dim);">+${mat.maxPerSeg} TW</span>
+          `;
+        } else {
+          slotEl.innerHTML = `
+            <span style="color:var(--accent-crimson); font-weight:700;">Seg ${idx + 1}: EMPTY GAP</span>
+            <span style="font-size:0.63rem; color:var(--text-muted);">Drop or click to fill</span>
+          `;
+        }
+
+        // Click to cycle material
+        slotEl.addEventListener('click', () => {
+          const order = ['titanium', 'naquadah', 'unobtanium', null];
+          const next = order[(order.indexOf(matKey) + 1) % order.length];
+          State.customSlots[idx] = next;
+          renderBuilderSlots();
+        });
+
+        // Drag & Drop support
+        slotEl.addEventListener('dragover', (e) => e.preventDefault());
+        slotEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const droppedMat = e.dataTransfer.getData('text/plain');
+          if (MATERIALS[droppedMat]) {
+            State.customSlots[idx] = droppedMat;
+            renderBuilderSlots();
+          }
+        });
+
+        dom.ringSlotsGrid.appendChild(slotEl);
+      });
+
+      dom.builderTotalRating.textContent = `${totalTW.toLocaleString()} TW`;
+    }
+
+    document.querySelectorAll('.mat-card').forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.dataset.mat);
+      });
+    });
+
+    document.getElementById('btnOpenBuilder').addEventListener('click', () => {
+      renderBuilderSlots();
+      dom.builderModal.classList.add('open');
+    });
+    document.getElementById('btnCloseBuilder').addEventListener('click', () => dom.builderModal.classList.remove('open'));
+    document.getElementById('btnFillUnobtanium').addEventListener('click', () => {
+      State.customSlots = Array(8).fill('unobtanium');
+      renderBuilderSlots();
+    });
+    document.getElementById('btnClearSlots').addEventListener('click', () => {
+      State.customSlots = Array(8).fill(null);
+      renderBuilderSlots();
+    });
+    document.getElementById('btnApplyCustomGate').addEventListener('click', () => {
+      State.chassisKey = 'custom';
+      dom.chassisSelect.value = 'custom';
+      dom.builderModal.classList.remove('open');
+      evaluatePhysicsEquations();
+      logTelemetry('Mounted Custom Composite Stargate Ring onto gantry.', 'info');
+    });
+
+    // --------------------------------------------------------------------------
+    // 10. PRESETS & EVENT BINDINGS
+    // --------------------------------------------------------------------------
+    dom.presetSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (!val) return;
+      abortGate(true);
+
+      if (val === 'abydos') {
+        State.chassisKey = 'milkyway';
+        dom.chassisSelect.value = 'milkyway';
+        dom.coordX.value = 18;
+        dom.coordY.value = -14;
+        dom.coordZ.value = 16;
+        dom.sliceOverride.value = 'auto';
+        State.sliceOverride = 'auto';
+        dom.eqPower.value = '22 * Math.sqrt(D) * N';
+        dom.eqFlux.value = '-1 * (R * R * N) / Math.log(D + 2)';
+        dom.eqHarmonic.value = '(N * 144.7) / R';
+        logTelemetry('Loaded Preset: Abydos (7-Glyph Intra-Galactic, 27.86 kpc).', 'info');
+      } else if (val === 'atlantis') {
+        State.chassisKey = 'pegasus';
+        dom.chassisSelect.value = 'pegasus';
+        dom.coordX.value = 610;
+        dom.coordY.value = 480;
+        dom.coordZ.value = -510;
+        dom.sliceOverride.value = 'auto';
+        State.sliceOverride = 'auto';
+        dom.eqPower.value = '11 * Math.sqrt(D) * N';
+        dom.eqFlux.value = '-1 * (R * R * N) / Math.log(D + 2)';
+        dom.eqHarmonic.value = '(N * 144.7) / R';
+        logTelemetry('Loaded Preset: Atlantis Pegasus Expedition (8-Glyph Inter-Galactic, 927.5 kpc).', 'info');
+      } else if (val === 'destiny') {
+        State.chassisKey = 'luminal';
+        dom.chassisSelect.value = 'luminal';
+        dom.coordX.value = 4100;
+        dom.coordY.value = -3200;
+        dom.coordZ.value = 3750;
+        dom.sliceOverride.value = 'auto';
+        State.sliceOverride = 'auto';
+        dom.eqPower.value = '14 * Math.sqrt(D) * N';
+        dom.eqFlux.value = '-1 * (R * R * N) / Math.log(D + 2)';
+        dom.eqHarmonic.value = '(N * 144.7) / R';
+        logTelemetry('Loaded Preset: Destiny Deep-Space Tracking (9-Glyph Cosmic Bridge, 6,412 kpc).', 'info');
+      } else if (val === 'overload') {
+        State.chassisKey = 'milkyway';
+        dom.chassisSelect.value = 'milkyway';
+        dom.coordX.value = 1200;
+        dom.coordY.value = 900;
+        dom.coordZ.value = 800;
+        dom.sliceOverride.value = '7'; // Wrong slice count for intergalactic distance!
+        State.sliceOverride = '7';
+        dom.eqPower.value = '95 * Math.sqrt(D) * N'; // Massive thermal overload!
+        dom.eqFlux.value = '42.5'; // Positive flux -> throat collapse!
+        logTelemetry('Loaded Preset: Intentional Overload & Failed Astrogation Math Test.', 'error');
+      }
+
+      e.target.value = '';
+      recalculateAstrogation();
+    });
+
+    dom.chassisSelect.addEventListener('change', (e) => {
+      State.chassisKey = e.target.value;
+      evaluatePhysicsEquations();
+      logTelemetry(`Switched active chassis to ${getActiveChassisSpecs().name}.`);
+    });
+
+    [dom.coordX, dom.coordY, dom.coordZ].forEach(inp => {
+      inp.addEventListener('input', recalculateAstrogation);
+    });
+
+    dom.sliceOverride.addEventListener('change', (e) => {
+      State.sliceOverride = e.target.value;
+      recalculateAstrogation();
+    });
+
+    [dom.eqPower, dom.eqFlux, dom.eqHarmonic].forEach(inp => {
+      inp.addEventListener('input', evaluatePhysicsEquations);
+    });
+
+    document.getElementById('btnInitiateDial').addEventListener('click', initiateDialingSequence);
+    document.getElementById('btnAbortGate').addEventListener('click', () => abortGate(false));
+
+    document.getElementById('btnSendMalp').addEventListener('click', () => {
+      playTone('chevron');
+      logTelemetry(`MALP Telemetry Probe transmitted through event horizon → Spectral scan confirms safe arrival at (${State.dest.x}, ${State.dest.y}, ${State.dest.z}).`, 'success');
+    });
+
+    document.getElementById('btnToggleAudio').addEventListener('click', (e) => {
+      State.audioEnabled = !State.audioEnabled;
+      e.currentTarget.innerHTML = `<span>${State.audioEnabled ? '🔊 Audio: ON' : '🔇 Audio: MUTED'}</span>`;
+    });
+
+    document.getElementById('btnClearLog').addEventListener('click', () => {
+      dom.logStream.innerHTML = '';
+    });
+
+    // Interactive 3D Quasar Map Dragging
+    dom.quasarCanvas.addEventListener('mousedown', (e) => {
+      State.isDraggingMap = true;
+      State.lastMouse = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => {
+      State.isDraggingMap = false;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!State.isDraggingMap) return;
+      const dx = e.clientX - State.lastMouse.x;
+      const dy = e.clientY - State.lastMouse.y;
+      State.starMapYaw += dx * 0.01;
+      State.starMapPitch += dy * 0.01;
+      State.lastMouse = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('resize', resizeCanvases);
+
+    // Bootstrap Engine
+    window.onload = function () {
+      resizeCanvases();
+      recalculateAstrogation();
+      logTelemetry('Luminal Subspace Bridge & UGS 13-Quasar Astrogation Engine initialized.', 'info');
+      requestAnimationFrame(renderStargateLoop);
+      requestAnimationFrame(renderQuasarMapLoop);
+    };
+  </script>
+</body>
+</html>

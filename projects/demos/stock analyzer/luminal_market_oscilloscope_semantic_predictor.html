@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luminal Market Oscilloscope & Semantic Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================================
+       LUMINAL SYSTEMS ENGINEERING DESIGN TOKENS
+       ============================================================================ */
+    :root {
+      --bg-void: #0B0E14;
+      --bg-panel: #131823;
+      --bg-surface: #19202E;
+      --bg-input: #080B10;
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-glow: rgba(56, 189, 248, 0.45);
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+
+      /* Semantic Market Structure & Telemetry Palette */
+      --accent-cyan: #38BDF8;      /* Light-Blue Prediction Vector */
+      --accent-emerald: #10B981;   /* Accumulation Valley */
+      --accent-crimson: #F43F5E;   /* Resistance Mountain / Overload */
+      --accent-amber: #F59E0B;     /* Exhaustion / Warning */
+      --accent-violet: #A855F7;    /* Liquidity Breakout Gap */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-void);
+      color: var(--text-primary);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    .mono, code, input, select {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.35);
+      border-radius: 999px;
+    }
+
+    /* ============================================================================
+       TOP COMMAND & TELEMETRY BAR
+       ============================================================================ */
+    header.command-bar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      z-index: 30;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284C7, #6366F1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(125, 211, 252, 0.4);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+    }
+
+    .brand-title {
+      font-size: 0.94rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-pill {
+      font-size: 0.64rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      letter-spacing: 0.06em;
+    }
+
+    .controls-cluster {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .ticker-input-group {
+      display: flex;
+      align-items: center;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      padding: 2px 4px 2px 9px;
+      gap: 6px;
+    }
+    .ticker-input-group:focus-within {
+      border-color: var(--accent-cyan);
+    }
+
+    .ticker-input-group input {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 0.78rem;
+      font-weight: 600;
+      width: 145px;
+      outline: none;
+      text-transform: uppercase;
+    }
+
+    .preset-chips {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 4px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .chip-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--text-primary);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    button.btn, select.hud-select {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.16s ease;
+      white-space: nowrap;
+    }
+
+    select.hud-select {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+    }
+
+    button.btn:hover:not(:disabled), select.hud-select:hover {
+      border-color: var(--border-glow);
+      background: #20293B;
+    }
+
+    button.btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.btn-cyan {
+      background: linear-gradient(135deg, #0284C7, #2563EB);
+      border-color: rgba(125, 211, 252, 0.45);
+      color: #FFFFFF;
+      box-shadow: 0 2px 12px rgba(14, 165, 233, 0.3);
+    }
+    button.btn-cyan:hover:not(:disabled) {
+      background: linear-gradient(135deg, #38BDF8, #3B82F6);
+    }
+
+    button.btn-amber {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.42);
+      color: #FDE68A;
+    }
+    button.btn-amber:hover:not(:disabled) {
+      background: rgba(245, 158, 11, 0.25);
+    }
+
+    button.btn-active-stream {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: rgba(16, 185, 129, 0.48);
+      color: #6EE7B7;
+    }
+
+    /* Live Semantic AST / Rule Ribbon */
+    .ast-ribbon {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      overflow-x: auto;
+    }
+
+    .ast-tokens {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tok {
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .tok-ticker { color: var(--accent-cyan); background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.25); }
+    .tok-lens { color: var(--accent-violet); background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.25); }
+    .tok-signal { color: var(--accent-emerald); background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.25); }
+    .tok-warn { color: var(--accent-crimson); background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.25); }
+
+    /* ============================================================================
+       CENTER STAGE: SEMANTIC OSCILLOSCOPE CANVAS
+       ============================================================================ */
+    main.oscilloscope-stage {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      background-color: var(--bg-void);
+      overflow: hidden;
+    }
+
+    #marketCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Floating Top-Left HUD Telemetry Legend */
+    .canvas-hud-overlay {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .price-readout-card {
+      background: rgba(19, 24, 35, 0.86);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .legend-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .legend-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 5px;
+      background: rgba(11, 14, 20, 0.82);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .zoom-hint-pill {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: rgba(19, 24, 35, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    /* ============================================================================
+       BOTTOM CONSOLE: LIVE NARRATOR & THERMODYNAMIC RISK CONTAINMENT GATE
+       ============================================================================ */
+    footer.bottom-telemetry {
+      height: 172px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border-subtle);
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      z-index: 30;
+    }
+
+    .console-pane {
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      overflow: hidden;
+    }
+
+    .console-pane:first-child {
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    .narrator-screen {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      overflow-y: auto;
+    }
+
+    .narrator-headline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .narrator-body {
+      font-size: 0.81rem;
+      line-height: 1.42;
+      color: var(--text-primary);
+    }
+
+    .factor-bars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .factor-chip {
+      background: rgba(255, 255, 255, 0.025);
+      border-radius: 5px;
+      padding: 3px 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Thermodynamic Risk Containment Gate */
+    .risk-gate-box {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 7px;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .risk-gate-box.breached {
+      border-color: var(--accent-crimson);
+      box-shadow: inset 0 0 22px rgba(244, 63, 94, 0.22);
+    }
+
+    .risk-inputs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .risk-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .risk-field label {
+      font-size: 0.64rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .risk-field input {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 5px;
+      padding: 4px 7px;
+      color: var(--text-primary);
+      font-size: 0.76rem;
+      outline: none;
+      width: 100%;
+    }
+    .risk-field input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .thermal-bar-track {
+      height: 8px;
+      width: 100%;
+      background: #141923;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .thermal-bar-fill {
+      height: 100%;
+      width: 28%;
+      background: var(--accent-emerald);
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+
+    .risk-status-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.69rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    @media (max-width: 960px) {
+      footer.bottom-telemetry {
+        grid-template-columns: 1fr;
+        height: 245px;
+      }
+      .console-pane:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP COMMAND & TELEMETRY BAR
+       ========================================================================== -->
+  <header class="command-bar">
+    <div class="top-row">
+      <div class="brand-box">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-title">
+          Luminal Market Oscilloscope
+          <span class="badge-pill">SEMANTIC PREDICTOR v1.0</span>
+        </div>
+      </div>
+
+      <div class="controls-cluster">
+        <!-- Multi-Ticker Symbol Input -->
+        <div class="ticker-input-group">
+          <span class="mono" style="font-size:0.72rem; color:var(--accent-cyan);">$</span>
+          <input type="text" id="tickerInput" value="NVDA" placeholder="NVDA or NVDA, SPY" title="Enter single symbol or comma-separated basket (e.g. NVDA, SPY)" />
+          <button class="btn btn-cyan" id="btnLoadTicker" style="padding:4px 10px;">Load Ticker</button>
+        </div>
+
+        <!-- Quick Preset Chips -->
+        <div class="preset-chips">
+          <button class="chip-btn" data-sym="NVDA">NVDA</button>
+          <button class="chip-btn" data-sym="SPY">SPY</button>
+          <button class="chip-btn" data-sym="AAPL">AAPL</button>
+          <button class="chip-btn" data-sym="BTC-USD">BTC-USD</button>
+          <button class="chip-btn" data-sym="NVDA, SPY" title="Normalized Correlation Basket">NVDA+SPY</button>
+        </div>
+
+        <!-- Analytical Lens Filter Dropdown -->
+        <select class="hud-select" id="lensSelect" title="Select Semantic Structure Filter Lens">
+          <option value="ALL">LENS: ALL VARIABLES (OMNISCIENT)</option>
+          <option value="MOUNTAINS_VALLEYS">LENS: MOUNTAINS &amp; VALLEYS ONLY</option>
+          <option value="VOLUME_SPIKES">LENS: VOLUME &amp; LIQUIDITY SPIKES</option>
+          <option value="MOMENTUM_DIV">LENS: MOMENTUM DIVERGENCE</option>
+        </select>
+
+        <button class="btn" id="btnToggleStream" title="Toggle real-time tick streaming">
+          <span>⏸ Stream: OFF</span>
+        </button>
+
+        <button class="btn btn-amber" id="btnSimShock" title="Inject a stochastic volatility & volume shock event">
+          <span>⚡ Simulate Shock</span>
+        </button>
+
+        <button class="btn" id="btnResetZoom" disabled title="Reset rubber-band zoom to full timeframe">
+          <span>🔍 Reset Zoom</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Semantic AST / Logic Rule Ribbon -->
+    <div class="ast-ribbon" id="astRibbon">
+      <div class="ast-tokens" id="astTokens">
+        <span class="tok tok-ticker">SCANNING NVDA</span>
+        <span class="tok tok-lens">LENS: OMNISCIENT</span>
+        <span class="tok tok-signal">DETECTING EXTREMA &amp; VECTORS...</span>
+      </div>
+      <span class="mono" id="feedSourceBadge" style="font-size:0.68rem; color:var(--text-secondary);">FEED: INITIALIZING...</span>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       CENTER STAGE: SEMANTIC OSCILLOSCOPE & RUBBER-BAND ZOOM CANVAS
+       ========================================================================== -->
+  <main class="oscilloscope-stage" id="oscilloscopeStage">
+    <div class="canvas-hud-overlay">
+      <div class="price-readout-card">
+        <div>
+          <div class="mono" style="font-size:0.64rem; color:var(--text-secondary);" id="hudSymbolLabel">NVDA // LIVE TELEMETRY</div>
+          <div class="mono" style="font-size:1.15rem; font-weight:700; color:var(--text-primary);" id="hudCurrentPrice">$138.40</div>
+        </div>
+        <div style="border-left:1px solid var(--border-subtle); padding-left:12px;">
+          <div class="mono" style="font-size:0.64rem; color:var(--accent-cyan);">SYSTEM FORECAST (+15 BARS)</div>
+          <div class="mono" style="font-size:1.05rem; font-weight:700; color:var(--accent-cyan);" id="hudPredictedPrice">$144.20 (+4.19%)</div>
+        </div>
+      </div>
+
+      <div class="legend-pills">
+        <div class="legend-tag"><span class="dot" style="background:var(--accent-emerald);"></span>ACCUMULATION VALLEY</div>
+        <div class="legend-tag"><span class="dot" style="background:var(--accent-crimson);"></span>RESISTANCE MOUNTAIN</div>
+        <div class="legend-tag"><span class="dot" style="background:var(--accent-violet);"></span>LIQUIDITY BREAKOUT GAP</div>
+        <div class="legend-tag"><span class="dot" style="background:var(--accent-cyan);"></span>OMNISCIENT PREDICTION VECTOR</div>
+      </div>
+    </div>
+
+    <div class="zoom-hint-pill">🖱 DRAG BOX ON CHART TO ZOOM • CLICK SEMANTIC BOXES TO INSPECT</div>
+
+    <canvas id="marketCanvas"></canvas>
+  </main>
+
+  <!-- ==========================================================================
+       BOTTOM CONSOLE: LIVE NARRATOR & THERMODYNAMIC RISK CONTAINMENT GATE
+       ========================================================================== -->
+  <footer class="bottom-telemetry">
+    <!-- Left Pane: Live Plain-English Market Structure Narrator -->
+    <div class="console-pane">
+      <div class="pane-header">
+        <span>🤖 Semantic Market Structure Narrator</span>
+        <span class="mono" id="zoomRangeBadge" style="color:var(--accent-cyan);">WINDOW: FULL (100 BARS)</span>
+      </div>
+      <div class="narrator-screen">
+        <div>
+          <div class="narrator-headline" id="narratorHeadline">MULTI-VARIABLE TERRAIN ANALYSIS ACTIVE</div>
+          <div class="narrator-body" id="narratorBody">
+            Loading market telemetry and scanning local extrema for structural valleys, resistance peaks, and momentum vectors...
+          </div>
+        </div>
+        <div class="factor-bars" id="factorBars">
+          <div class="factor-chip"><span>EMA SLOPE</span><strong id="fEma" style="color:var(--accent-emerald);">+0.00</strong></div>
+          <div class="factor-chip"><span>RSI (14)</span><strong id="fRsi" style="color:var(--accent-cyan);">50.0</strong></div>
+          <div class="factor-chip"><span>ATR VOL</span><strong id="fAtr" style="color:var(--accent-amber);">1.2%</strong></div>
+          <div class="factor-chip"><span>VOL FLOW</span><strong id="fVol" style="color:var(--accent-violet);">1.0x</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Pane: Thermodynamic Risk Containment Gate -->
+    <div class="console-pane">
+      <div class="pane-header">
+        <span>🛡️ Thermodynamic Risk Containment Gate</span>
+        <span class="mono" id="riskGateBadge" style="color:var(--accent-emerald);">CONTAINMENT NOMINAL</span>
+      </div>
+      <div class="risk-gate-box" id="riskGateBox">
+        <div class="risk-inputs-grid">
+          <div class="risk-field">
+            <label for="inputCapital">Account Capital ($)</label>
+            <input type="number" id="inputCapital" value="25000" min="100" step="500" />
+          </div>
+          <div class="risk-field">
+            <label for="inputPosition">Position Size ($)</label>
+            <input type="number" id="inputPosition" value="5000" min="100" step="250" />
+          </div>
+          <div class="risk-field">
+            <label for="inputLeverage">Leverage (x)</label>
+            <input type="number" id="inputLeverage" value="2" min="1" max="100" step="1" />
+          </div>
+        </div>
+
+        <div class="thermal-bar-track">
+          <div class="thermal-bar-fill" id="thermalBarFill"></div>
+        </div>
+
+        <div class="risk-status-line">
+          <span id="riskExposureText" style="color:var(--text-secondary);">Effective Exposure: $10,000 (0.40x Cap)</span>
+          <span id="riskDrawdownText" style="color:var(--accent-emerald); font-weight:700;">Est. 1σ Swing: ±$240 (0.96%)</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       JAVASCRIPT ENGINE: LIVE DATA FETCHER, SEMANTIC PIVOT DETECTOR & OSCILLOSCOPE
+       ========================================================================== -->
+  <script>
+    /**
+     * LUMINAL MARKET OSCILLOSCOPE & SEMANTIC PREDICTOR
+     * Pure Client-Side HTML5 / CSS3 / Canvas 2D / ES6+
+     */
+
+    // --------------------------------------------------------------------------
+    // 1. APPLICATION STATE
+    // --------------------------------------------------------------------------
+    const AppState = {
+      primaryTicker: 'NVDA',
+      secondaryTicker: null,
+      feedMode: 'SIMULATED', // 'LIVE' or 'SIMULATED'
+      lens: 'ALL',           // 'ALL', 'MOUNTAINS_VALLEYS', 'VOLUME_SPIKES', 'MOMENTUM_DIV'
+      bars: [],              // Primary OHLCV array: { time, open, high, low, close, volume }
+      secondaryBars: [],     // Optional normalized comparison ticker bars
+      zoomRange: null,       // { startIdx, endIdx } or null for full dataset
+      semanticBoxes: [],     // Detected structural bounding boxes
+      hoveredBox: null,
+      selectedBox: null,
+      prediction: {
+        points: [],          // Array of { price, upper, lower } for +15 future bars
+        emaSlope: 0,
+        rsi: 50,
+        atrPct: 1.5,
+        volRatio: 1.0,
+        targetPrice: 0,
+        pctChange: 0
+      },
+      // Rubber-Band Drag Zoom State
+      dragZoom: {
+        active: false,
+        startX: 0,
+        startY: 0,
+        currX: 0,
+        currY: 0
+      },
+      mousePos: { x: -1, y: -1 },
+      isStreaming: false,
+      streamInterval: null,
+      pulsePhase: 0
+    };
+
+    // Realistic baseline seed prices for instant offline/fallback realism
+    const SEED_PROFILES = {
+      'NVDA': { base: 136.50, drift: 0.0018, vol: 0.022 },
+      'SPY': { base: 588.20, drift: 0.0006, vol: 0.008 },
+      'AAPL': { base: 229.40, drift: 0.0009, vol: 0.012 },
+      'BTC-USD': { base: 89400.00, drift: 0.0022, vol: 0.028 },
+      'TSLA': { base: 312.80, drift: 0.0015, vol: 0.031 },
+      'AMD': { base: 146.10, drift: 0.0010, vol: 0.021 }
+    };
+
+    // --------------------------------------------------------------------------
+    // 2. DOM REFERENCES
+    // --------------------------------------------------------------------------
+    const dom = {
+      tickerInput: document.getElementById('tickerInput'),
+      btnLoadTicker: document.getElementById('btnLoadTicker'),
+      lensSelect: document.getElementById('lensSelect'),
+      btnToggleStream: document.getElementById('btnToggleStream'),
+      btnSimShock: document.getElementById('btnSimShock'),
+      btnResetZoom: document.getElementById('btnResetZoom'),
+      astTokens: document.getElementById('astTokens'),
+      feedSourceBadge: document.getElementById('feedSourceBadge'),
+      hudSymbolLabel: document.getElementById('hudSymbolLabel'),
+      hudCurrentPrice: document.getElementById('hudCurrentPrice'),
+      hudPredictedPrice: document.getElementById('hudPredictedPrice'),
+      zoomRangeBadge: document.getElementById('zoomRangeBadge'),
+      narratorHeadline: document.getElementById('narratorHeadline'),
+      narratorBody: document.getElementById('narratorBody'),
+      fEma: document.getElementById('fEma'),
+      fRsi: document.getElementById('fRsi'),
+      fAtr: document.getElementById('fAtr'),
+      fVol: document.getElementById('fVol'),
+      inputCapital: document.getElementById('inputCapital'),
+      inputPosition: document.getElementById('inputPosition'),
+      inputLeverage: document.getElementById('inputLeverage'),
+      riskGateBox: document.getElementById('riskGateBox'),
+      riskGateBadge: document.getElementById('riskGateBadge'),
+      thermalBarFill: document.getElementById('thermalBarFill'),
+      riskExposureText: document.getElementById('riskExposureText'),
+      riskDrawdownText: document.getElementById('riskDrawdownText'),
+      canvas: document.getElementById('marketCanvas'),
+      stage: document.getElementById('oscilloscopeStage')
+    };
+
+    const ctx = dom.canvas.getContext('2d');
+
+    // --------------------------------------------------------------------------
+    // 3. LIVE MARKET DATA FETCHER (YAHOO FINANCE VIA CORS PROXY + STOCHASTIC FALLBACK)
+    // --------------------------------------------------------------------------
+    async function fetchYahooChart(symbol) {
+      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=6mo`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+      try {
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error('Proxy response not OK');
+        const json = await res.json();
+        const result = json?.chart?.result?.[0];
+        if (!result || !result.timestamp || !result.indicators?.quote?.[0]) {
+          throw new Error('Malformed Yahoo Finance payload');
+        }
+
+        const timestamps = result.timestamp;
+        const quote = result.indicators.quote[0];
+        const bars = [];
+
+        for (let i = 0; i < timestamps.length; i++) {
+          const c = quote.close[i];
+          const o = quote.open[i];
+          const h = quote.high[i];
+          const l = quote.low[i];
+          const v = quote.volume[i];
+          if (c != null && o != null && h != null && l != null) {
+            const d = new Date(timestamps[i] * 1000);
+            bars.push({
+              time: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+              open: o,
+              high: h,
+              low: l,
+              close: c,
+              volume: v || 1000000
+            });
+          }
+        }
+        if (bars.length < 25) throw new Error('Insufficient bars');
+        return bars.slice(-110); // Keep last 110 trading days for crisp inspection
+      } catch (err) {
+        clearTimeout(timeoutId);
+        return null;
+      }
+    }
+
+    /**
+     * High-Fidelity Stochastic Jump-Diffusion Market Simulator (Seamless Fallback)
+     * Generates realistic structural cycles, accumulation dips, resistance peaks, and volume bursts
+     */
+    function generateStochasticMarket(symbol, count = 110) {
+      const cleanSym = symbol.toUpperCase().trim();
+      // Deterministic hash seed from symbol characters if not in SEED_PROFILES
+      let hash = 0;
+      for (let i = 0; i < cleanSym.length; i++) hash = cleanSym.charCodeAt(i) + ((hash << 5) - hash);
+      const profile = SEED_PROFILES[cleanSym] || {
+        base: 60 + (Math.abs(hash) % 280),
+        drift: 0.001,
+        vol: 0.018
+      };
+
+      const bars = [];
+      let price = profile.base * 0.86;
+      const now = Date.now();
+
+      for (let i = 0; i < count; i++) {
+        // Multi-harmonic regime wave so clear structural valleys & mountains form
+        const wave = Math.sin(i * 0.16) * 0.006 + Math.cos(i * 0.07) * 0.004;
+        const shock = (Math.random() < 0.07) ? (Math.random() - 0.48) * profile.vol * 2.6 : 0;
+        const ret = profile.drift + wave + (Math.random() - 0.5) * profile.vol * 1.9 + shock;
+
+        const open = price;
+        const close = Math.max(1, open * (1 + ret));
+        const high = Math.max(open, close) * (1 + Math.random() * profile.vol * 0.65);
+        const low = Math.min(open, close) * (1 - Math.random() * profile.vol * 0.65);
+
+        // Volume surges near local turning points or shock candles
+        const baseVol = 18000000 + (Math.abs(hash) % 12000000);
+        const volMultiplier = (Math.abs(ret) > profile.vol * 1.1) ? (1.8 + Math.random() * 1.4) : (0.7 + Math.random() * 0.6);
+
+        const d = new Date(now - (count - i) * 86400000);
+        bars.push({
+          time: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          open,
+          high,
+          low,
+          close,
+          volume: Math.round(baseVol * volMultiplier)
+        });
+
+        price = close;
+      }
+      return bars;
+    }
+
+    async function loadSymbols(rawInput) {
+      const parts = rawInput
+        .split(',')
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+
+      if (parts.length === 0) return;
+
+      const primary = parts[0];
+      const secondary = parts[1] || null;
+
+      AppState.primaryTicker = primary;
+      AppState.secondaryTicker = secondary;
+      AppState.zoomRange = null;
+      AppState.selectedBox = null;
+      AppState.hoveredBox = null;
+      dom.btnResetZoom.disabled = true;
+
+      dom.feedSourceBadge.textContent = `FETCHING ${primary}...`;
+      dom.feedSourceBadge.style.color = 'var(--accent-amber)';
+
+      // Fetch primary ticker
+      let primaryData = await fetchYahooChart(primary);
+      if (primaryData) {
+        AppState.feedMode = 'LIVE';
+        AppState.bars = primaryData;
+      } else {
+        AppState.feedMode = 'SIMULATED';
+        AppState.bars = generateStochasticMarket(primary, 110);
+      }
+
+      // Optional secondary comparison ticker
+      if (secondary) {
+        let secData = await fetchYahooChart(secondary);
+        if (!secData) secData = generateStochasticMarket(secondary, AppState.bars.length);
+        // Align lengths
+        const minLen = Math.min(AppState.bars.length, secData.length);
+        AppState.bars = AppState.bars.slice(-minLen);
+        AppState.secondaryBars = secData.slice(-minLen);
+      } else {
+        AppState.secondaryBars = [];
+      }
+
+      dom.feedSourceBadge.textContent = AppState.feedMode === 'LIVE'
+        ? `FEED: LIVE YAHOO TELEMETRY (${primary})`
+        : `FEED: STOCHASTIC JUMP-DIFFUSION (${primary})`;
+      dom.feedSourceBadge.style.color = AppState.feedMode === 'LIVE' ? 'var(--accent-emerald)' : 'var(--accent-cyan)';
+
+      runSemanticAnalysisAndForecast();
+    }
+
+    // --------------------------------------------------------------------------
+    // 4. SEMANTIC PIVOT DETECTION & MULTI-VARIABLE PREDICTION ENGINE
+    // --------------------------------------------------------------------------
+    function getVisibleBars() {
+      if (!AppState.zoomRange) return { slice: AppState.bars, offset: 0 };
+      const { startIdx, endIdx } = AppState.zoomRange;
+      return {
+        slice: AppState.bars.slice(startIdx, endIdx + 1),
+        offset: startIdx
+      };
+    }
+
+    function runSemanticAnalysisAndForecast() {
+      const { slice, offset } = getVisibleBars();
+      if (slice.length < 6) return;
+
+      const avgVol = slice.reduce((acc, b) => acc + b.volume, 0) / slice.length;
+      const boxes = [];
+      const lookback = Math.max(3, Math.floor(slice.length / 18));
+
+      // 1. Scan visible window for Semantic Terrain Boxes (Valleys, Mountains, Breakout Gaps)
+      for (let i = lookback; i < slice.length - lookback; i++) {
+        const curr = slice[i];
+        let isLocalMin = true;
+        let isLocalMax = true;
+
+        for (let j = i - lookback; j <= i + lookback; j++) {
+          if (i === j) continue;
+          if (slice[j].low < curr.low) isLocalMin = false;
+          if (slice[j].high > curr.high) isLocalMax = false;
+        }
+
+        const volRatio = curr.volume / avgVol;
+        const candleRangePct = ((curr.high - curr.low) / curr.open) * 100;
+
+        // Accumulation Valley (Structural Low)
+        if (isLocalMin && (AppState.lens === 'ALL' || AppState.lens === 'MOUNTAINS_VALLEYS' || (AppState.lens === 'VOLUME_SPIKES' && volRatio > 1.25))) {
+          boxes.push({
+            id: `val_${offset + i}`,
+            type: 'VALLEY',
+            label: 'ACCUMULATION VALLEY',
+            color: '#10B981',
+            startIdx: Math.max(0, i - 2),
+            endIdx: Math.min(slice.length - 1, i + 2),
+            pivotIdx: i,
+            price: curr.low,
+            volRatio,
+            explanation: `Structural demand floor detected at $${curr.low.toFixed(2)} (${curr.time}) with ${volRatio.toFixed(2)}x relative volume. Buyers absorbed downward liquidity.`
+          });
+        }
+
+        // Resistance Mountain / Exhaustion Peak (Structural High)
+        if (isLocalMax && (AppState.lens === 'ALL' || AppState.lens === 'MOUNTAINS_VALLEYS' || (AppState.lens === 'MOMENTUM_DIV' && volRatio < 0.95))) {
+          boxes.push({
+            id: `mnt_${offset + i}`,
+            type: 'MOUNTAIN',
+            label: volRatio < 0.9 ? 'EXHAUSTION PEAK' : 'RESISTANCE MOUNTAIN',
+            color: volRatio < 0.9 ? '#F59E0B' : '#F43F5E',
+            startIdx: Math.max(0, i - 2),
+            endIdx: Math.min(slice.length - 1, i + 2),
+            pivotIdx: i,
+            price: curr.high,
+            volRatio,
+            explanation: `Overhead supply ceiling at $${curr.high.toFixed(2)} (${curr.time}). ${volRatio < 0.9 ? 'Declining volume indicates buyer exhaustion.' : 'Heavy institutional profit-taking rejected higher prices.'}`
+          });
+        }
+
+        // Liquidity Breakout Gap (High Volatility + Volume Surge)
+        if (!isLocalMin && !isLocalMax && volRatio > 1.55 && candleRangePct > 2.2 && (AppState.lens === 'ALL' || AppState.lens === 'VOLUME_SPIKES' || AppState.lens === 'MOMENTUM_DIV')) {
+          boxes.push({
+            id: `gap_${offset + i}`,
+            type: 'BREAKOUT',
+            label: 'LIQUIDITY BREAKOUT GAP',
+            color: '#A855F7',
+            startIdx: Math.max(0, i - 1),
+            endIdx: Math.min(slice.length - 1, i + 1),
+            pivotIdx: i,
+            price: curr.close,
+            volRatio,
+            explanation: `High-velocity displacement candle on ${curr.time} (${candleRangePct.toFixed(1)}% range, ${volRatio.toFixed(2)}x volume spike). Marks an institutional imbalance zone.`
+          });
+        }
+      }
+
+      // Deduplicate overlapping boxes of same type
+      AppState.semanticBoxes = boxes.filter((box, idx, arr) => {
+        if (idx === 0) return true;
+        const prev = arr[idx - 1];
+        return !(prev.type === box.type && Math.abs(prev.pivotIdx - box.pivotIdx) <= lookback);
+      });
+
+      // 2. Multi-Variable Predictive Engine (Computes Light-Blue Trajectory Vector)
+      computeMultiVariablePrediction(slice, avgVol);
+      updateHudAndNarrator(slice);
+      evaluateThermodynamicRisk();
+    }
+
+    function computeMultiVariablePrediction(slice, avgVol) {
+      const n = slice.length;
+      const latest = slice[n - 1];
+
+      // Variable 1: EMA Slope (Short vs Long window)
+      const shortWin = Math.min(8, n);
+      const longWin = Math.min(21, n);
+      const shortAvg = slice.slice(-shortWin).reduce((s, b) => s + b.close, 0) / shortWin;
+      const longAvg = slice.slice(-longWin).reduce((s, b) => s + b.close, 0) / longWin;
+      const emaSlope = (shortAvg - longAvg) / longAvg;
+
+      // Variable 2: RSI (14-period relative strength)
+      let gains = 0, losses = 0;
+      const rsiPeriod = Math.min(14, n - 1);
+      for (let i = n - rsiPeriod; i < n; i++) {
+        const diff = slice[i].close - slice[i - 1].close;
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      const rs = losses === 0 ? 100 : gains / losses;
+      const rsi = 100 - (100 / (1 + rs));
+
+      // Variable 3: ATR Volatility %
+      let trSum = 0;
+      for (let i = n - rsiPeriod; i < n; i++) {
+        const tr = Math.max(
+          slice[i].high - slice[i].low,
+          Math.abs(slice[i].high - slice[i - 1].close),
+          Math.abs(slice[i].low - slice[i - 1].close)
+        );
+        trSum += tr;
+      }
+      const atr = trSum / rsiPeriod;
+      const atrPct = (atr / latest.close) * 100;
+
+      // Variable 4: Recent Volume Pressure
+      const recentVol = slice.slice(-3).reduce((s, b) => s + b.volume, 0) / 3;
+      const volRatio = recentVol / avgVol;
+
+      // Synthesize forward drift per step based on active lens weighting
+      let rsiMeanReversion = (50 - rsi) * 0.00025; // Overbought (>70) pulls down; oversold (<30) lifts up
+      let trendWeight = emaSlope * 0.22;
+      let volBoost = (volRatio - 1) * Math.sign(trendWeight) * 0.0015;
+
+      if (AppState.lens === 'MOUNTAINS_VALLEYS') {
+        trendWeight *= 0.6;
+        rsiMeanReversion *= 1.6;
+      } else if (AppState.lens === 'VOLUME_SPIKES') {
+        volBoost *= 2.1;
+      } else if (AppState.lens === 'MOMENTUM_DIV') {
+        rsiMeanReversion *= 1.8;
+      }
+
+      const stepDrift = trendWeight + rsiMeanReversion + volBoost;
+
+      // Project +15 bars forward into future canvas space
+      const horizon = 15;
+      const points = [];
+      let projPrice = latest.close;
+
+      for (let step = 1; step <= horizon; step++) {
+        // Gentle harmonic wave + composite drift
+        const damping = Math.pow(0.95, step);
+        projPrice = projPrice * (1 + stepDrift * damping);
+        const coneSpread = atr * Math.sqrt(step) * 0.72;
+        points.push({
+          step,
+          price: projPrice,
+          upper: projPrice + coneSpread,
+          lower: Math.max(0.01, projPrice - coneSpread)
+        });
+      }
+
+      const finalTarget = points[points.length - 1].price;
+      const pctChange = ((finalTarget - latest.close) / latest.close) * 100;
+
+      AppState.prediction = {
+        points,
+        emaSlope,
+        rsi,
+        atrPct,
+        volRatio,
+        targetPrice: finalTarget,
+        pctChange
+      };
+    }
+
+    function updateHudAndNarrator(slice) {
+      const latest = slice[slice.length - 1];
+      const pred = AppState.prediction;
+
+      dom.hudSymbolLabel.textContent = AppState.secondaryTicker
+        ? `${AppState.primaryTicker} vs ${AppState.secondaryTicker} (NORMALIZED)`
+        : `${AppState.primaryTicker} // TELEMETRY`;
+      dom.hudCurrentPrice.textContent = `$${latest.close.toFixed(2)}`;
+
+      const sign = pred.pctChange >= 0 ? '+' : '';
+      dom.hudPredictedPrice.textContent = `$${pred.targetPrice.toFixed(2)} (${sign}${pred.pctChange.toFixed(2)}%)`;
+      dom.hudPredictedPrice.style.color = pred.pctChange >= 0 ? 'var(--accent-cyan)' : 'var(--accent-amber)';
+
+      dom.zoomRangeBadge.textContent = AppState.zoomRange
+        ? `WINDOW: ZOOMED (${slice.length} BARS)`
+        : `WINDOW: FULL (${slice.length} BARS)`;
+
+      // Factor Chips
+      dom.fEma.textContent = `${pred.emaSlope >= 0 ? '+' : ''}${(pred.emaSlope * 100).toFixed(2)}%`;
+      dom.fEma.style.color = pred.emaSlope >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)';
+
+      dom.fRsi.textContent = pred.rsi.toFixed(1);
+      dom.fRsi.style.color = pred.rsi > 70 ? 'var(--accent-crimson)' : (pred.rsi < 30 ? 'var(--accent-emerald)' : 'var(--accent-cyan)');
+
+      dom.fAtr.textContent = `${pred.atrPct.toFixed(2)}%`;
+      dom.fVol.textContent = `${pred.volRatio.toFixed(2)}x`;
+
+      // Update AST Ribbon & Narrator if a specific box is inspected or default summary
+      const activeBox = AppState.selectedBox || AppState.hoveredBox;
+      if (activeBox) {
+        dom.astTokens.innerHTML = `
+          <span class="tok tok-ticker">${AppState.primaryTicker}</span>
+          <span class="tok ${activeBox.type === 'VALLEY' ? 'tok-signal' : 'tok-warn'}">[${activeBox.label}]</span>
+          <span class="tok tok-lens">PIVOT @ $${activeBox.price.toFixed(2)}</span>
+          <span class="tok tok-ticker">VOL: ${activeBox.volRatio.toFixed(2)}x</span>
+        `;
+        dom.narratorHeadline.textContent = `INSPECTING [${activeBox.label}] // $${activeBox.price.toFixed(2)}`;
+        dom.narratorBody.textContent = activeBox.explanation;
+      } else {
+        const valleyCount = AppState.semanticBoxes.filter(b => b.type === 'VALLEY').length;
+        const mntCount = AppState.semanticBoxes.filter(b => b.type === 'MOUNTAIN').length;
+        dom.astTokens.innerHTML = `
+          <span class="tok tok-ticker">TICKER: ${AppState.primaryTicker}</span>
+          <span class="tok tok-lens">LENS: ${AppState.lens}</span>
+          <span class="tok tok-signal">VALLEYS: ${valleyCount}</span>
+          <span class="tok tok-warn">MOUNTAINS: ${mntCount}</span>
+          <span class="tok tok-ticker">FORECAST: ${sign}${pred.pctChange.toFixed(2)}%</span>
+        `;
+        dom.narratorHeadline.textContent = `OMNISCIENT VECTOR PROJECTION // ${AppState.primaryTicker}`;
+        dom.narratorBody.innerHTML = `Detected <strong>${valleyCount} accumulation valleys</strong> and <strong>${mntCount} resistance mountains</strong> in active window. Light-blue forecast projects <strong>$${pred.targetPrice.toFixed(2)}</strong> (${sign}${pred.pctChange.toFixed(2)}%) driven by ${(pred.emaSlope * 100).toFixed(2)}% EMA slope and RSI ${pred.rsi.toFixed(1)}.`;
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 5. THERMODYNAMIC RISK CONTAINMENT GATE
+    // --------------------------------------------------------------------------
+    function evaluateThermodynamicRisk() {
+      const capital = Math.max(1, parseFloat(dom.inputCapital.value) || 25000);
+      const posSize = Math.max(0, parseFloat(dom.inputPosition.value) || 5000);
+      const leverage = Math.max(1, parseFloat(dom.inputLeverage.value) || 1);
+
+      const exposure = posSize * leverage;
+      const exposureRatio = exposure / capital;
+      const atrFraction = (AppState.prediction.atrPct || 1.5) / 100;
+      const oneSigmaSwing = exposure * atrFraction;
+      const accountSwingPct = (oneSigmaSwing / capital) * 100;
+
+      dom.riskExposureText.textContent = `Exposure: $${exposure.toLocaleString()} (${exposureRatio.toFixed(2)}x Cap)`;
+      dom.riskDrawdownText.textContent = `Est. 1σ Swing: ±$${Math.round(oneSigmaSwing).toLocaleString()} (${accountSwingPct.toFixed(2)}%)`;
+
+      // Thermal stress score (if 1-sigma swing exceeds 3.5% of account capital -> BREACH)
+      const stressPct = Math.min(100, Math.round((accountSwingPct / 4.0) * 100));
+      dom.thermalBarFill.style.width = `${stressPct}%`;
+
+      if (accountSwingPct >= 3.5 || exposure > capital * 4) {
+        dom.riskGateBox.classList.add('breached');
+        dom.riskGateBadge.textContent = '⛔ CIRCUIT BREAKER TRIPPED';
+        dom.riskGateBadge.style.color = 'var(--accent-crimson)';
+        dom.thermalBarFill.style.backgroundColor = 'var(--accent-crimson)';
+        dom.riskDrawdownText.style.color = 'var(--accent-crimson)';
+      } else if (accountSwingPct >= 1.8) {
+        dom.riskGateBox.classList.remove('breached');
+        dom.riskGateBadge.textContent = '⚠ ELEVATED THERMAL LOAD';
+        dom.riskGateBadge.style.color = 'var(--accent-amber)';
+        dom.thermalBarFill.style.backgroundColor = 'var(--accent-amber)';
+        dom.riskDrawdownText.style.color = 'var(--accent-amber)';
+      } else {
+        dom.riskGateBox.classList.remove('breached');
+        dom.riskGateBadge.textContent = 'CONTAINMENT NOMINAL';
+        dom.riskGateBadge.style.color = 'var(--accent-emerald)';
+        dom.thermalBarFill.style.backgroundColor = 'var(--accent-emerald)';
+        dom.riskDrawdownText.style.color = 'var(--accent-emerald)';
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. HTML5 CANVAS OSCILLOSCOPE RENDERER (60FPS)
+    // --------------------------------------------------------------------------
+    function resizeCanvas() {
+      const rect = dom.stage.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      dom.canvas.width = rect.width * dpr;
+      dom.canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    // Store coordinate mapping metrics for interactive hit-testing & rubber-band zoom
+    let chartMetrics = null;
+
+    function renderCanvasLoop() {
+      const width = dom.stage.clientWidth;
+      const height = dom.stage.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      AppState.pulsePhase += 0.05;
+
+      const { slice, offset } = getVisibleBars();
+      if (slice.length < 2) {
+        requestAnimationFrame(renderCanvasLoop);
+        return;
+      }
+
+      const pad = { top: 82, right: 68, bottom: 34, left: 24 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const predPoints = AppState.prediction.points;
+      const totalSlots = slice.length + predPoints.length;
+
+      // Determine Y price bounds across visible historical bars + future prediction cone
+      let minP = Infinity, maxP = -Infinity;
+      slice.forEach(b => {
+        if (b.low < minP) minP = b.low;
+        if (b.high > maxP) maxP = b.high;
+      });
+      predPoints.forEach(pt => {
+        if (pt.lower < minP) minP = pt.lower;
+        if (pt.upper > maxP) maxP = pt.upper;
+      });
+      const marginP = (maxP - minP) * 0.08 || 1;
+      minP -= marginP;
+      maxP += marginP;
+
+      const idxToX = (idx) => pad.left + (idx / Math.max(1, totalSlots - 1)) * plotW;
+      const priceToY = (p) => pad.top + (1 - (p - minP) / (maxP - minP)) * plotH;
+
+      chartMetrics = { pad, plotW, plotH, totalSlots, sliceLen: slice.length, offset, idxToX, priceToY };
+
+      // 1. Subtle Oscilloscope Engineering Grid
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.06)';
+      ctx.lineWidth = 1;
+      const gridRows = 5;
+      for (let r = 0; r <= gridRows; r++) {
+        const y = pad.top + (r / gridRows) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+
+        // Right-axis price labels
+        const priceVal = maxP - (r / gridRows) * (maxP - minP);
+        ctx.fillStyle = '#64748B';
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`$${priceVal.toFixed(2)}`, pad.left + plotW + 8, y + 3);
+      }
+
+      // Vertical Divider separating Historical Reality from Future Prediction Zone
+      const nowX = idxToX(slice.length - 1);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(nowX, pad.top);
+      ctx.lineTo(nowX, pad.top + plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.font = '700 9px "JetBrains Mono", monospace';
+      ctx.fillText('FUTURE FORECAST HORIZON →', nowX + 8, pad.top + 12);
+
+      // 2. Subtle Volume Histogram at Bottom of Plot
+      const maxVol = Math.max(...slice.map(b => b.volume), 1);
+      const barW = Math.max(2, (plotW / totalSlots) * 0.55);
+      slice.forEach((b, i) => {
+        const x = idxToX(i) - barW / 2;
+        const vH = (b.volume / maxVol) * (plotH * 0.22);
+        ctx.fillStyle = b.close >= b.open ? 'rgba(16, 185, 129, 0.14)' : 'rgba(244, 63, 94, 0.14)';
+        ctx.fillRect(x, pad.top + plotH - vH, barW, vH);
+      });
+
+      // 3. Optional Secondary Comparison Ticker (Normalized % Overlay)
+      if (AppState.secondaryTicker && AppState.secondaryBars.length > 0) {
+        const secSlice = AppState.zoomRange
+          ? AppState.secondaryBars.slice(AppState.zoomRange.startIdx, AppState.zoomRange.endIdx + 1)
+          : AppState.secondaryBars;
+        if (secSlice.length === slice.length) {
+          const basePrimary = slice[0].close;
+          const baseSec = secSlice[0].close;
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath();
+          secSlice.forEach((sb, i) => {
+            const normPrice = basePrimary * (sb.close / baseSec);
+            const sx = idxToX(i);
+            const sy = priceToY(normPrice);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // 4. Primary Historical Price Trajectory (Clean Glowing Oscilloscope Trace + Subtle Wicks)
+      slice.forEach((b, i) => {
+        const x = idxToX(i);
+        ctx.strokeStyle = b.close >= b.open ? 'rgba(16, 185, 129, 0.28)' : 'rgba(244, 63, 94, 0.28)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, priceToY(b.high));
+        ctx.lineTo(x, priceToY(b.low));
+        ctx.stroke();
+      });
+
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      slice.forEach((b, i) => {
+        const x = idxToX(i);
+        const y = priceToY(b.close);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // 5. Semantic Bounding Boxes (Valleys, Resistance Mountains, Breakout Gaps)
+      AppState.hoveredBox = null;
+      AppState.semanticBoxes.forEach((box) => {
+        const x1 = idxToX(box.startIdx) - 6;
+        const x2 = idxToX(box.endIdx) + 6;
+        let boxMin = Infinity, boxMax = -Infinity;
+        for (let k = box.startIdx; k <= box.endIdx; k++) {
+          if (slice[k].low < boxMin) boxMin = slice[k].low;
+          if (slice[k].high > boxMax) boxMax = slice[k].high;
+        }
+        const y1 = priceToY(boxMax) - 8;
+        const y2 = priceToY(boxMin) + 8;
+        const bw = Math.max(24, x2 - x1);
+        const bh = Math.max(22, y2 - y1);
+
+        // Save screen rect for hit testing
+        box._rect = { x: x1, y: y1, w: bw, h: bh };
+
+        // Check mouse hover
+        if (
+          AppState.mousePos.x >= x1 && AppState.mousePos.x <= x1 + bw &&
+          AppState.mousePos.y >= y1 && AppState.mousePos.y <= y1 + bh
+        ) {
+          AppState.hoveredBox = box;
+        }
+
+        const isHighlighted = (AppState.hoveredBox?.id === box.id) || (AppState.selectedBox?.id === box.id);
+
+        ctx.save();
+        ctx.fillStyle = isHighlighted ? `${box.color}33` : `${box.color}16`;
+        ctx.strokeStyle = box.color;
+        ctx.lineWidth = isHighlighted ? 2.2 : 1.3;
+        ctx.beginPath();
+        ctx.roundRect(x1, y1, bw, bh, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Semantic Label Tag
+        const tagY = box.type === 'VALLEY' ? y2 + 12 : y1 - 5;
+        ctx.fillStyle = box.color;
+        ctx.font = '700 9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`[${box.label}]`, x1, tagY);
+        ctx.restore();
+      });
+
+      // 6. LIGHT-BLUE PREDICTION VECTOR & CONFIDENCE CONE (#38BDF8)
+      if (predPoints.length > 0) {
+        const lastHist = slice[slice.length - 1];
+        const startX = idxToX(slice.length - 1);
+        const startY = priceToY(lastHist.close);
+
+        // Translucent Confidence Cone
+        ctx.save();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        predPoints.forEach((pt, idx) => {
+          ctx.lineTo(idxToX(slice.length + idx), priceToY(pt.upper));
+        });
+        for (let idx = predPoints.length - 1; idx >= 0; idx--) {
+          ctx.lineTo(idxToX(slice.length + idx), priceToY(predPoints[idx].lower));
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Glowing Light-Blue Forecast Trajectory Line
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 2.8;
+        ctx.shadowColor = '#38BDF8';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        predPoints.forEach((pt, idx) => {
+          ctx.lineTo(idxToX(slice.length + idx), priceToY(pt.price));
+        });
+        ctx.stroke();
+
+        // Pulsing Target Terminal Beacon
+        const endPt = predPoints[predPoints.length - 1];
+        const endX = idxToX(slice.length + predPoints.length - 1);
+        const endY = priceToY(endPt.price);
+        const pulseR = 5 + Math.sin(AppState.pulsePhase) * 2.5;
+
+        ctx.fillStyle = '#38BDF8';
+        ctx.beginPath();
+        ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(endX, endY, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 7. Rubber-Band Box Zoom Selection Overlay
+      if (AppState.dragZoom.active) {
+        const dz = AppState.dragZoom;
+        const rx = Math.min(dz.startX, dz.currX);
+        const ry = Math.min(dz.startY, dz.currY);
+        const rw = Math.abs(dz.currX - dz.startX);
+        const rh = Math.abs(dz.currY - dz.startY);
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.restore();
+      }
+
+      ctx.restore();
+      requestAnimationFrame(renderCanvasLoop);
+    }
+
+    // --------------------------------------------------------------------------
+    // 7. INTERACTIVE MOUSE EVENTS (RUBBER-BAND ZOOM & BOX INSPECTION)
+    // --------------------------------------------------------------------------
+    dom.canvas.addEventListener('mousedown', (e) => {
+      const rect = dom.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // If clicking directly on a semantic box, lock/toggle inspection
+      if (AppState.hoveredBox) {
+        AppState.selectedBox = (AppState.selectedBox?.id === AppState.hoveredBox.id) ? null : AppState.hoveredBox;
+        updateHudAndNarrator(getVisibleBars().slice);
+        return;
+      }
+
+      AppState.dragZoom.active = true;
+      AppState.dragZoom.startX = x;
+      AppState.dragZoom.startY = y;
+      AppState.dragZoom.currX = x;
+      AppState.dragZoom.currY = y;
+    });
+
+    dom.canvas.addEventListener('mousemove', (e) => {
+      const rect = dom.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      AppState.mousePos = { x, y };
+
+      if (AppState.dragZoom.active) {
+        AppState.dragZoom.currX = x;
+        AppState.dragZoom.currY = y;
+      } else {
+        updateHudAndNarrator(getVisibleBars().slice);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!AppState.dragZoom.active) return;
+      const dz = AppState.dragZoom;
+      dz.active = false;
+
+      const dragWidth = Math.abs(dz.currX - dz.startX);
+      if (dragWidth > 24 && chartMetrics) {
+        const leftX = Math.min(dz.startX, dz.currX);
+        const rightX = Math.max(dz.startX, dz.currX);
+
+        // Map screen X coordinates back to bar indices
+        const rawStart = Math.floor(((leftX - chartMetrics.pad.left) / chartMetrics.plotW) * (chartMetrics.totalSlots - 1));
+        const rawEnd = Math.ceil(((rightX - chartMetrics.pad.left) / chartMetrics.plotW) * (chartMetrics.totalSlots - 1));
+
+        const clampedStart = Math.max(0, Math.min(chartMetrics.sliceLen - 6, rawStart));
+        const clampedEnd = Math.max(clampedStart + 5, Math.min(chartMetrics.sliceLen - 1, rawEnd));
+
+        AppState.zoomRange = {
+          startIdx: chartMetrics.offset + clampedStart,
+          endIdx: chartMetrics.offset + clampedEnd
+        };
+        AppState.selectedBox = null;
+        dom.btnResetZoom.disabled = false;
+        runSemanticAnalysisAndForecast();
+      }
+    });
+
+    // --------------------------------------------------------------------------
+    // 8. TOOLBAR CONTROLS, STREAMING & SHOCK SIMULATION
+    // --------------------------------------------------------------------------
+    dom.btnLoadTicker.addEventListener('click', () => loadSymbols(dom.tickerInput.value));
+    dom.tickerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadSymbols(dom.tickerInput.value);
+    });
+
+    document.querySelectorAll('.chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dom.tickerInput.value = btn.dataset.sym;
+        loadSymbols(btn.dataset.sym);
+      });
+    });
+
+    dom.lensSelect.addEventListener('change', (e) => {
+      AppState.lens = e.target.value;
+      AppState.selectedBox = null;
+      runSemanticAnalysisAndForecast();
+    });
+
+    dom.btnResetZoom.addEventListener('click', () => {
+      AppState.zoomRange = null;
+      AppState.selectedBox = null;
+      dom.btnResetZoom.disabled = true;
+      runSemanticAnalysisAndForecast();
+    });
+
+    // Inject a dramatic market shock candle to watch the light-blue vector adapt live
+    dom.btnSimShock.addEventListener('click', () => {
+      if (AppState.bars.length === 0) return;
+      const last = AppState.bars[AppState.bars.length - 1];
+      const shockDir = Math.random() > 0.45 ? 1 : -1;
+      const shockPct = shockDir * (0.045 + Math.random() * 0.035);
+      const newClose = Math.max(1, last.close * (1 + shockPct));
+
+      AppState.bars.push({
+        time: 'SHOCK',
+        open: last.close,
+        high: Math.max(last.close, newClose) * 1.01,
+        low: Math.min(last.close, newClose) * 0.99,
+        close: newClose,
+        volume: Math.round(last.volume * 2.6)
+      });
+      if (AppState.bars.length > 130) AppState.bars.shift();
+
+      runSemanticAnalysisAndForecast();
+    });
+
+    // Toggle real-time tick streaming
+    dom.btnToggleStream.addEventListener('click', () => {
+      AppState.isStreaming = !AppState.isStreaming;
+      if (AppState.isStreaming) {
+        dom.btnToggleStream.classList.add('btn-active-stream');
+        dom.btnToggleStream.innerHTML = '<span>▶ Stream: LIVE</span>';
+        AppState.streamInterval = setInterval(() => {
+          const last = AppState.bars[AppState.bars.length - 1];
+          if (!last) return;
+          const delta = (Math.random() - 0.49) * 0.008;
+          const nextClose = Math.max(1, last.close * (1 + delta));
+          AppState.bars.push({
+            time: new Date().toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }),
+            open: last.close,
+            high: Math.max(last.close, nextClose) * 1.003,
+            low: Math.min(last.close, nextClose) * 0.997,
+            close: nextClose,
+            volume: Math.round(last.volume * (0.8 + Math.random() * 0.5))
+          });
+          if (AppState.bars.length > 130) AppState.bars.shift();
+          runSemanticAnalysisAndForecast();
+        }, 1200);
+      } else {
+        dom.btnToggleStream.classList.remove('btn-active-stream');
+        dom.btnToggleStream.innerHTML = '<span>⏸ Stream: OFF</span>';
+        clearInterval(AppState.streamInterval);
+      }
+    });
+
+    [dom.inputCapital, dom.inputPosition, dom.inputLeverage].forEach(inp => {
+      inp.addEventListener('input', evaluateThermodynamicRisk);
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Bootstrap Application
+    window.onload = function () {
+      resizeCanvas();
+      loadSymbols('NVDA');
+      requestAnimationFrame(renderCanvasLoop);
+    };
+  </script>
+</body>
+</html>

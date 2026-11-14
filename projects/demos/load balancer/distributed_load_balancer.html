@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminal Systems — Distributed Load Balancer & Node Scaling Simulator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      overflow: hidden;
+      user-select: none;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar for side panel */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.6);
+    }
+    /* Glassmorphism panel styling */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* Pulsing & animations */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4)); }
+      50% { opacity: 0.9; filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.8)); }
+    }
+    .glow-effect {
+      animation: pulse-glow 3s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col md:flex-row overflow-hidden">
+
+  <!-- LEFT / MAIN CANVAS WORKSPACE -->
+  <div class="relative flex-1 h-full w-full bg-[#070a11] overflow-hidden flex flex-col">
+    
+    <!-- Top Floating Header Bar -->
+    <div class="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+      <div class="glass-panel px-4 py-2.5 rounded-xl flex items-center gap-3 pointer-events-auto shadow-2xl">
+        <div class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></div>
+        <div>
+          <h1 class="text-sm font-bold tracking-wider text-white uppercase flex items-center gap-2">
+            <span>Luminal Systems</span>
+            <span class="text-xs font-normal text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30 font-mono">v2.4-cluster</span>
+          </h1>
+          <p class="text-[11px] text-slate-400">Distributed Node Scaling & Dynamic Load Balancer</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls on Header -->
+      <div class="glass-panel px-3 py-2 rounded-xl flex items-center gap-2 pointer-events-auto shadow-2xl">
+        <button id="addNodeBtn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-lg shadow-cyan-600/30">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Add Node</span>
+        </button>
+        <button id="removeNodeBtn" class="bg-slate-800 hover:bg-rose-900/50 hover:text-rose-300 text-slate-300 px-3 py-1.5 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-700">
+          <i class="fa-solid fa-minus text-xs"></i>
+          <span>Drop Node</span>
+        </button>
+        <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
+        <button id="spikeLoadBtn" class="bg-amber-600/80 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-lg shadow-amber-600/20">
+          <i class="fa-solid fa-bolt text-xs"></i>
+          <span>Workload Spike</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Interactive Canvas -->
+    <canvas id="simCanvas" class="w-full h-full cursor-crosshair block"></canvas>
+
+    <!-- Canvas Bottom Floating Hint Overlay -->
+    <div class="absolute bottom-4 left-4 z-20 glass-panel px-3 py-1.5 rounded-lg text-[11px] text-slate-400 flex items-center gap-2 pointer-events-auto">
+      <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+      <span>Click anywhere to spawn a node • Click on a node to remove it • Drag nodes to reposition</span>
+    </div>
+  </div>
+
+  <!-- RIGHT CONTROL & TELEMETRY SIDEBAR -->
+  <aside class="w-full md:w-96 h-auto md:h-full glass-panel border-t md:border-t-0 md:border-l border-slate-800 flex flex-col z-30 shadow-2xl">
+    
+    <!-- Sidebar Header / Theme Toggle -->
+    <div class="p-4 border-b border-slate-800/80 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-microchip text-cyan-400 text-lg"></i>
+        <h2 class="font-bold text-sm text-slate-100 uppercase tracking-wide">Cluster Telemetry</h2>
+      </div>
+      
+      <!-- Theme Switcher -->
+      <div class="flex bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+        <button id="themeServer" class="px-2.5 py-1 text-xs rounded-md font-medium transition-all bg-cyan-600 text-white shadow" title="Server Nodes Theme">
+          <i class="fa-solid fa-server mr-1"></i> Compute
+        </button>
+        <button id="themeBrigade" class="px-2.5 py-1 text-xs rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all" title="Chainsaw Brigade Theme">
+          <i class="fa-solid fa-tree mr-1"></i> Brigade
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Stats and Settings -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+      <!-- Active System Status Overview Card -->
+      <div class="glass-card p-3.5 rounded-xl space-y-3">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-400 font-medium">Cluster Efficiency</span>
+          <span id="systemHealthText" class="text-emerald-400 font-mono font-bold">100% OPTIMAL</span>
+        </div>
+        
+        <!-- Big Number Stat Displays -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase font-semibold text-slate-400">Active Workers</div>
+            <div id="activeNodesCount" class="text-2xl font-bold font-mono text-cyan-400">4</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Scale: <span id="loadPerNodeText">25.0%</span> / node</div>
+          </div>
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase font-semibold text-slate-400">Total Throughput</div>
+            <div id="totalThroughputText" class="text-2xl font-bold font-mono text-emerald-400">120 ops/s</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Target: <span id="targetWorkloadText">100 Units</span></div>
+          </div>
+        </div>
+
+        <!-- System Load Meter -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px]">
+            <span class="text-slate-400">Aggregate CPU Drain</span>
+            <span id="aggLoadPct" class="font-mono text-cyan-300 font-semibold">100%</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="aggLoadBar" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full w-full transition-all duration-300"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Dynamic Node Metrics List -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-xs font-semibold text-slate-300 px-1">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-network-wired text-cyan-400"></i> Individual Node Allocation
+          </span>
+          <span class="text-[10px] font-mono text-slate-500">Auto-Balancing</span>
+        </div>
+
+        <div id="nodesListContainer" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+          <!-- Dynamic Node Rows Inserted Here -->
+        </div>
+      </div>
+
+      <!-- Real-World Math Breakdown / Concept Explanation -->
+      <div class="glass-card p-3.5 rounded-xl space-y-2 text-xs">
+        <div class="font-bold text-slate-200 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+          <i class="fa-solid fa-calculator text-amber-400"></i>
+          <span>Mathematical Sharding Formula</span>
+        </div>
+        <p class="text-slate-300 leading-relaxed font-mono text-[11px] bg-slate-950 p-2 rounded border border-slate-800">
+          Load per Node = Total Work (W) / Active Nodes (N)<br>
+          <span id="formulaDetail" class="text-cyan-400">100.0% / 4 Nodes = 25.0% Load each</span>
+        </p>
+        <p class="text-slate-400 text-[11px] leading-relaxed">
+          When work items arrive, the central orchestrator auto-shards work units seamlessly across available workers. Adding nodes prevents individual worker burnout and overhead overload.
+        </p>
+      </div>
+
+      <!-- System Controls & Toggles Card -->
+      <div class="glass-card p-3.5 rounded-xl space-y-3">
+        <div class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders text-cyan-400"></i>
+          <span>Engine Settings</span>
+        </div>
+
+        <!-- Auto Balance Toggle -->
+        <div class="flex items-center justify-between py-1 border-b border-slate-800/60">
+          <div class="space-y-0.5">
+            <div class="text-xs font-medium text-slate-300">Auto Load-Balancer</div>
+            <div class="text-[10px] text-slate-500">Instant re-sharding on node shift</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="autoBalanceToggle" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+          </label>
+        </div>
+
+        <!-- Stream Particle Speed Slider -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Particle Stream Speed</span>
+            <span id="particleSpeedVal" class="font-mono text-cyan-400">1.0x</span>
+          </div>
+          <input type="range" id="particleSpeedSlider" min="0.2" max="3" step="0.1" value="1" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+        </div>
+
+        <!-- System Overhead / Latency Simulation Slider -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Sync Latency Overhead</span>
+            <span id="latencyVal" class="font-mono text-amber-400">4 ms</span>
+          </div>
+          <input type="range" id="latencySlider" min="1" max="50" step="1" value="4" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar Footer Badge -->
+    <div class="p-3 border-t border-slate-800/80 bg-slate-950/60 text-center">
+      <span class="text-[10px] text-slate-500 font-mono">
+        "Engineering solutions out of thin air since '91"
+      </span>
+    </div>
+  </aside>
+
+  <!-- JAVASCRIPT SIMULATION LOGIC -->
+  <script>
+    // --- Canvas & Simulation State ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI Element References
+    const addNodeBtn = document.getElementById('addNodeBtn');
+    const removeNodeBtn = document.getElementById('removeNodeBtn');
+    const spikeLoadBtn = document.getElementById('spikeLoadBtn');
+    const themeServerBtn = document.getElementById('themeServer');
+    const themeBrigadeBtn = document.getElementById('themeBrigade');
+    const autoBalanceToggle = document.getElementById('autoBalanceToggle');
+    const particleSpeedSlider = document.getElementById('particleSpeedSlider');
+    const particleSpeedVal = document.getElementById('particleSpeedVal');
+    const latencySlider = document.getElementById('latencySlider');
+    const latencyVal = document.getElementById('latencyVal');
+
+    // Metrics Displays
+    const activeNodesCountEl = document.getElementById('activeNodesCount');
+    const loadPerNodeTextEl = document.getElementById('loadPerNodeText');
+    const totalThroughputTextEl = document.getElementById('totalThroughputText');
+    const targetWorkloadTextEl = document.getElementById('targetWorkloadText');
+    const aggLoadPctEl = document.getElementById('aggLoadPct');
+    const aggLoadBarEl = document.getElementById('aggLoadBar');
+    const systemHealthTextEl = document.getElementById('systemHealthText');
+    const formulaDetailEl = document.getElementById('formulaDetail');
+    const nodesListContainer = document.getElementById('nodesListContainer');
+
+    // State Variables
+    let currentTheme = 'server'; // 'server' or 'brigade'
+    let targetWorkload = 100; // Base work unit difficulty
+    let currentWorkload = 100;
+    let particleSpeedMultiplier = 1.0;
+    let syncLatencyMs = 4;
+    let isAutoBalancing = true;
+
+    // Center Task/Workload Object
+    let centralTarget = {
+      x: 0,
+      y: 0,
+      radius: 55,
+      pulse: 0
+    };
+
+    // Node Collection
+    let nodes = [];
+    let particles = [];
+    let draggedNode = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // Node Names & Icons for Themes
+    const serverNodeNames = ["Compute Alpha", "Compute Beta", "Worker Gamma", "Delta Cluster", "Epsilon Node", "Zeta Processor", "Eta Worker", "Theta Shard"];
+    const brigadeNodeNames = ["Operator Dan (Chainsaw)", "Operator Alex (Saw)", "Worker Sam (Lumber)", "Log Crew Mike", "Operator Chris", "Worker Taylor", "Crew Jordan", "Operator Morgan"];
+
+    // Resize Canvas Responsively
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      centralTarget.x = canvas.width / 2;
+      centralTarget.y = canvas.height / 2;
+      repositionNodesCircle();
+    }
+
+    // Reposition nodes in a balanced circle around central target
+    function repositionNodesCircle() {
+      if (nodes.length === 0) return;
+      const radius = Math.min(canvas.width, canvas.height) * 0.28;
+      const angleStep = (Math.PI * 2) / nodes.length;
+
+      nodes.forEach((node, idx) => {
+        if (!node.isDragging) {
+          const angle = idx * angleStep - Math.PI / 2;
+          node.targetX = centralTarget.x + Math.cos(angle) * radius;
+          node.targetY = centralTarget.y + Math.sin(angle) * radius;
+        }
+      });
+    }
+
+    // Node Class
+    class ClusterNode {
+      constructor(id, x, y, name) {
+        this.id = id;
+        this.x = x || centralTarget.x;
+        this.y = y || centralTarget.y;
+        this.targetX = this.x;
+        this.targetY = this.y;
+        this.radius = 28;
+        this.name = name || `Worker-${id}`;
+        this.loadPct = 0;
+        this.isDragging = false;
+        this.colorHue = (id * 45) % 360;
+        this.pulseAngle = Math.random() * Math.PI * 2;
+      }
+
+      update() {
+        // Smooth movement toward target position if not dragged
+        if (!this.isDragging) {
+          this.x += (this.targetX - this.x) * 0.08;
+          this.y += (this.targetY - this.y) * 0.08;
+        }
+        this.pulseAngle += 0.04;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        const isHighStrain = this.loadPct > 70;
+        const mainColor = currentTheme === 'server' 
+          ? (isHighStrain ? '#f43f5e' : '#38bdf8') 
+          : (isHighStrain ? '#f59e0b' : '#10b981');
+
+        // Outer Glow Ring
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius + 6 + Math.sin(this.pulseAngle) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = currentTheme === 'server'
+          ? (isHighStrain ? 'rgba(244, 63, 94, 0.15)' : 'rgba(56, 189, 248, 0.15)')
+          : (isHighStrain ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)');
+        ctx.fill();
+
+        // Node Body Circle
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 2.5;
+        ctx.fill();
+        ctx.stroke();
+
+        // Icon or Symbol inside
+        ctx.fillStyle = mainColor;
+        ctx.font = '16px "Font Awesome 6 Free"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const iconChar = currentTheme === 'server' ? '\uf2db' : '\uf7d9'; // Microchip vs Tree/Saw
+        ctx.fillText(iconChar, 0, -2);
+
+        // Individual Load Bar overlay on Node
+        const barW = 44;
+        const barH = 5;
+        const barY = this.radius + 10;
+
+        // Bar Background
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(-barW / 2, barY, barW, barH);
+
+        // Bar Fill
+        const fillW = (barW * Math.min(this.loadPct, 100)) / 100;
+        ctx.fillStyle = this.loadPct > 75 ? '#f43f5e' : (this.loadPct > 45 ? '#f59e0b' : '#38bdf8');
+        ctx.fillRect(-barW / 2, barY, fillW, barH);
+        
+        // Bar Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(-barW / 2, barY, barW, barH);
+
+        // Percentage Text Label
+        ctx.font = 'bold 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`${this.loadPct.toFixed(1)}%`, 0, barY + 15);
+
+        // Node Name Label
+        ctx.font = '500 10px "Inter", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(this.name, 0, -this.radius - 10);
+
+        ctx.restore();
+      }
+    }
+
+    // Particle Stream for Data / Energy Flow
+    class WorkParticle {
+      constructor(fromNode, targetX, targetY) {
+        this.fromNode = fromNode;
+        this.startX = fromNode.x;
+        this.startY = fromNode.y;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.progress = Math.random() * 0.2;
+        this.speed = (0.008 + Math.random() * 0.006) * particleSpeedMultiplier;
+        this.size = 2 + Math.random() * 2.5;
+      }
+
+      update() {
+        this.speed = (0.008 + Math.random() * 0.006) * particleSpeedMultiplier;
+        this.progress += this.speed;
+        if (this.progress >= 1) {
+          this.progress = 0;
+          this.startX = this.fromNode.x;
+          this.startY = this.fromNode.y;
+          this.targetX = centralTarget.x;
+          this.targetY = centralTarget.y;
+        }
+      }
+
+      draw() {
+        const curX = this.startX + (this.targetX - this.startX) * this.progress;
+        const curY = this.startY + (this.targetY - this.startY) * this.progress;
+
+        ctx.beginPath();
+        ctx.arc(curX, curY, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = currentTheme === 'server' ? '#38bdf8' : '#f59e0b';
+        ctx.shadowColor = currentTheme === 'server' ? '#0284c7' : '#d97706';
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Initialize Default Cluster Nodes
+    function initCluster() {
+      nodes = [];
+      const defaultCount = 4;
+      for (let i = 0; i < defaultCount; i++) {
+        const nameList = currentTheme === 'server' ? serverNodeNames : brigadeNodeNames;
+        nodes.push(new ClusterNode(i + 1, 0, 0, nameList[i % nameList.length]));
+      }
+      repositionNodesCircle();
+      rebalanceLoad();
+    }
+
+    // Re-Calculate and Distribute Load equally across all active nodes
+    function rebalanceLoad() {
+      const count = nodes.length;
+      if (count === 0) {
+        updateTelemetryDisplays();
+        return;
+      }
+
+      let share = 0;
+      if (isAutoBalancing) {
+        share = 100 / count;
+      } else {
+        // Unbalanced / Random slight skew simulation if auto-balance is OFF
+        share = 100 / count;
+      }
+
+      nodes.forEach((node, idx) => {
+        if (isAutoBalancing) {
+          node.loadPct = share;
+        } else {
+          // Add slight jitter when auto-balancer is disabled
+          const jitter = (Math.sin(idx + Date.now() * 0.002) * 15);
+          node.loadPct = Math.max(5, Math.min(95, share + jitter));
+        }
+      });
+
+      // Update Particle Pool
+      particles = [];
+      nodes.forEach(node => {
+        const particleCount = Math.max(3, Math.round(node.loadPct / 5));
+        for (let i = 0; i < particleCount; i++) {
+          particles.push(new WorkParticle(node, centralTarget.x, centralTarget.y));
+        }
+      });
+
+      updateTelemetryDisplays();
+    }
+
+    // Update Side Telemetry UI
+    function updateTelemetryDisplays() {
+      const count = nodes.length;
+      activeNodesCountEl.textContent = count;
+      
+      const shareText = count > 0 ? (100 / count).toFixed(1) + '%' : '0%';
+      loadPerNodeTextEl.textContent = shareText;
+
+      // Calculate aggregated system throughput
+      const baseOps = 30;
+      const totalOps = count * baseOps;
+      totalThroughputTextEl.textContent = `${totalOps} ops/s`;
+      targetWorkloadTextEl.textContent = `${Math.round(currentWorkload)} Units`;
+
+      const aggLoad = count > 0 ? 100 : 0;
+      aggLoadPctEl.textContent = `${aggLoad}%`;
+      aggLoadBarEl.style.width = `${aggLoad}%`;
+
+      if (count === 1) {
+        systemHealthTextEl.textContent = "HEAVY STRAIN (1 NODE)";
+        systemHealthTextEl.className = "text-amber-400 font-mono font-bold";
+      } else if (count >= 2 && count <= 6) {
+        systemHealthTextEl.textContent = "100% OPTIMAL";
+        systemHealthTextEl.className = "text-emerald-400 font-mono font-bold";
+      } else if (count > 6) {
+        systemHealthTextEl.textContent = "HIGH OVERHEAD (SCALED)";
+        systemHealthTextEl.className = "text-cyan-400 font-mono font-bold";
+      } else {
+        systemHealthTextEl.textContent = "SYSTEM DOWN (0 NODES)";
+        systemHealthTextEl.className = "text-rose-500 font-mono font-bold";
+      }
+
+      formulaDetailEl.textContent = count > 0 
+        ? `100.0% / ${count} Nodes = ${shareText} Load each`
+        : `0 Nodes Active - Work Stalled`;
+
+      // Render Node List Items in Sidebar
+      renderNodeListItems();
+    }
+
+    // Render Rows in Sidebar for Individual Nodes
+    function renderNodeListItems() {
+      nodesListContainer.innerHTML = '';
+      if (nodes.length === 0) {
+        nodesListContainer.innerHTML = `<div class="text-xs text-rose-400 p-2 text-center bg-rose-950/30 rounded border border-rose-900/50">No active nodes! System stalled. Add a node to resume load sharding.</div>`;
+        return;
+      }
+
+      nodes.forEach(node => {
+        const row = document.createElement('div');
+        row.className = "bg-slate-900/60 p-2 rounded-lg border border-slate-800 flex items-center justify-between text-xs";
+
+        const loadColorClass = node.loadPct > 75 ? 'text-rose-400' : (node.loadPct > 45 ? 'text-amber-400' : 'text-cyan-400');
+        
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full ${node.loadPct > 75 ? 'bg-rose-500' : 'bg-cyan-400'}"></div>
+            <span class="font-medium text-slate-200">${node.name}</span>
+          </div>
+          <div class="flex items-center gap-3 font-mono">
+            <span class="${loadColorClass} font-bold">${node.loadPct.toFixed(1)}%</span>
+            <button onclick="removeSpecificNode(${node.id})" class="text-slate-500 hover:text-rose-400 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        `;
+        nodesListContainer.appendChild(row);
+      });
+    }
+
+    // Add New Node
+    function addNewNode() {
+      if (nodes.length >= 12) return; // Cap at 12 for canvas space
+      const id = Date.now() % 10000;
+      const nameList = currentTheme === 'server' ? serverNodeNames : brigadeNodeNames;
+      const name = nameList[nodes.length % nameList.length] + ` #${nodes.length + 1}`;
+      
+      const newNode = new ClusterNode(id, centralTarget.x, centralTarget.y, name);
+      nodes.push(newNode);
+      repositionNodesCircle();
+      rebalanceLoad();
+    }
+
+    // Remove Last Node
+    function removeLastNode() {
+      if (nodes.length === 0) return;
+      nodes.pop();
+      repositionNodesCircle();
+      rebalanceLoad();
+    }
+
+    // Remove Specific Node by ID
+    window.removeSpecificNode = function(id) {
+      nodes = nodes.filter(n => n.id !== id);
+      repositionNodesCircle();
+      rebalanceLoad();
+    };
+
+    // Trigger Workload Spike
+    function triggerWorkloadSpike() {
+      currentWorkload = 250; // Surge difficulty
+      centralTarget.radius = 75;
+      
+      // Flash central node amber/red
+      setTimeout(() => {
+        currentWorkload = 100;
+        centralTarget.radius = 55;
+        rebalanceLoad();
+      }, 3500);
+
+      rebalanceLoad();
+    }
+
+    // --- Main Canvas Render Loop ---
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Subtle Background Grid
+      drawGrid();
+
+      // Draw Connecting Energy Lines from Nodes to Center Target
+      drawConnections();
+
+      // Update & Draw Particles
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      // Update & Draw Central Workload Object (Target)
+      drawCentralWorkload();
+
+      // Update & Draw Worker Nodes
+      nodes.forEach(node => {
+        node.update();
+        node.draw();
+      });
+
+      // Dynamic Rebalancing continuous check
+      if (!isAutoBalancing) {
+        rebalanceLoad();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Draw Background Tech Grid
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    // Draw Connection Cables / Beams
+    function drawConnections() {
+      nodes.forEach(node => {
+        ctx.beginPath();
+        ctx.moveTo(node.x, node.y);
+        ctx.lineTo(centralTarget.x, centralTarget.y);
+        
+        const isHighLoad = node.loadPct > 70;
+        ctx.strokeStyle = currentTheme === 'server'
+          ? (isHighLoad ? 'rgba(244, 63, 94, 0.25)' : 'rgba(56, 189, 248, 0.2)')
+          : (isHighLoad ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.2)');
+        
+        ctx.lineWidth = Math.max(1, node.loadPct / 15);
+        ctx.stroke();
+      });
+    }
+
+    // Draw Central Workload Target Object
+    function drawCentralWorkload() {
+      centralTarget.pulse += 0.03;
+      const pulseRadius = centralTarget.radius + Math.sin(centralTarget.pulse) * 4;
+
+      ctx.save();
+      ctx.translate(centralTarget.x, centralTarget.y);
+
+      // Outer Pulse Circle
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseRadius + 12, 0, Math.PI * 2);
+      ctx.fillStyle = currentWorkload > 150 
+        ? 'rgba(245, 158, 11, 0.15)' 
+        : (currentTheme === 'server' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(16, 185, 129, 0.1)');
+      ctx.fill();
+
+      // Main Core Circle
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = currentWorkload > 150 ? '#f59e0b' : (currentTheme === 'server' ? '#0284c7' : '#059669');
+      ctx.lineWidth = 3;
+      ctx.fill();
+      ctx.stroke();
+
+      // Center Icon (Task Block or Fallen Log)
+      ctx.fillStyle = currentWorkload > 150 ? '#fbbf24' : (currentTheme === 'server' ? '#38bdf8' : '#34d399');
+      ctx.font = '24px "Font Awesome 6 Free"';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const centralIcon = currentWorkload > 150 ? '\uf0e7' : (currentTheme === 'server' ? '\uf1c0' : '\uf1bb'); // Lightning, Database, or Tree/Log
+      ctx.fillText(centralIcon, 0, -8);
+
+      // Central Workload Label
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#f8fafc';
+      const labelText = currentTheme === 'server' ? 'CENTRAL TASK BLOCK' : 'FALLEN ROAD BLOCK';
+      ctx.fillText(labelText, 0, 16);
+
+      ctx.font = '10px "Inter", sans-serif';
+      ctx.fillStyle = currentWorkload > 150 ? '#f59e0b' : '#94a3b8';
+      ctx.fillText(`100% System Work Load`, 0, 30);
+
+      ctx.restore();
+    }
+
+    // --- Interactive Mouse & Drag Events ---
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Check if clicking on an existing node
+      let clickedNode = null;
+      for (let node of nodes) {
+        const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+        if (dist < node.radius + 5) {
+          clickedNode = node;
+          break;
+        }
+      }
+
+      if (clickedNode) {
+        draggedNode = clickedNode;
+        draggedNode.isDragging = true;
+        dragOffsetX = mouseX - draggedNode.x;
+        dragOffsetY = mouseY - draggedNode.y;
+      } else {
+        // Check if click was far from center target to spawn a node
+        const distToCenter = Math.hypot(centralTarget.x - mouseX, centralTarget.y - mouseY);
+        if (distToCenter > centralTarget.radius + 30) {
+          const id = Date.now() % 10000;
+          const nameList = currentTheme === 'server' ? serverNodeNames : brigadeNodeNames;
+          const name = nameList[nodes.length % nameList.length] + ` #${nodes.length + 1}`;
+          const newNode = new ClusterNode(id, mouseX, mouseY, name);
+          newNode.targetX = mouseX;
+          newNode.targetY = mouseY;
+          nodes.push(newNode);
+          rebalanceLoad();
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (draggedNode) {
+        const rect = canvas.getBoundingClientRect();
+        draggedNode.x = e.clientX - rect.left - dragOffsetX;
+        draggedNode.y = e.clientY - rect.top - dragOffsetY;
+        draggedNode.targetX = draggedNode.x;
+        draggedNode.targetY = draggedNode.y;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (draggedNode) {
+        draggedNode.isDragging = false;
+        draggedNode = null;
+      }
+    });
+
+    // Touch support for mobile devices
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = touch.clientX - rect.left;
+        const mouseY = touch.clientY - rect.top;
+
+        for (let node of nodes) {
+          const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+          if (dist < node.radius + 10) {
+            draggedNode = node;
+            draggedNode.isDragging = true;
+            dragOffsetX = mouseX - draggedNode.x;
+            dragOffsetY = mouseY - draggedNode.y;
+            break;
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (draggedNode && e.touches.length === 1) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        draggedNode.x = touch.clientX - rect.left - dragOffsetX;
+        draggedNode.y = touch.clientY - rect.top - dragOffsetY;
+        draggedNode.targetX = draggedNode.x;
+        draggedNode.targetY = draggedNode.y;
+      }
+    });
+
+    canvas.addEventListener('touchend', () => {
+      if (draggedNode) {
+        draggedNode.isDragging = false;
+        draggedNode = null;
+      }
+    });
+
+    // --- UI Control Event Listeners ---
+    addNodeBtn.addEventListener('click', addNewNode);
+    removeNodeBtn.addEventListener('click', removeLastNode);
+    spikeLoadBtn.addEventListener('click', triggerWorkloadSpike);
+
+    // Theme Switchers
+    themeServerBtn.addEventListener('click', () => {
+      currentTheme = 'server';
+      themeServerBtn.className = "px-2.5 py-1 text-xs rounded-md font-medium transition-all bg-cyan-600 text-white shadow";
+      themeBrigadeBtn.className = "px-2.5 py-1 text-xs rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all";
+      rebalanceLoad();
+    });
+
+    themeBrigadeBtn.addEventListener('click', () => {
+      currentTheme = 'brigade';
+      themeBrigadeBtn.className = "px-2.5 py-1 text-xs rounded-md font-medium transition-all bg-emerald-600 text-white shadow";
+      themeServerBtn.className = "px-2.5 py-1 text-xs rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all";
+      rebalanceLoad();
+    });
+
+    // Auto balance toggle
+    autoBalanceToggle.addEventListener('change', (e) => {
+      isAutoBalancing = e.target.checked;
+      rebalanceLoad();
+    });
+
+    // Particle speed slider
+    particleSpeedSlider.addEventListener('input', (e) => {
+      particleSpeedMultiplier = parseFloat(e.target.value);
+      particleSpeedVal.textContent = `${particleSpeedMultiplier.toFixed(1)}x`;
+    });
+
+    // Latency slider
+    latencySlider.addEventListener('input', (e) => {
+      syncLatencyMs = parseInt(e.target.value, 10);
+      latencyVal.textContent = `${syncLatencyMs} ms`;
+    });
+
+    // On Window Load & Resize
+    window.addEventListener('resize', resizeCanvas);
+
+    window.onload = () => {
+      resizeCanvas();
+      initCluster();
+      animate();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Walk - First Person RPG</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN for 3D Viewport -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Cinzel:wght@600;800&display=swap');
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #09090b;
+            color: #e4e4e7;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Scanline CRT overlay effect */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 40;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Custom Pixelated Borders and Glows */
+        .pixel-border {
+            border: 4px solid #3f3f46;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.7);
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+        }
+
+        .red-glow {
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+
+        /* Canvas viewport styling */
+        #dungeon-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Animations */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 3s infinite;
+        }
+
+        /* Scrollbar custom styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between p-2 md:p-4 crt bg-black text-xl">
+
+    <!-- TOP HUD -->
+    <header class="w-full max-w-5xl mx-auto bg-zinc-900 border-2 border-zinc-700 rounded-lg p-3 flex flex-wrap justify-between items-center z-10 shadow-lg">
+        <div class="flex items-center space-x-4">
+            <span class="font-cinzel text-yellow-500 font-bold text-2xl tracking-wider">DUNGEON WALK</span>
+            <span class="bg-zinc-800 text-zinc-300 px-3 py-1 rounded border border-zinc-700 text-lg">
+                LVL: <span id="hud-level" class="text-white font-bold">1</span>
+            </span>
+        </div>
+
+        <div class="flex items-center space-x-6">
+            <!-- HP Bar -->
+            <div class="flex flex-col w-28 md:w-36">
+                <div class="flex justify-between text-xs text-red-400 font-bold mb-1">
+                    <span>HP</span> <span id="hud-hp-text">100/100</span>
+                </div>
+                <div class="w-full bg-zinc-950 h-3 rounded-sm overflow-hidden border border-zinc-800">
+                    <div id="hud-hp-bar" class="bg-red-600 h-full w-full transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- MP Bar -->
+            <div class="flex flex-col w-28 md:w-36">
+                <div class="flex justify-between text-xs text-blue-400 font-bold mb-1">
+                    <span>MP</span> <span id="hud-mp-text">40/40</span>
+                </div>
+                <div class="w-full bg-zinc-950 h-3 rounded-sm overflow-hidden border border-zinc-800">
+                    <div id="hud-mp-bar" class="bg-blue-600 h-full w-full transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- EXP Bar -->
+            <div class="hidden sm:flex flex-col w-24">
+                <div class="flex justify-between text-xs text-purple-400 font-bold mb-1">
+                    <span>EXP</span> <span id="hud-exp-text">0%</span>
+                </div>
+                <div class="w-full bg-zinc-950 h-3 rounded-sm overflow-hidden border border-zinc-800">
+                    <div id="hud-exp-bar" class="bg-purple-600 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Gold -->
+            <div class="flex items-center space-x-1 text-yellow-400 gold-glow">
+                <i class="fa-solid fa-coins"></i>
+                <span id="hud-gold" class="font-bold">50</span>
+            </div>
+
+            <!-- Inventory Button -->
+            <button onclick="toggleInventory()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 px-3 py-1 rounded transition text-sm flex items-center gap-1">
+                <i class="fa-solid fa-bag-shopping"></i> <span class="hidden md:inline">BAG</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN VIEWPORT CONTAINER -->
+    <main class="w-full max-w-5xl mx-auto flex-1 my-2 relative flex items-center justify-center overflow-hidden rounded-lg pixel-border bg-zinc-950">
+
+        <!-- 1. TOWN HUB VIEW -->
+        <div id="view-town" class="absolute inset-0 z-20 flex flex-col justify-between p-6 bg-cover bg-center transition-opacity duration-500" style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80');">
+            <!-- Town Title & Status -->
+            <div class="text-center pt-4">
+                <h1 class="font-cinzel text-4xl md:text-5xl font-extrabold text-amber-400 drop-shadow-md tracking-wider">OAKHAVEN TOWN</h1>
+                <p class="text-zinc-300 text-lg">Safe Haven on the edge of the Abyss</p>
+            </div>
+
+            <!-- NPC / Location Interaction Dialogue Box -->
+            <div id="town-dialog-box" class="bg-zinc-900/90 border-2 border-amber-600/60 p-4 rounded-lg max-w-2xl mx-auto w-full min-h-[110px] flex flex-col justify-between shadow-2xl backdrop-blur-sm">
+                <div class="flex items-start gap-3">
+                    <div id="npc-avatar" class="w-12 h-12 bg-amber-900/40 border border-amber-500 rounded flex items-center justify-center text-amber-400 text-2xl flex-shrink-0">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h3 id="npc-name" class="text-amber-400 font-bold text-lg font-cinzel">Town Guard Elder</h3>
+                        <p id="npc-text" class="text-zinc-200 text-lg leading-snug">Welcome, traveler. Prepare your gear before venturing into the deep stone maze.</p>
+                    </div>
+                </div>
+                <div class="text-right text-xs text-zinc-500 italic mt-2">Click an area below to visit</div>
+            </div>
+
+            <!-- Town Action Buttons -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto w-full">
+                <button onclick="interactTown('shop')" class="bg-zinc-900/90 hover:bg-amber-900/50 border-2 border-zinc-700 hover:border-amber-500 p-3 rounded-lg flex flex-col items-center justify-center transition group">
+                    <i class="fa-solid fa-store text-2xl text-amber-400 group-hover:scale-110 transition-transform mb-1"></i>
+                    <span class="font-cinzel font-bold text-amber-200">Merchant Shop</span>
+                    <span class="text-xs text-zinc-400">Buy Weapons & Gear</span>
+                </button>
+
+                <button onclick="interactTown('inn')" class="bg-zinc-900/90 hover:bg-emerald-900/50 border-2 border-zinc-700 hover:border-emerald-500 p-3 rounded-lg flex flex-col items-center justify-center transition group">
+                    <i class="fa-solid fa-bed text-2xl text-emerald-400 group-hover:scale-110 transition-transform mb-1"></i>
+                    <span class="font-cinzel font-bold text-emerald-200">The Rusty Inn</span>
+                    <span class="text-xs text-zinc-400">Rest & Heal (10 Gold)</span>
+                </button>
+
+                <button onclick="interactTown('elder')" class="bg-zinc-900/90 hover:bg-blue-900/50 border-2 border-zinc-700 hover:border-blue-500 p-3 rounded-lg flex flex-col items-center justify-center transition group">
+                    <i class="fa-solid fa-scroll text-2xl text-blue-400 group-hover:scale-110 transition-transform mb-1"></i>
+                    <span class="font-cinzel font-bold text-blue-200">Town Elder</span>
+                    <span class="text-xs text-zinc-400">Seek Advice</span>
+                </button>
+
+                <button onclick="enterDungeon()" class="bg-red-950/90 hover:bg-red-900 border-2 border-red-600 p-3 rounded-lg flex flex-col items-center justify-center transition group col-span-2 md:col-span-1 shadow-lg shadow-red-950/50">
+                    <i class="fa-solid fa-dungeon text-2xl text-red-500 group-hover:scale-125 transition-transform mb-1 red-glow"></i>
+                    <span class="font-cinzel font-bold text-red-100 red-glow">DUNGEON GATE</span>
+                    <span class="text-xs text-red-300">Enter the Maze</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. DUNGEON 3D VIEWPORT -->
+        <div id="view-dungeon" class="absolute inset-0 z-10 hidden">
+            <!-- Three.js Canvas -->
+            <canvas id="dungeon-canvas"></canvas>
+
+            <!-- Minimap Overlay -->
+            <div class="absolute top-4 right-4 bg-zinc-950/90 border-2 border-zinc-700 p-2 rounded shadow-2xl z-20">
+                <div class="text-xs text-zinc-400 font-bold mb-1 text-center font-cinzel">DUNGEON MAP</div>
+                <canvas id="minimap" width="120" height="120" class="border border-zinc-800 bg-black"></canvas>
+                <div class="text-center text-xs text-zinc-500 mt-1">Floor 1</div>
+            </div>
+
+            <!-- Compass / Position Indicator -->
+            <div class="absolute top-4 left-4 bg-zinc-900/80 border border-zinc-700 px-3 py-1 rounded text-sm text-zinc-300 z-20">
+                DIR: <span id="hud-facing" class="text-yellow-400 font-bold">NORTH</span>
+            </div>
+
+            <!-- Dungeon On-Screen Grid Movement Controls -->
+            <div class="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-2 w-36 h-36">
+                <div></div>
+                <button onclick="movePlayer('forward')" class="bg-zinc-800/80 hover:bg-zinc-700 text-yellow-400 border border-zinc-600 rounded flex items-center justify-center text-2xl active:bg-yellow-600 active:text-black">
+                    <i class="fa-solid fa-arrow-up"></i>
+                </button>
+                <div></div>
+
+                <button onclick="turnPlayer('left')" class="bg-zinc-800/80 hover:bg-zinc-700 text-yellow-400 border border-zinc-600 rounded flex items-center justify-center text-2xl active:bg-yellow-600 active:text-black">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button onclick="movePlayer('backward')" class="bg-zinc-800/80 hover:bg-zinc-700 text-yellow-400 border border-zinc-600 rounded flex items-center justify-center text-2xl active:bg-yellow-600 active:text-black">
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
+                <button onclick="turnPlayer('right')" class="bg-zinc-800/80 hover:bg-zinc-700 text-yellow-400 border border-zinc-600 rounded flex items-center justify-center text-2xl active:bg-yellow-600 active:text-black">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Leave Dungeon Button -->
+            <button onclick="returnToTown()" class="absolute bottom-4 left-4 z-20 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 px-4 py-2 rounded text-sm font-cinzel flex items-center gap-2">
+                <i class="fa-solid fa-door-open text-amber-500"></i> Return to Town
+            </button>
+        </div>
+
+        <!-- 3. TURN-BASED COMBAT OVERLAY -->
+        <div id="view-combat" class="absolute inset-0 z-30 hidden bg-zinc-950/95 flex flex-col justify-between p-6">
+            <!-- Enemy Header & Visual -->
+            <div class="flex-1 flex flex-col items-center justify-center relative">
+                <div id="enemy-sprite" class="w-48 h-48 md:w-64 md:h-64 flex items-center justify-center text-7xl md:text-9xl text-red-500 drop-shadow-[0_0_25px_rgba(220,38,38,0.5)] transition-transform duration-200">
+                    <i id="enemy-icon" class="fa-solid fa-dragon"></i>
+                </div>
+
+                <div class="bg-zinc-900 border-2 border-zinc-700 px-6 py-2 rounded-lg text-center mt-4 min-w-[240px]">
+                    <h2 id="enemy-name" class="font-cinzel text-2xl text-red-400 font-bold">Shadow Goblin</h2>
+                    <div class="w-full bg-zinc-950 h-3 rounded-full mt-2 border border-zinc-800 overflow-hidden">
+                        <div id="enemy-hp-bar" class="bg-red-600 h-full w-full transition-all duration-300"></div>
+                    </div>
+                    <div class="text-xs text-zinc-400 mt-1" id="enemy-hp-text">HP: 40/40</div>
+                </div>
+            </div>
+
+            <!-- Combat Message Log -->
+            <div id="combat-log" class="bg-zinc-900/90 border border-zinc-800 p-3 rounded h-24 overflow-y-auto my-3 text-base text-zinc-300 font-mono space-y-1">
+                <p class="text-yellow-400">An enemy approaches!</p>
+            </div>
+
+            <!-- Combat Action Menu -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="combatAction('attack')" class="bg-red-950 hover:bg-red-900 border border-red-700 text-red-200 py-3 rounded font-cinzel font-bold text-lg flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-hand-fist"></i> Attack
+                </button>
+                <button onclick="combatAction('magic')" class="bg-blue-950 hover:bg-blue-900 border border-blue-700 text-blue-200 py-3 rounded font-cinzel font-bold text-lg flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Magic
+                </button>
+                <button onclick="combatAction('item')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-200 py-3 rounded font-cinzel font-bold text-lg flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-flask"></i> Potion
+                </button>
+                <button onclick="combatAction('run')" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 py-3 rounded font-cinzel font-bold text-lg flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-person-running"></i> Run
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER / CONTROLS INSTRUCTIONS -->
+    <footer class="w-full max-w-5xl mx-auto text-center text-xs text-zinc-500 py-1 flex justify-between items-center">
+        <span>Controls: WASD / Arrow Keys to move in Dungeon</span>
+        <span>Dungeon Walk v1.0 • Single-File Engine</span>
+    </footer>
+
+    <!-- MODAL 1: INVENTORY & STATS -->
+    <div id="modal-inventory" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border-2 border-zinc-700 rounded-lg max-w-lg w-full p-6 relative">
+            <button onclick="toggleInventory()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="font-cinzel text-2xl text-amber-400 font-bold mb-4 border-b border-zinc-800 pb-2">HERO CHARACTER & INVENTORY</h2>
+
+            <!-- Character Stats -->
+            <div class="grid grid-cols-2 gap-4 mb-6 bg-zinc-950 p-4 rounded border border-zinc-800 text-base">
+                <div><span class="text-zinc-400">Attack Power:</span> <span id="stat-atk" class="text-white font-bold">12</span></div>
+                <div><span class="text-zinc-400">Defense:</span> <span id="stat-def" class="text-white font-bold">5</span></div>
+                <div><span class="text-zinc-400">Max HP:</span> <span id="stat-maxhp" class="text-white font-bold">100</span></div>
+                <div><span class="text-zinc-400">Max MP:</span> <span id="stat-maxmp" class="text-white font-bold">40</span></div>
+            </div>
+
+            <!-- Items List -->
+            <h3 class="font-cinzel text-lg text-zinc-300 mb-2">Inventory Items</h3>
+            <div id="inventory-list" class="space-y-2 max-h-48 overflow-y-auto mb-4 pr-1">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: TOWN SHOP -->
+    <div id="modal-shop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border-2 border-amber-700 rounded-lg max-w-lg w-full p-6 relative">
+            <button onclick="closeShop()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="font-cinzel text-2xl text-amber-400 font-bold mb-1">OAKHAVEN MERCHANDISE</h2>
+            <p class="text-xs text-zinc-400 mb-4">Higher level adventurers unlock legendary equipment!</p>
+
+            <div id="shop-items-list" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME ENGINE SCRIPT -->
+    <script>
+        /* ==========================================
+           1. GAME DATA STRUCTURES & STATE
+           ========================================== */
+        const player = {
+            level: 1,
+            hp: 100,
+            maxHp: 100,
+            mp: 40,
+            maxMp: 40,
+            atk: 12,
+            def: 5,
+            gold: 50,
+            exp: 0,
+            nextExp: 50,
+            x: 1,
+            y: 1,
+            dir: 0, // 0: N, 1: E, 2: S, 3: W
+            inventory: [
+                { id: 'potion', name: 'Health Potion', count: 3, type: 'heal', val: 50, desc: 'Restores 50 HP' }
+            ],
+            equippedWeapon: { name: 'Rusty Sword', atk: 0 },
+            equippedArmor: { name: 'Cloth Armor', def: 0 }
+        };
+
+        const shopCatalog = [
+            { id: 'potion', name: 'Health Potion', cost: 15, reqLevel: 1, type: 'consumable', val: 50, desc: 'Restores 50 HP' },
+            { id: 'ether', name: 'Magic Ether', cost: 25, reqLevel: 1, type: 'consumable_mp', val: 30, desc: 'Restores 30 MP' },
+            { id: 'iron_sword', name: 'Iron Broadsword', cost: 80, reqLevel: 1, type: 'weapon', atk: 8, desc: '+8 Attack Power' },
+            { id: 'chainmail', name: 'Chainmail Vest', cost: 100, reqLevel: 1, type: 'armor', def: 6, desc: '+6 Defense' },
+            // Level 5 Gate Unlocks
+            { id: 'mithril_blade', name: 'Mithril Blade', cost: 250, reqLevel: 5, type: 'weapon', atk: 22, desc: '+22 Attack Power (Lvl 5 Req)' },
+            { id: 'plate_armor', name: 'Knight Plate', cost: 300, reqLevel: 5, type: 'armor', def: 18, desc: '+18 Defense (Lvl 5 Req)' }
+        ];
+
+        const enemies = [
+            { name: 'Crypt Rat', hp: 25, maxHp: 25, atk: 6, exp: 15, gold: 10, icon: 'fa-vector-square', color: 'text-amber-700' },
+            { name: 'Skeletal Scout', hp: 45, maxHp: 45, atk: 12, exp: 30, gold: 25, icon: 'fa-bone', color: 'text-zinc-300' },
+            { name: 'Shadow Goblin', hp: 70, maxHp: 70, atk: 18, exp: 55, gold: 45, icon: 'fa-ghost', color: 'text-emerald-500' },
+            { name: 'Dungeon Minotaur', hp: 130, maxHp: 130, atk: 28, exp: 120, gold: 110, icon: 'fa-dragon', color: 'text-red-500' }
+        ];
+
+        // 1 = Wall, 0 = Empty Path
+        const dungeonMap = [
+            [1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,1,0,1,0,1,1,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1,0,1],
+            [1,0,1,1,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,1,0,0,0,1],
+            [1,1,1,1,0,1,0,1,1,1,0,1],
+            [1,0,0,1,0,1,0,0,0,1,0,1],
+            [1,0,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let currentEnemy = null;
+        let inCombat = false;
+        let activeScene = 'town'; // 'town', 'dungeon', 'combat'
+
+        /* ==========================================
+           2. THREE.JS 3D ENGINE SETUP
+           ========================================== */
+        let scene, camera, renderer, wallGroup;
+        const GRID_SIZE = 4;
+
+        function init3D() {
+            const container = document.getElementById('view-dungeon');
+            const canvas = document.getElementById('dungeon-canvas');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.12);
+
+            camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 100);
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x222233, 0.5);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffaa44, 1.5, 15);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+            camera.add(pointLight);
+            scene.add(camera);
+
+            // Build Map Geometry
+            buildDungeonGeometry();
+
+            // Window resize handler
+            window.addEventListener('resize', () => {
+                if (!renderer) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function createProceduralTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            if (type === 'wall') {
+                ctx.fillStyle = '#27272a';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.strokeStyle = '#18181b';
+                ctx.lineWidth = 4;
+                // Brick pattern
+                for (let y = 0; y < 256; y += 32) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(256, y);
+                    ctx.stroke();
+                    let offset = (y / 32) % 2 === 0 ? 0 : 32;
+                    for (let x = offset; x < 256; x += 64) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x, y + 32);
+                        ctx.stroke();
+                    }
+                }
+            } else { // Floor
+                ctx.fillStyle = '#18181b';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.strokeStyle = '#09090b';
+                ctx.lineWidth = 6;
+                ctx.strokeRect(0, 0, 256, 256);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        function buildDungeonGeometry() {
+            wallGroup = new THREE.Group();
+            scene.add(wallGroup);
+
+            const wallTex = createProceduralTexture('wall');
+            const floorTex = createProceduralTexture('floor');
+
+            const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8 });
+            const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 });
+            const boxGeo = new THREE.BoxGeometry(GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            const planeGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+
+            for (let r = 0; r < dungeonMap.length; r++) {
+                for (let c = 0; c < dungeonMap[r].length; c++) {
+                    const posX = c * GRID_SIZE;
+                    const posZ = r * GRID_SIZE;
+
+                    if (dungeonMap[r][c] === 1) {
+                        // Wall block
+                        const wall = new THREE.Mesh(boxGeo, wallMat);
+                        wall.position.set(posX, 0, posZ);
+                        wallGroup.add(wall);
+                    } else {
+                        // Floor
+                        const floor = new THREE.Mesh(planeGeo, floorMat);
+                        floor.rotation.x = -Math.PI / 2;
+                        floor.position.set(posX, -GRID_SIZE / 2, posZ);
+                        wallGroup.add(floor);
+
+                        // Ceiling
+                        const ceiling = new THREE.Mesh(planeGeo, wallMat);
+                        ceiling.rotation.x = Math.PI / 2;
+                        ceiling.position.set(posX, GRID_SIZE / 2, posZ);
+                        wallGroup.add(ceiling);
+                    }
+                }
+            }
+        }
+
+        function updateCameraPosition(animate = true) {
+            const targetX = player.x * GRID_SIZE;
+            const targetZ = player.y * GRID_SIZE;
+            const targetRotY = -player.dir * (Math.PI / 2);
+
+            if (!animate) {
+                camera.position.x = targetX;
+                camera.position.z = targetZ;
+                camera.rotation.y = targetRotY;
+            } else {
+                // Smooth Camera interpolation
+                let startTime = null;
+                const startX = camera.position.x;
+                const startZ = camera.position.z;
+                const startRotY = camera.rotation.y;
+
+                // Handle angle wrap around for smooth turning
+                let diffRotY = targetRotY - startRotY;
+                if (diffRotY > Math.PI) diffRotY -= Math.PI * 2;
+                if (diffRotY < -Math.PI) diffRotY += Math.PI * 2;
+
+                function animStep(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const progress = Math.min((timestamp - startTime) / 180, 1);
+
+                    camera.position.x = startX + (targetX - startX) * progress;
+                    camera.position.z = startZ + (targetZ - startZ) * progress;
+                    camera.rotation.y = startRotY + diffRotY * progress;
+
+                    renderer.render(scene, camera);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animStep);
+                    }
+                }
+                requestAnimationFrame(animStep);
+            }
+            drawMinimap();
+            updateHUD();
+        }
+
+        /* ==========================================
+           3. MOVEMENT & NAVIGATION CONTROLS
+           ========================================== */
+        const dirVectors = [
+            { x: 0, y: -1, name: 'NORTH' }, // 0
+            { x: 1, y: 0, name: 'EAST' },  // 1
+            { x: 0, y: 1, name: 'SOUTH' }, // 2
+            { x: -1, y: 0, name: 'WEST' }  // 3
+        ];
+
+        function turnPlayer(direction) {
+            if (activeScene !== 'dungeon' || inCombat) return;
+            if (direction === 'left') {
+                player.dir = (player.dir + 3) % 4;
+            } else if (direction === 'right') {
+                player.dir = (player.dir + 1) % 4;
+            }
+            updateCameraPosition(true);
+        }
+
+        function movePlayer(direction) {
+            if (activeScene !== 'dungeon' || inCombat) return;
+
+            let moveDir = player.dir;
+            if (direction === 'backward') {
+                moveDir = (player.dir + 2) % 4;
+            }
+
+            const vec = dirVectors[moveDir];
+            const newX = player.x + vec.x;
+            const newY = player.y + vec.y;
+
+            // Collision check
+            if (dungeonMap[newY] && dungeonMap[newY][newX] === 0) {
+                player.x = newX;
+                player.y = newY;
+                updateCameraPosition(true);
+
+                // Random encounter check (20% chance per step)
+                if (Math.random() < 0.20) {
+                    setTimeout(triggerEncounter, 250);
+                }
+            }
+        }
+
+        // Keyboard listener
+        window.addEventListener('keydown', (e) => {
+            if (activeScene !== 'dungeon' || inCombat) return;
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': movePlayer('forward'); break;
+                case 's': case 'arrowdown': movePlayer('backward'); break;
+                case 'a': case 'arrowleft': turnPlayer('left'); break;
+                case 'd': case 'arrowright': turnPlayer('right'); break;
+            }
+        });
+
+        /* ==========================================
+           4. MINIMAP RENDERER
+           ========================================== */
+        function drawMinimap() {
+            const canvas = document.getElementById('minimap');
+            const ctx = canvas.getContext('2d');
+            const tileSize = canvas.width / dungeonMap[0].length;
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let r = 0; r < dungeonMap.length; r++) {
+                for (let c = 0; c < dungeonMap[r].length; c++) {
+                    if (dungeonMap[r][c] === 1) {
+                        ctx.fillStyle = '#3f3f46';
+                        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                    } else {
+                        ctx.fillStyle = '#18181b';
+                        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                    }
+                }
+            }
+
+            // Draw Player Marker
+            const px = (player.x + 0.5) * tileSize;
+            const py = (player.y + 0.5) * tileSize;
+
+            ctx.fillStyle = '#eab308';
+            ctx.beginPath();
+            ctx.arc(px, py, tileSize / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Facing Direction Arrow
+            const vec = dirVectors[player.dir];
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + vec.x * tileSize * 0.8, py + vec.y * tileSize * 0.8);
+            ctx.stroke();
+        }
+
+        /* ==========================================
+           5. TOWN & NPC INTERACTION ENGINE
+           ========================================== */
+        const npcData = {
+            shop: {
+                name: "Garrick the Merchant",
+                avatar: "fa-store",
+                dialog: "Looking for fine steel or potions? Level up to unlock my high-tier Mithril armaments!"
+            },
+            inn: {
+                name: "Innkeeper Mary",
+                avatar: "fa-bed",
+                dialog: "Rest your weary bones! A hot meal and bed will fully restore your HP and MP for 10 Gold."
+            },
+            elder: {
+                name: "Elder Tobias",
+                avatar: "fa-scroll",
+                dialog: "The deeper you venture into the stone maze, the fiercer the beasts. Defeat enemies to earn XP and level up your power!"
+            }
+        };
+
+        function interactTown(type) {
+            if (type === 'shop') {
+                openShop();
+                setNPCDialog(npcData.shop);
+            } else if (type === 'inn') {
+                setNPCDialog(npcData.inn);
+                if (player.gold >= 10) {
+                    if (player.hp === player.maxHp && player.mp === player.maxMp) {
+                        alert("You are already at full health!");
+                    } else {
+                        player.gold -= 10;
+                        player.hp = player.maxHp;
+                        player.mp = player.maxMp;
+                        updateHUD();
+                        alert("Resting at the Inn restored all your HP and MP!");
+                    }
+                } else {
+                    alert("Not enough gold to stay at the Inn!");
+                }
+            } else if (type === 'elder') {
+                setNPCDialog(npcData.elder);
+            }
+        }
+
+        function setNPCDialog(npc) {
+            document.getElementById('npc-name').innerText = npc.name;
+            document.getElementById('npc-text').innerText = npc.dialog;
+            document.getElementById('npc-avatar').innerHTML = `<i class="fa-solid ${npc.avatar}"></i>`;
+        }
+
+        function enterDungeon() {
+            activeScene = 'dungeon';
+            document.getElementById('view-town').classList.add('hidden');
+            document.getElementById('view-dungeon').classList.remove('hidden');
+
+            if (!scene) init3D();
+            updateCameraPosition(false);
+            renderer.render(scene, camera);
+        }
+
+        function returnToTown() {
+            activeScene = 'town';
+            document.getElementById('view-dungeon').classList.add('hidden');
+            document.getElementById('view-town').classList.remove('hidden');
+        }
+
+        /* ==========================================
+           6. COMBAT ENGINE & ENCOUNTERS
+           ========================================== */
+        function triggerEncounter() {
+            inCombat = true;
+            activeScene = 'combat';
+
+            // Select random enemy based on scaling
+            const randIdx = Math.floor(Math.random() * Math.min(player.level, enemies.length));
+            const template = enemies[randIdx];
+            currentEnemy = { ...template, hp: template.maxHp };
+
+            // Update UI
+            document.getElementById('enemy-name').innerText = currentEnemy.name;
+            document.getElementById('enemy-icon').className = `fa-solid ${currentEnemy.icon} ${currentEnemy.color}`;
+            updateEnemyHPBar();
+
+            const log = document.getElementById('combat-log');
+            log.innerHTML = `<p class="text-red-400 font-bold">A wild ${currentEnemy.name} emerges from the shadows!</p>`;
+
+            document.getElementById('view-combat').classList.remove('hidden');
+        }
+
+        function updateEnemyHPBar() {
+            const percent = Math.max(0, (currentEnemy.hp / currentEnemy.maxHp) * 100);
+            document.getElementById('enemy-hp-bar').style.width = `${percent}%`;
+            document.getElementById('enemy-hp-text').innerText = `HP: ${currentEnemy.hp}/${currentEnemy.maxHp}`;
+        }
+
+        function logCombatMessage(msg, colorClass = "text-zinc-300") {
+            const log = document.getElementById('combat-log');
+            log.innerHTML += `<p class="${colorClass}">${msg}</p>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function combatAction(action) {
+            if (!inCombat || currentEnemy.hp <= 0) return;
+
+            if (action === 'attack') {
+                const totalAtk = player.atk + player.equippedWeapon.atk;
+                const dmg = Math.max(1, totalAtk + Math.floor(Math.random() * 4) - 2);
+                currentEnemy.hp -= dmg;
+                logCombatMessage(`You strike the ${currentEnemy.name} with your ${player.equippedWeapon.name} for ${dmg} damage!`, "text-yellow-300");
+                
+                // Visual hit recoil animation
+                const sprite = document.getElementById('enemy-sprite');
+                sprite.classList.add('translate-x-2', 'brightness-200');
+                setTimeout(() => sprite.classList.remove('translate-x-2', 'brightness-200'), 150);
+
+            } else if (action === 'magic') {
+                if (player.mp >= 15) {
+                    player.mp -= 15;
+                    const spellDmg = Math.floor(player.atk * 1.8) + Math.floor(Math.random() * 6);
+                    currentEnemy.hp -= spellDmg;
+                    logCombatMessage(`You cast Fireball! Deals ${spellDmg} fire damage!`, "text-orange-400");
+                } else {
+                    logCombatMessage(`Not enough MP! (Requires 15 MP)`, "text-red-400");
+                    return;
+                }
+            } else if (action === 'item') {
+                const pot = player.inventory.find(i => i.id === 'potion');
+                if (pot && pot.count > 0) {
+                    pot.count--;
+                    player.hp = Math.min(player.maxHp, player.hp + pot.val);
+                    logCombatMessage(`You quaffed a Health Potion and recovered ${pot.val} HP!`, "text-emerald-400");
+                } else {
+                    logCombatMessage(`No Health Potions remaining in inventory!`, "text-red-400");
+                    return;
+                }
+            } else if (action === 'run') {
+                if (Math.random() > 0.35) {
+                    logCombatMessage(`You successfully fled back into the corridors!`, "text-blue-300");
+                    setTimeout(endCombat, 1000);
+                    return;
+                } else {
+                    logCombatMessage(`Failed to escape! The monster blocks your path!`, "text-red-400");
+                }
+            }
+
+            updateEnemyHPBar();
+            updateHUD();
+
+            // Check Enemy Defeat
+            if (currentEnemy.hp <= 0) {
+                logCombatMessage(`VICTORY! You slain the ${currentEnemy.name}!`, "text-yellow-400 font-bold");
+                player.gold += currentEnemy.gold;
+                addExperience(currentEnemy.exp);
+                setTimeout(endCombat, 1500);
+                return;
+            }
+
+            // Enemy Turn Retaliation
+            setTimeout(enemyTurn, 800);
+        }
+
+        function enemyTurn() {
+            if (currentEnemy.hp <= 0) return;
+            const totalDef = player.def + player.equippedArmor.def;
+            const rawDmg = currentEnemy.atk + Math.floor(Math.random() * 4);
+            const actualDmg = Math.max(1, rawDmg - Math.floor(totalDef / 2));
+
+            player.hp -= actualDmg;
+            logCombatMessage(`The ${currentEnemy.name} attacks you for ${actualDmg} damage!`, "text-red-400");
+            updateHUD();
+
+            if (player.hp <= 0) {
+                player.hp = 0;
+                logCombatMessage(`YOU HAVE BEEN DEFEATED... Returning to town.`, "text-red-600 font-bold");
+                setTimeout(() => {
+                    endCombat();
+                    player.hp = player.maxHp;
+                    returnToTown();
+                    alert("You collapsed in the dungeon and were rescued back to town! (Lost half your gold)");
+                    player.gold = Math.floor(player.gold / 2);
+                    updateHUD();
+                }, 2000);
+            }
+        }
+
+        function endCombat() {
+            inCombat = false;
+            activeScene = 'dungeon';
+            document.getElementById('view-combat').classList.add('hidden');
+        }
+
+        function addExperience(amount) {
+            player.exp += amount;
+            logCombatMessage(`Gained +${amount} EXP and +${currentEnemy.gold} Gold!`, "text-purple-300");
+
+            if (player.exp >= player.nextExp) {
+                player.level++;
+                player.exp -= player.nextExp;
+                player.nextExp = Math.floor(player.nextExp * 1.6);
+                player.maxHp += 20;
+                player.hp = player.maxHp;
+                player.maxMp += 10;
+                player.mp = player.maxMp;
+                player.atk += 4;
+                player.def += 2;
+
+                logCombatMessage(`LEVEL UP! You reached Level ${player.level}! Stats increased!`, "text-yellow-300 font-bold");
+            }
+            updateHUD();
+        }
+
+        /* ==========================================
+           7. INVENTORY, SHOP & HUD UI CONTROLS
+           ========================================== */
+        function updateHUD() {
+            document.getElementById('hud-level').innerText = player.level;
+            document.getElementById('hud-gold').innerText = player.gold;
+            document.getElementById('hud-hp-text').innerText = `${player.hp}/${player.maxHp}`;
+            document.getElementById('hud-mp-text').innerText = `${player.mp}/${player.maxMp}`;
+
+            const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+            const mpPercent = Math.max(0, (player.mp / player.maxMp) * 100);
+            const expPercent = Math.min(100, (player.exp / player.nextExp) * 100);
+
+            document.getElementById('hud-hp-bar').style.width = `${hpPercent}%`;
+            document.getElementById('hud-mp-bar').style.width = `${mpPercent}%`;
+            document.getElementById('hud-exp-bar').style.width = `${expPercent}%`;
+            document.getElementById('hud-exp-text').innerText = `${Math.floor(expPercent)}%`;
+
+            document.getElementById('hud-facing').innerText = dirVectors[player.dir].name;
+
+            // Stats in modal
+            document.getElementById('stat-atk').innerText = `${player.atk} (+${player.equippedWeapon.atk})`;
+            document.getElementById('stat-def').innerText = `${player.def} (+${player.equippedArmor.def})`;
+            document.getElementById('stat-maxhp').innerText = player.maxHp;
+            document.getElementById('stat-maxmp').innerText = player.maxMp;
+        }
+
+        function toggleInventory() {
+            const modal = document.getElementById('modal-inventory');
+            if (modal.classList.contains('hidden')) {
+                renderInventoryUI();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderInventoryUI() {
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '';
+
+            // Equipment section
+            list.innerHTML += `
+                <div class="p-2 bg-zinc-800 rounded flex justify-between items-center text-sm">
+                    <span><i class="fa-solid fa-hand"></i> Weapon: <strong class="text-amber-400">${player.equippedWeapon.name}</strong></span>
+                    <span class="text-xs text-zinc-400">+${player.equippedWeapon.atk} ATK</span>
+                </div>
+                <div class="p-2 bg-zinc-800 rounded flex justify-between items-center text-sm mb-3">
+                    <span><i class="fa-solid fa-shield"></i> Armor: <strong class="text-blue-400">${player.equippedArmor.name}</strong></span>
+                    <span class="text-xs text-zinc-400">+${player.equippedArmor.def} DEF</span>
+                </div>
+            `;
+
+            player.inventory.forEach(item => {
+                list.innerHTML += `
+                    <div class="p-3 bg-zinc-950 border border-zinc-800 rounded flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-base text-zinc-200">${item.name} x${item.count}</div>
+                            <div class="text-xs text-zinc-400">${item.desc}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openShop() {
+            renderShopUI();
+            document.getElementById('modal-shop').classList.remove('hidden');
+        }
+
+        function closeShop() {
+            document.getElementById('modal-shop').classList.add('hidden');
+        }
+
+        function renderShopUI() {
+            const list = document.getElementById('shop-items-list');
+            list.innerHTML = '';
+
+            shopCatalog.forEach(item => {
+                const isLocked = player.level < item.reqLevel;
+                const canAfford = player.gold >= item.cost;
+
+                list.innerHTML += `
+                    <div class="p-3 bg-zinc-950 border ${isLocked ? 'border-zinc-800 opacity-60' : 'border-zinc-700'} rounded flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-base ${isLocked ? 'text-zinc-500' : 'text-amber-400'}">
+                                ${item.name} ${isLocked ? `<span class="text-xs text-red-500">(Requires Level ${item.reqLevel})</span>` : ''}
+                            </div>
+                            <div class="text-xs text-zinc-400">${item.desc}</div>
+                            <div class="text-sm text-yellow-400 gold-glow font-bold mt-1">${item.cost} Gold</div>
+                        </div>
+                        <button onclick="buyShopItem('${item.id}')" ${isLocked || !canAfford ? 'disabled' : ''} 
+                            class="px-4 py-2 rounded text-sm font-bold ${isLocked || !canAfford ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-500 text-black'}">
+                            BUY
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function buyShopItem(itemId) {
+            const item = shopCatalog.find(i => i.id === itemId);
+            if (!item || player.gold < item.cost || player.level < item.reqLevel) return;
+
+            player.gold -= item.cost;
+
+            if (item.type === 'weapon') {
+                player.equippedWeapon = { name: item.name, atk: item.atk };
+            } else if (item.type === 'armor') {
+                player.equippedArmor = { name: item.name, def: item.def };
+            } else {
+                let invItem = player.inventory.find(i => i.id === item.id);
+                if (invItem) {
+                    invItem.count++;
+                } else {
+                    player.inventory.push({ id: item.id, name: item.name, count: 1, type: item.type, val: item.val, desc: item.desc });
+                }
+            }
+
+            updateHUD();
+            renderShopUI();
+        }
+
+        // Initialize HUD on startup
+        updateHUD();
+    </script>
+</body>
+</html>

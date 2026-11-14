@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Luminal Systems - Emergent Quest Engine MVP</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 30px;
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 15px; }
+        .card h3 { margin-top: 0; color: #f0f6fc; border-bottom: 1px solid #21262d; padding-bottom: 5px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; font-size: 0.9em; }
+        select, button { width: 100%; padding: 10px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #238636; border-color: #2ea043; color: #fff; }
+        .log-box { background: #010409; border: 1px solid #30363d; padding: 15px; border-radius: 6px; height: 180px; overflow-y: auto; font-family: monospace; font-size: 0.85em; color: #7ee787; white-space: pre-wrap; }
+        .quest-box { background: #1f242c; border: 1px solid #388bfd; border-radius: 6px; padding: 20px; margin-top: 20px; display: none; }
+        .quest-title { color: #58a6ff; font-size: 1.3em; font-weight: bold; margin-bottom: 10px; }
+        .badge { display: inline-block; padding: 3px 8px; background: #388bfd; color: #fff; border-radius: 12px; font-size: 0.75em; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Luminal Systems: Emergent Quest Engine</h1>
+    <p style="font-size: 0.9em; color: #8b949e;">First-Principles Bounded Telemetry System Prototype</p>
+    
+    <div class="grid">
+        <!-- Player Telemetry Inputs -->
+        <div class="card">
+            <h3>1. Player State Profile Vector</h3>
+            <label>Behavioral Archetype:</label>
+            <select id="playerState">
+                <option value="Standard Hero">Standard Hero (Reputation: Good)</option>
+                <option value="Murder Hobo">Murder Hobo (Notoriety: Extreme)</option>
+                <option value="Pacifist Scholar">Pacifist Scholar (Reputation: Neutral)</option>
+            </select>
+            
+            <label>Quest Completion Velocity:</label>
+            <select id="completionRate">
+                <option value="High">High Efficiency Operations</option>
+                <option value="Low">Low/Erratic Operational Speed</option>
+            </select>
+        </div>
+
+        <!-- Environmental Inputs -->
+        <div class="card">
+            <h3>2. Environmental Vector Status</h3>
+            <label>Local Region Threat Density:</label>
+            <select id="environmentState">
+                <option value="Overgrown Forest">Overgrown Forest (High Monster Density)</option>
+                <option value="Corrupt Township">Corrupt Township (High Tax Burden)</option>
+                <option value="Barren Outpost">Barren Outpost (Resource Scarcity)</option>
+            </select>
+            
+            <label>Target NPC Archetype:</label>
+            <select id="npcType">
+                <option value="Local Merchant">Local Merchant (Economic Objective Focus)</option>
+                <option value="Terrified Villager">Terrified Villager (Survival/Bounty Focus)</option>
+                <option value="Shady Blacksmith">Shady Blacksmith (Material/Combat Focus)</option>
+            </select>
+        </div>
+    </div>
+
+    <button onclick="triggerEnginePipeline()">EXECUTE SYSTEM CONTEXT INJECTION</button>
+
+    <!-- System Compilation Audit Trail -->
+    <h3 style="margin-top:25px; color:#f0f6fc;">3. Dynamic Validation & Ledger Audit Log</h3>
+    <div id="auditLog" class="log-box">Engine initialized. Awaiting context packet data payload injection...</div>
+
+    <!-- The Resulting Bounded Output Quest -->
+    <div id="questDisplay" class="quest-box">
+        <div id="questTitle" class="quest-title"></div>
+        <div style="margin-bottom: 15px;"><span id="questFlags" class="badge"></span><span id="itemFlags" class="badge" style="background:#238636;"></span></div>
+        <p id="questObjective" style="line-height: 1.5;"></p>
+        <div style="font-size: 0.85em; color: #8b949e; border-top: 1px solid #30363d; padding-top: 10px; margin-top: 15px;">
+            <strong>System Lineage Context Log:</strong> <span id="questLineage"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+// Valid internal whitelists for your dynamic item generation sandbox
+const BASE_ARCHETYPES = ["Ring", "Amulet", "Blade", "Bracers"];
+const LEGAL_PERKS = ["Max Health +10", "Attack Speed +5%", "Mana Regen +2", "Critical Multiplier +1.5x"];
+
+function logger(message) {
+    const logBox = document.getElementById("auditLog");
+    logBox.innerHTML += `\n[${new Date().toLocaleTimeString()}] ${message}`;
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function triggerEnginePipeline() {
+    document.getElementById("auditLog").innerHTML = "--- PIPELINE INJECTION START ---";
+    
+    // Step 1: Read the live Context Packet vectors
+    const player = document.getElementById("playerState").value;
+    const velocity = document.getElementById("completionRate").value;
+    const environment = document.getElementById("environmentState").value;
+    const npc = document.getElementById("npcType").value;
+    
+    logger(`Injected Profile Vector: ${player} | Velocity: ${velocity}`);
+    logger(`Injected Regional Threat Array: ${environment} | Source: ${npc}`);
+
+    // Step 2: Run Bounded Generation Logic based on weights
+    let questType = "Material Gathering";
+    let baseItem = BASE_ARCHETYPES[Math.floor(Math.random() * BASE_ARCHETYPES.length)];
+    let perk = LEGAL_PERKS[Math.floor(Math.random() * LEGAL_PERKS.length)];
+    let itemName = `The Bounded ${baseItem} of Mad Logics`;
+    
+    let objectiveText = "";
+    let titleText = "";
+    let questFlag = "One-Time Quest Only";
+
+    // Dynamic State Routing matrix
+    if (player === "Murder Hobo") {
+        questType = "Bounty / Elimination Contract";
+        titleText = `Sanctioned Pacification: Clear the ${environment}`;
+        objectiveText = `Due to your extreme notoriety profile, the ${npc} has generated a direct threat mitigation protocol. You are required to hunt down and eliminate the regional threats destabilizing the local area immediately.`;
+        questFlag = "Systemic / Bulleted Repeatable";
+    } else if (environment === "Corrupt Township") {
+        questType = "Asset Recovery Operations";
+        titleText = `Audit Action: Investigate ${npc}`;
+        objectiveText = `The local tax burden metrics have hit a structural crisis point. The ${npc} requires you to infiltrate the local counting house, bypass the corrupt guards, and retrieve their seized operational assets.`;
+    } else {
+        questType = "Discovery/Clearance Route";
+        titleText = `Exploration Directive inside ${environment}`;
+        objectiveText = `Operating under a ${player} priority path, you must enter the unmapped sectors of the ${environment} to chart the boundaries and clear out structural blockages for the township expansion.`;
+    }
+
+    // Step 3: Run your dynamic asset-spawning library check loop
+    logger("Auditing quest items clear condition definitions...");
+    logger(`Error: target entity validation failure: '${itemName}' not found in asset library ledger.`);
+    logger(`Activating Dynamic Compilation Engine: Generating bounded item asset architecture...`);
+    logger(`Success: Compiled item '${itemName}' using sandbox parameters: Archetype=[${baseItem}], Enchantment=[${perk}].`);
+    logger(`Asset routed to database sector matrix coordinate layer.`);
+
+    // Step 4: Write metadata lineage into persistence file ledger
+    const lineageUID = `LOG-${Math.floor(1000 + Math.random() * 9000)}-${player.substring(0,3).toUpperCase()}`;
+    logger(`Writing transaction log entry directly into ledger path: ./generated_quests/${lineageUID}.json`);
+    logger("System state balanced flawlessly. Outputting sandbox rendering parameters.");
+
+    // Step 5: Render interface metrics to player
+    document.getElementById("questTitle").innerText = titleText;
+    document.getElementById("questFlags").innerText = `Quest Model: ${questType}`;
+    document.getElementById("itemFlags").innerText = `Reward: ${itemName} (${perk})`;
+    document.getElementById("questObjective").innerText = objectiveText;
+    document.getElementById("questLineage").innerText = `UID: ${lineageUID} | Generated because [Threat Level / Player Vector Match] triggered successfully.`;
+    document.getElementById("questDisplay").style.display = "block";
+}
+</script>
+
+</body>
+</html>

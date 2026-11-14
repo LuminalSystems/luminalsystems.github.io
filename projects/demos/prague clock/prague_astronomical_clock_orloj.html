@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prague Astronomical Clock (Pražský Orloj)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Gothic & Scientific aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=UnifrakturMaguntia&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0d12;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .font-gothic {
+            font-family: 'UnifrakturMaguntia', cursive;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .gold-border {
+            border: 1px solid #d97706;
+            box-shadow: 0 0 15px rgba(217, 119, 6, 0.15);
+        }
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #fef08a 0%, #d97706 50%, #78350f 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(217, 119, 6, 0.25);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+
+    <!-- Header Banner -->
+    <header class="w-full glass-panel border-b border-amber-900/40 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 z-20 sticky top-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-700 via-amber-500 to-yellow-200 flex items-center justify-center shadow-lg shadow-amber-900/40 border border-amber-300">
+                <span class="text-slate-950 font-bold text-xl">⚙</span>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold font-cinzel gold-gradient-text tracking-wide">PRAŽSKÝ ORLOJ</h1>
+                <p class="text-xs text-amber-200/70 font-mono tracking-wider uppercase">Interactive Astronomical Clock & Astrolabe Simulation</p>
+            </div>
+        </div>
+
+        <!-- Timezone Selector & Quick Stats -->
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+                <label for="timezone-select" class="text-xs text-amber-400/90 font-cinzel font-semibold">Location Zone:</label>
+                <select id="timezone-select" class="bg-slate-950 text-amber-100 text-xs rounded px-2 py-1 border border-amber-600/40 focus:outline-none focus:border-amber-400 font-mono cursor-pointer">
+                    <option value="Europe/Prague">Prague (CET/CEST)</option>
+                    <option value="UTC">UTC (Universal)</option>
+                    <option value="America/New_York">New York (EST/EDT)</option>
+                    <option value="America/Chicago">Chicago (CST/CDT)</option>
+                    <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                    <option value="Europe/London">London (GMT/BST)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                </select>
+            </div>
+
+            <button id="reset-time-btn" class="bg-amber-700/30 hover:bg-amber-600/50 text-amber-200 text-xs px-3 py-1.5 rounded-lg border border-amber-500/40 transition-colors flex items-center gap-1.5 font-mono">
+                <span>🔄</span> Sync Live Time
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="w-full max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-grow">
+
+        <!-- Left / Top: Interactive Canvas Dial -->
+        <div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center relative">
+            <div class="relative w-full max-w-[650px] aspect-square flex items-center justify-center p-2 rounded-full glass-panel shadow-2xl shadow-amber-950/30 gold-border">
+                <!-- Interactive Canvas -->
+                <canvas id="orloj-canvas" class="w-full h-full cursor-pointer rounded-full"></canvas>
+
+                <!-- Tooltip Popup for Component Inspector -->
+                <div id="inspector-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity duration-200 glass-panel p-3 rounded-lg border border-amber-400/60 text-xs max-w-xs shadow-2xl z-30">
+                    <h4 id="tooltip-title" class="font-cinzel text-amber-300 font-bold mb-1 border-b border-amber-500/30 pb-1"></h4>
+                    <p id="tooltip-desc" class="text-slate-200 leading-relaxed font-sans"></p>
+                </div>
+            </div>
+
+            <!-- Canvas Info Sub-text -->
+            <p class="text-xs text-slate-400 mt-3 text-center font-mono italic">
+                💡 Hover over or tap rings and hands on the clock face to inspect their medieval astronomical functions.
+            </p>

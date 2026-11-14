@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockMath Lab</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#151b33; --panel2:#10162a; --text:#f3f6ff; --muted:#aeb8d6;
+      --accent:#69d2ff; --good:#31d67b; --bad:#ff5c7c; --warn:#ffd166; --grid:#2d365c;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter, system-ui, Segoe UI, Arial, sans-serif; background:linear-gradient(135deg,#090d1a,#151a33);
+      color:var(--text); min-height:100vh; display:grid; grid-template-columns:340px 1fr; overflow:hidden;
+    }
+    aside{
+      background:rgba(21,27,51,.92); border-right:1px solid #283257; padding:18px; overflow:auto;
+    }
+    h1{margin:0 0 8px; font-size:34px; line-height:1.05}
+    .sub{color:var(--muted); line-height:1.45; margin-bottom:18px}
+    .card{background:var(--panel2); border:1px solid #283257; border-radius:14px; padding:14px; margin:12px 0}
+    .prompt{font-size:24px; font-weight:800; margin:8px 0}
+    .equation{font-size:18px;color:var(--accent);margin:6px 0 0}
+    button, select{
+      width:100%; border:1px solid #33406e; background:#0e1430; color:var(--text); padding:11px 12px;
+      border-radius:10px; font-weight:700; cursor:pointer; margin:7px 0;
+    }
+    button:hover{border-color:var(--accent)}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+    .tiny{font-size:13px;color:var(--muted);line-height:1.4}
+    .stat{display:flex;justify-content:space-between;margin:6px 0;color:var(--muted)}
+    .stat b{color:var(--text)}
+    main{position:relative; display:grid; grid-template-rows:auto 1fr auto; min-width:0}
+    header{
+      padding:12px 18px; border-bottom:1px solid #283257; display:flex; justify-content:space-between; align-items:center;
+      background:rgba(10,15,31,.65)
+    }
+    .modePill{padding:8px 12px;border-radius:999px;background:#162447;border:1px solid #33406e;color:var(--accent);font-weight:800}
+    #canvasWrap{position:relative; min-height:0}
+    canvas{width:100%;height:100%;display:block;background:#070b16}
+    footer{padding:10px 18px;border-top:1px solid #283257;color:var(--muted);font-size:14px;background:rgba(10,15,31,.65)}
+    .inventory{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;min-height:60px}
+    .blockChip{
+      width:54px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#ffcf6b,#ff9d3d);color:#201000;font-weight:900;border:2px solid #ffe0a3;
+      box-shadow:0 5px 18px rgba(255,170,60,.25); cursor:pointer; user-select:none;
+    }
+    .blockChip.selected{outline:3px solid var(--accent)}
+    .combineBox{display:grid;grid-template-columns:1fr 46px 1fr 46px 1fr;gap:6px;align-items:center;margin-top:10px}
+    .slot{
+      height:44px;border:1px dashed #516091;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);
+      background:#0b1128;font-weight:800;
+    }
+    .op{font-size:22px;text-align:center;color:var(--accent);font-weight:900}
+    .message{min-height:42px;line-height:1.35;margin-top:8px}
+    .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Consolas, monospace; background:#0a1024;border:1px solid #33406e;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>BlockMath Lab</h1>
+    <div class="sub">Build numbers, squares, and cubes by placing unit blocks. Every block is labeled <b>1</b>. Combine blocks to make larger bars. Go ham. Knock yourself out.</div>
+
+    <div class="card">
+      <div class="tiny">Current challenge</div>
+      <div class="prompt" id="prompt">Build 2²</div>
+      <div class="equation" id="equation">2² = 2 × 2 = 4</div>
+      <div class="stat"><span>Score</span><b id="score">0</b></div>
+      <div class="stat"><span>Blocks placed</span><b id="placed">0</b></div>
+      <div class="stat"><span>Target blocks</span><b id="target">4</b></div>
+      <div class="message" id="message"></div>
+      <button id="checkBtn">Check Build</button>
+      <button id="nextBtn">Next Challenge</button>
+      <button id="clearBtn">Clear Grid</button>
+    </div>
+
+    <div class="card">
+      <div class="tiny">Inventory</div>
+      <button id="spawnBtn">Spawn 1 Block</button>
+      <div class="inventory" id="inventory"></div>
+      <div class="tiny">Click a block chip, then click the grid to place it. In 2D mode, bars place horizontally. In 3D mode, bars place along X.</div>
+    </div>
+
+    <div class="card">
+      <div class="tiny">Combination Box</div>
+      <div class="combineBox">
+        <div class="slot" id="slotA">empty</div>
+        <div class="op">+</div>
+        <div class="slot" id="slotB">empty</div>
+        <div class="op">=</div>
+        <div class="slot" id="slotOut">?</div>
+      </div>
+      <button id="combineBtn">Combine Selected Blocks</button>
+      <div class="tiny">Select two inventory blocks, then combine them into one larger block. Example: 1 + 1 = 2.</div>
+    </div>
+
+    <div class="card">
+      <div class="tiny">Mode</div>
+      <select id="modeSelect">
+        <option value="auto">Auto: 2D for squares, 3D for cubes</option>
+        <option value="2d">Force 2D</option>
+        <option value="3d">Force 3D</option>
+      </select>
+      <div class="tiny">
+        3D controls: drag to rotate, wheel to zoom. Click grid cells to place. 
+        This is an MVP prototype: simple, visual, and hackable.
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div class="modePill" id="modePill">2D Grid</div>
+      <div class="tiny">Tip: press <span class="kbd">Space</span> to spawn a block, <span class="kbd">C</span> to check.</div>
+    </header>
+    <div id="canvasWrap"><canvas id="canvas"></canvas></div>
+    <footer id="footerText">Squares show area. Cubes show volume. The goal is to make the symbol become visible.</footer>
+  </main>
+ 
+ <!-- Note to self : Matt, fix your shit, fix this, it's fugly as shit. You better fix this crap and beautify it before you 
+ even remotely consider putting this on Luminal Systems. My god. We really just be out here making the ugliest crap as long as 
+ it works, huh? Jesus. Maybe I should ask Lumi if she'll be kind enough to beautify this before putting it on LS. Seriously 
+ Matt. You know damn well you always read your code and papers before they go on LS, DO NOT IGNORE THIS COMMENT ME. FIX THIS SHIT.
+ --> 
+ 
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const UI = {
+    prompt: document.getElementById('prompt'),
+    equation: document.getElementById('equation'),
+    score: document.getElementById('score'),
+    placed: document.getElementById('placed'),
+    target: document.getElementById('target'),
+    message: document.getElementById('message'),
+    inventory: document.getElementById('inventory'),
+    spawnBtn: document.getElementById('spawnBtn'),
+    checkBtn: document.getElementById('checkBtn'),
+    nextBtn: document.getElementById('nextBtn'),
+    clearBtn: document.getElementById('clearBtn'),
+    combineBtn: document.getElementById('combineBtn'),
+    slotA: document.getElementById('slotA'),
+    slotB: document.getElementById('slotB'),
+    slotOut: document.getElementById('slotOut'),
+    modeSelect: document.getElementById('modeSelect'),
+    modePill: document.getElementById('modePill'),
+    footerText: document.getElementById('footerText')
+  };
+
+  const challenges = [
+    {kind:'count', n:5, power:1},
+    {kind:'square', n:2, power:2},
+    {kind:'square', n:3, power:2},
+    {kind:'square', n:4, power:2},
+    {kind:'cube', n:2, power:3},
+    {kind:'cube', n:3, power:3},
+  ];
+
+  let challengeIndex = 1;
+  let score = 0;
+  let inventory = [];
+  let selected = [];
+  let placed = []; // blocks: {x,y,z,value}
+  let mode = '2d';
+  let angleX = -0.55, angleY = 0.72, zoom = 38;
+  let dragging = false, lastMouse = null;
+
+  function currentChallenge(){ return challenges[challengeIndex % challenges.length]; }
+  function targetCount(ch){ return Math.pow(ch.n, ch.power); }
+
+  function resize(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * devicePixelRatio);
+    canvas.height = Math.floor(rect.height * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    draw();
+  }
+  window.addEventListener('resize', resize);
+
+  function decideMode(){
+    const forced = UI.modeSelect.value;
+    const ch = currentChallenge();
+    mode = forced === 'auto' ? (ch.power >= 3 ? '3d':'2d') : forced;
+    UI.modePill.textContent = mode === '3d' ? '3D Mesh Grid' : '2D Grid';
+    UI.footerText.textContent = mode === '3d'
+      ? 'Cubes show volume: width × height × depth. Drag to rotate the build.'
+      : 'Squares show area: width × height. Click cells to place blocks.';
+  }
+
+  function updateChallengeUI(){
+    decideMode();
+    const ch = currentChallenge();
+    const t = targetCount(ch);
+    const symbol = ch.power === 1 ? `${ch.n}` : `${ch.n}${sup(ch.power)}`;
+    UI.prompt.textContent = `Build ${symbol}`;
+    if(ch.power === 1) UI.equation.textContent = `${ch.n} = ${ch.n} unit blocks`;
+    if(ch.power === 2) UI.equation.textContent = `${ch.n}² = ${ch.n} × ${ch.n} = ${t}`;
+    if(ch.power === 3) UI.equation.textContent = `${ch.n}³ = ${ch.n} × ${ch.n} × ${ch.n} = ${t}`;
+    UI.target.textContent = t;
+    UI.score.textContent = score;
+    UI.message.innerHTML = '';
+    updateInventory();
+    draw();
+  }
+  function sup(n){ return String(n).replace(/1/g,'¹').replace(/2/g,'²').replace(/3/g,'³'); }
+
+  function updateInventory(){
+    UI.inventory.innerHTML = '';
+    inventory.forEach((item, idx) => {
+      const el = document.createElement('div');
+      el.className = 'blockChip' + (selected.includes(idx) ? ' selected':'');
+      el.textContent = item.value;
+      el.title = `Block value ${item.value}`;
+      el.onclick = () => {
+        if(selected.includes(idx)) selected = selected.filter(i => i !== idx);
+        else if(selected.length < 2) selected.push(idx);
+        else selected = [idx];
+        updateInventory();
+      };
+      UI.inventory.appendChild(el);
+    });
+    const a = selected[0] != null ? inventory[selected[0]]?.value : null;
+    const b = selected[1] != null ? inventory[selected[1]]?.value : null;
+    UI.slotA.textContent = a ?? 'empty';
+    UI.slotB.textContent = b ?? 'empty';
+    UI.slotOut.textContent = (a != null && b != null) ? (a+b) : '?';
+    UI.placed.textContent = placed.reduce((s,b)=>s+b.value,0);
+  }
+
+  function spawn(v=1){ inventory.push({value:v}); selected=[]; updateInventory(); }
+  UI.spawnBtn.onclick = () => spawn(1);
+  UI.combineBtn.onclick = () => {
+    if(selected.length !== 2){ msg('Select two inventory blocks first.', 'warn'); return; }
+    const [i,j] = selected.slice().sort((a,b)=>b-a);
+    const val = inventory[i].value + inventory[j].value;
+    inventory.splice(i,1); inventory.splice(j,1);
+    inventory.push({value:val});
+    selected=[]; updateInventory(); msg(`Combined into a ${val}-block.`, 'good');
+  };
+  UI.clearBtn.onclick = () => { placed=[]; updateInventory(); draw(); msg('Grid cleared.', 'warn'); };
+  UI.nextBtn.onclick = () => { challengeIndex++; placed=[]; inventory=[]; selected=[]; updateChallengeUI(); };
+  UI.modeSelect.onchange = updateChallengeUI;
+  UI.checkBtn.onclick = checkBuild;
+
+  function msg(text, cls=''){ UI.message.innerHTML = `<span class="${cls}">${text}</span>`; }
+
+  function checkBuild(){
+    const ch = currentChallenge();
+    const total = placed.reduce((s,b)=>s+b.value,0);
+    const t = targetCount(ch);
+    let ok = total === t;
+
+    if(ok && ch.power === 2){
+      ok = fillsRect(ch.n,ch.n,1);
+    }
+    if(ok && ch.power === 3){
+      ok = fillsRect(ch.n,ch.n,ch.n);
+    }
+    if(ok){
+      score += 10; UI.score.textContent = score;
+      msg(`Correct. You built ${UI.prompt.textContent.replace('Build ','')}.`, 'good');
+    } else {
+      msg(`Not yet. You placed ${total}/${t} unit value. Try matching the shape too.`, 'bad');
+    }
+  }
+
+  function occupiedCells(){
+    const cells = new Set();
+    for(const b of placed){
+      for(let dx=0; dx<b.value; dx++) cells.add(`${b.x+dx},${b.y},${b.z}`);
+    }
+    return cells;
+  }
+
+  function fillsRect(w,h,d){
+    const cells = occupiedCells();
+    if(cells.size !== w*h*d) return false;
+    for(let z=0; z<d; z++) for(let y=0; y<h; y++) for(let x=0; x<w; x++){
+      if(!cells.has(`${x},${y},${z}`)) return false;
+    }
+    return true;
+  }
+
+  function draw(){
+    if(!canvas.width) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0,0,rect.width,rect.height);
+    drawGridBackground(rect.width, rect.height);
+    mode === '3d' ? draw3D(rect.width,rect.height) : draw2D(rect.width,rect.height);
+    updateInventory();
+  }
+
+  function drawGridBackground(w,h){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(80,95,150,.25)';
+    ctx.lineWidth = 1;
+    for(let x=0; x<w; x+=42){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+    for(let y=0; y<h; y+=42){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function draw2D(w,h){
+    const ch = currentChallenge();
+    const n = ch.n;
+    const size = Math.min(54, Math.floor(Math.min(w,h) / 10));
+    const ox = w/2 - (10*size)/2;
+    const oy = h/2 - (10*size)/2;
+
+    // grid
+    ctx.strokeStyle = 'rgba(105,210,255,.35)';
+    for(let i=0;i<=10;i++){
+      line(ox+i*size,oy,ox+i*size,oy+10*size);
+      line(ox,oy+i*size,ox+10*size,oy+i*size);
+    }
+    // target outline
+    ctx.save();
+    ctx.strokeStyle = 'rgba(49,214,123,.9)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(ox,oy,n*size,n*size);
+    ctx.restore();
+
+    for(const b of placed){
+      for(let dx=0; dx<b.value; dx++) drawBlock2D(ox+(b.x+dx)*size, oy+b.y*size, size, dx===0?b.value:1);
+    }
+  }
+
+  function drawBlock2D(x,y,s,label){
+    ctx.fillStyle = '#ffaa42';
+    ctx.strokeStyle = '#ffe0a3';
+    ctx.lineWidth = 2;
+    roundRect(x+3,y+3,s-6,s-6,8,true,true);
+    ctx.fillStyle = '#201000';
+    ctx.font = `900 ${Math.max(14,s*.38)}px system-ui`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label, x+s/2, y+s/2);
+  }
+
+  function draw3D(w,h){
+    const ch = currentChallenge();
+    const n = ch.n;
+    const origin = {x:w/2, y:h/2+90};
+
+    // target wire cube
+    ctx.save();
+    ctx.strokeStyle = 'rgba(49,214,123,.6)';
+    ctx.lineWidth = 2;
+    drawWireBox(0,0,0,n,n,n,origin);
+    ctx.restore();
+
+    // base grid
+    ctx.save();
+    ctx.strokeStyle = 'rgba(105,210,255,.25)';
+    for(let i=0;i<=8;i++){ draw3DLine(0,i,0,8,i,0,origin); draw3DLine(i,0,0,i,8,0,origin); }
+    ctx.restore();
+
+    const cells = [];
+    for(const b of placed){
+      for(let dx=0; dx<b.value; dx++) cells.push({x:b.x+dx,y:b.y,z:b.z,label:dx===0?b.value:1});
+    }
+    cells.sort((a,b)=>(a.x+a.y+a.z)-(b.x+b.y+b.z));
+    cells.forEach(c=>drawCube(c.x,c.y,c.z,origin,c.label));
+  }
+
+  function project(x,y,z,origin){
+    // center and rotate around cube-ish coordinate space
+    let X=x-3.5, Y=y-3.5, Z=z-1.5;
+    const cy=Math.cos(angleY), sy=Math.sin(angleY);
+    const cx=Math.cos(angleX), sx=Math.sin(angleX);
+    let x1 = X*cy - Z*sy;
+    let z1 = X*sy + Z*cy;
+    let y1 = Y*cx - z1*sx;
+    let z2 = Y*sx + z1*cx;
+    const perspective = 520/(520+z2*18);
+    return {x: origin.x + x1*zoom*perspective, y: origin.y + y1*zoom*perspective};
+  }
+  function draw3DLine(x1,y1,z1,x2,y2,z2,o){
+    const a=project(x1,y1,z1,o), b=project(x2,y2,z2,o);
+    line(a.x,a.y,b.x,b.y);
+  }
+  function drawWireBox(x,y,z,w,h,d,o){
+    const pts = [
+      [x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z],
+      [x,y,z+d],[x+w,y,z+d],[x+w,y+h,z+d],[x,y+h,z+d]
+    ].map(p=>project(...p,o));
+    const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+    edges.forEach(([a,b])=>line(pts[a].x,pts[a].y,pts[b].x,pts[b].y));
+  }
+  function drawCube(x,y,z,o,label){
+    const p = [
+      [x,y,z],[x+1,y,z],[x+1,y+1,z],[x,y+1,z],
+      [x,y,z+1],[x+1,y,z+1],[x+1,y+1,z+1],[x,y+1,z+1]
+    ].map(q=>project(...q,o));
+    const faces = [
+      [0,1,2,3,'#ffb347'], [4,5,6,7,'#ffcc6e'], [1,5,6,2,'#f39a3d'], [3,2,6,7,'#d98432'], [0,4,7,3,'#ffbe5d']
+    ];
+    ctx.save();
+    faces.forEach(face=>{
+      ctx.beginPath(); ctx.moveTo(p[face[0]].x,p[face[0]].y);
+      for(let i=1;i<4;i++) ctx.lineTo(p[face[i]].x,p[face[i]].y);
+      ctx.closePath(); ctx.fillStyle=face[4]; ctx.globalAlpha=.92; ctx.fill();
+      ctx.globalAlpha=1; ctx.strokeStyle='rgba(255,240,190,.7)'; ctx.stroke();
+    });
+    const c = project(x+.5,y+.5,z+1.02,o);
+    ctx.fillStyle='#201000'; ctx.font='900 16px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label,c.x,c.y);
+    ctx.restore();
+  }
+
+  function canvasCell(evt){
+    const r = canvas.getBoundingClientRect();
+    const mx = evt.clientX-r.left, my=evt.clientY-r.top;
+    if(mode==='2d'){
+      const size = Math.min(54, Math.floor(Math.min(r.width,r.height) / 10));
+      const ox = r.width/2 - (10*size)/2, oy = r.height/2 - (10*size)/2;
+      return {x:Math.floor((mx-ox)/size), y:Math.floor((my-oy)/size), z:0};
+    }
+    // MVP 3D placement: click maps to base XY grid from screen. Simpler than true raycasting.
+    const size = zoom;
+    return {x:Math.max(0,Math.min(7,Math.floor((mx-r.width/2)/size+4))),
+            y:Math.max(0,Math.min(7,Math.floor((my-(r.height/2+90))/size+4))),
+            z:nextZAt(Math.max(0,Math.min(7,Math.floor((mx-r.width/2)/size+4))), Math.max(0,Math.min(7,Math.floor((my-(r.height/2+90))/size+4))))};
+  }
+  function nextZAt(x,y){
+    const cells=occupiedCells(); let z=0;
+    while(cells.has(`${x},${y},${z}`)) z++;
+    return z;
+  }
+
+  canvas.addEventListener('click', evt => {
+    if(dragging) return;
+    if(selected.length === 0){ msg('Select an inventory block first, or spawn one.', 'warn'); return; }
+    const idx = selected[0];
+    const item = inventory[idx];
+    const c = canvasCell(evt);
+    if(c.x<0||c.y<0||c.x>9||c.y>9){ msg('Click inside the grid.', 'warn'); return; }
+    // collision check
+    const cells = occupiedCells();
+    for(let dx=0; dx<item.value; dx++){
+      if(cells.has(`${c.x+dx},${c.y},${c.z}`)){ msg('That space is already occupied.', 'bad'); return; }
+    }
+    placed.push({x:c.x,y:c.y,z:c.z,value:item.value});
+    inventory.splice(idx,1);
+    selected=[]; updateInventory(); draw();
+  });
+
+  canvas.addEventListener('mousedown', e => { dragging=false; lastMouse={x:e.clientX,y:e.clientY}; });
+  canvas.addEventListener('mousemove', e => {
+    if(!lastMouse || e.buttons!==1 || mode!=='3d') return;
+    const dx=e.clientX-lastMouse.x, dy=e.clientY-lastMouse.y;
+    if(Math.abs(dx)+Math.abs(dy)>2) dragging=true;
+    angleY += dx*0.01; angleX += dy*0.01;
+    angleX = Math.max(-1.35, Math.min(.4, angleX));
+    lastMouse={x:e.clientX,y:e.clientY}; draw();
+  });
+  window.addEventListener('mouseup',()=>{ setTimeout(()=>dragging=false,0); lastMouse=null; });
+  canvas.addEventListener('wheel', e => {
+    if(mode !== '3d') return;
+    e.preventDefault();
+    zoom *= e.deltaY > 0 ? .92 : 1.08;
+    zoom = Math.max(22, Math.min(70, zoom));
+    draw();
+  }, {passive:false});
+
+  function line(x1,y1,x2,y2){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  function roundRect(x,y,w,h,r,fill,stroke){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+    if(fill)ctx.fill(); if(stroke)ctx.stroke();
+  }
+
+  window.addEventListener('keydown', e => {
+    if(e.code==='Space'){ e.preventDefault(); spawn(1); }
+    if(e.key.toLowerCase()==='c') checkBuild();
+  });
+
+  // starter inventory
+  for(let i=0;i<4;i++) spawn(1);
+  updateChallengeUI();
+  resize();
+})();
+</script>
+</body>
+</html>

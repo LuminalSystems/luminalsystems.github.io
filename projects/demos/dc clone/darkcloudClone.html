@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luminal Systems - Reconstruction Core v1.1</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0c10;
+            font-family: 'Courier New', Courier, monospace;
+            color: #66fcf1;
+            overflow: hidden;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            background-color: #1f2833;
+            border: 2px solid #45f3ff;
+            box-shadow: 0 0 20px rgba(69, 243, 255, 0.2);
+            image-rendering: pixelated;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .ui-panel {
+            background: rgba(11, 12, 16, 0.85);
+            border: 1px solid #45f3ff;
+            padding: 10px;
+            pointer-events: auto;
+            border-radius: 4px;
+        }
+        .header-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .footer-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+        .heart {
+            color: #ff4d4d;
+            font-size: 20px;
+            text-shadow: 0 0 5px #ff0000;
+        }
+        button {
+            background: #1f2833;
+            color: #66fcf1;
+            border: 1px solid #66fcf1;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #66fcf1;
+            color: #0b0c10;
+            box-shadow: 0 0 10px #66fcf1;
+        }
+        #dialogue-box {
+            position: absolute;
+            bottom: 80px;
+            width: 600px;
+            left: calc(50% - 300px);
+            display: none;
+        }
+        .building-select {
+            margin-top: 5px;
+            display: flex;
+            gap: 5px;
+        }
+        .active-selection {
+            background: #45f3ff;
+            color: #0b0c10;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+    
+    <div id="ui-overlay">
+        <div class="header-panel">
+            <div class="ui-panel" id="player-hud">
+                <div>CORE OS: ARCHITECT MODE</div>
+                <div id="hp-display">VIT: <span class="heart">♥♥♥♥•</span></div>
+                <div id="weapon-display">WEAPON: Dagger [NEW]</div>
+            </div>
+            
+            <div class="ui-panel" id="mode-panel">
+                <div id="mode-title" style="margin-bottom: 5px; font-weight: bold;">TOWN EDIT MODE</div>
+                <button id="btn-mode-toggle" onclick="toggleGameMode()">ENTER DUNGEON RUN</button>
+                <button id="btn-clear-save" style="border-color: #ff4d4d; color: #ff4d4d;" onclick="clearSaveData()">RESET MATRIX</button>
+            </div>
+        </div>
+
+        <div class="ui-panel" id="dialogue-box">
+            <div id="dialogue-speaker" style="font-weight: bold; color: #45f3ff; margin-bottom: 5px;">NPC:</div>
+            <div id="dialogue-text">...</div>
+        </div>
+
+        <div class="footer-panel">
+            <div class="ui-panel" id="inventory-panel" style="width: 400px;">
+                <div>SPHEROID INVENTORY (Select a Piece)</div>
+                <div class="building-select" id="building-pool"></div>
+            </div>
+            
+            <div class="ui-panel" id="metrics-panel" style="text-align: right;">
+                <div>TOWN HARMONY: <span id="harmony-val">0</span>%</div>
+                <div style="font-size: 11px; color: #c5a3ff;">System Metrics Matrix Enabled</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = "LUMINAL_SYSTEMS_DC_SAVE";
+    
+    let gameState = {
+        currentMode: "TOWN",
+        player: {
+            maxHp: 5,
+            hp: 5,
+            gold: 100,
+            spheroids: ["BAKERY", "BLACKSMITH", "TAVERN"]
+        },
+        weapon: {
+            name: "Porch Dagger",
+            durability: 50,
+            maxDurability: 50,
+            phase: "NEW"
+        },
+        town: {
+            harmony: 0,
+            placedBuildings: {}
+        },
+        dungeon: {
+            cleared: false,
+            seed: 1337
+        }
+    };
+
+    const BUILDING_PROFILES = {
+        BAKERY: { name: "Bakery Hub", color: "#ff9f43", desc: "Requires water placement access." },
+        BLACKSMITH: { name: "Forge Core", color: "#ee5253", desc: "Wants to align close to the Tavern." },
+        TAVERN: { name: "Neon Tavern", color: "#10ac84", desc: "Wants isolation away from the Forge." }
+    };
+
+    const NPC_CONSTRAINTS = {
+        BAKERY: { target: "RIVER", maxDist: 2, points: 5 },
+        BLACKSMITH: { target: "TAVERN", maxDist: 2, points: 5 },
+        TAVERN: { target: "BLACKSMITH", minDist: 4, points: 5 }
+    };
+
+    let selectedBuilding = null;
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    const hexRadius = 35;
+    const originX = canvas.width / 2;
+    const originY = canvas.height / 3;
+
+    window.onload = function() {
+        loadGameProfile();
+        generateInventoryPoolUI();
+        updateHUDMatrix();
+        checkTownHarmonyEngine(false);
+        renderLoop();
+        
+        canvas.addEventListener("click", handleCanvasClick);
+    };
+
+    function saveGameProfile() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+    }
+
+    function loadGameProfile() {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                gameState = JSON.parse(savedData);
+            } catch(e) {
+                console.error("Matrix extraction error, parsing failed.");
+            }
+        }
+    }
+
+    function clearSaveData() {
+        localStorage.removeItem(STORAGE_KEY);
+        window.location.reload();
+    }
+
+    function toggleGameMode() {
+        if (gameState.currentMode === "TOWN") {
+            gameState.currentMode = "DUNGEON";
+            document.getElementById("mode-title").innerText = "DUNGEON EXPLORATION";
+            document.getElementById("btn-mode-toggle").innerText = "RETURN TO TOWN";
+            document.getElementById("inventory-panel").style.display = "none";
+            hideDialoguePanel();
+        } else {
+            gameState.currentMode = "TOWN";
+            document.getElementById("mode-title").innerText = "TOWN EDIT MODE";
+            document.getElementById("btn-mode-toggle").innerText = "ENTER DUNGEON RUN";
+            document.getElementById("inventory-panel").style.display = "block";
+            checkTownHarmonyEngine(true);
+        }
+        saveGameProfile();
+        updateHUDMatrix();
+    }
+
+    function checkTownHarmonyEngine(triggerDialogue = true) {
+        let maxAvailablePoints = Object.keys(NPC_CONSTRAINTS).length * 5;
+        let runningScore = 0;
+        let lastReport = "No residents have checked in yet.";
+        let activeSpeaker = "SYSTEM ENGINE";
+
+        for (let key in gameState.town.placedBuildings) {
+            let building = gameState.town.placedBuildings[key];
+            let constraint = NPC_CONSTRAINTS[building.type];
+            if (!constraint) continue;
+
+            let coords = key.split("_");
+            let q1 = parseInt(coords[0]);
+            let r1 = parseInt(coords[1]);
+
+            let targetFound = false;
+            let targetDist = 999;
+
+            for (let innerKey in gameState.town.placedBuildings) {
+                if (innerKey === key) continue;
+                let targetBuilding = gameState.town.placedBuildings[innerKey];
+                
+                if (targetBuilding.type === constraint.target) {
+                    targetFound = true;
+                    let innerCoords = innerKey.split("_");
+                    let q2 = parseInt(innerCoords[0]);
+                    let r2 = parseInt(innerCoords[1]);
+                    
+                    targetDist = (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2;
+                    break;
+                }
+            }
+
+            if (constraint.target === "RIVER") {
+                let rGrid = getStaticRiverCoordinates();
+                rGrid.forEach(rv => {
+                    let d = (Math.abs(q1 - rv.q) + Math.abs(q1 + r1 - rv.q - rv.r) + Math.abs(r1 - rv.r)) / 2;
+                    if (d < targetDist) targetDist = d;
+                });
+                targetFound = true; 
+            }
+
+            activeSpeaker = BUILDING_PROFILES[building.type].name;
+            if (targetFound) {
+                if (constraint.maxDist && targetDist <= constraint.maxDist) {
+                    runningScore += 5;
+                    lastReport = "My home layout coordinates are perfectly aligned. I am ecstatic!";
+                } else if (constraint.minDist && targetDist >= constraint.minDist) {
+                    runningScore += 5;
+                    lastReport = "The spacing matches my preferences perfectly. Outstanding design!";
+                } else if (targetDist <= 4) {
+                    runningScore += 3;
+                    lastReport = "It's acceptable, but the micro-spacing feels slightly un-optimized.";
+					} else {
+					runningScore += 1;
+					lastReport = "I am indifferent. This placement doesn't solve my functional criteria.";
+					}
+					} else {
+					lastReport = "The layout is hazardous. My required spatial anchors are missing entirely!";
+					}
+				}
+let finalPercent = maxAvailablePoints > 0 ? Math.round((runningScore / maxAvailablePoints) * 100) : 0;
+gameState.town.harmony = finalPercent;
+document.getElementById("harmony-val").innerText = finalPercent;
+if (triggerDialogue && Object.keys(gameState.town.placedBuildings).length > 0) {
+showDialoguePanel(activeSpeaker, lastReport);
+}
+}
+function getStaticRiverCoordinates() {
+return [
+{q: -4, r: 4}, {q: -3, r: 3}, {q: -2, r: 2}, {q: -1, r: 1}, {q: 0, r: 0}, {q: 1, r: -1}, {q: 2, r: -2}, {q: 3, r: -3}, {q: 4, r: -4}
+];
+}
+function generateInventoryPoolUI() {
+const poolContainer = document.getElementById("building-pool");
+poolContainer.innerHTML = "";
+if (gameState.player.spheroids.length === 0) {
+poolContainer.innerHTML = "SPHEROIDS DEPLETED. ENTER DUNGEON.";
+return;
+}
+gameState.player.spheroids.forEach((type, index) => {
+const btn = document.createElement("button");
+btn.innerText = BUILDING_PROFILES[type].name;
+btn.title = BUILDING_PROFILES[type].desc;
+btn.onclick = () => {
+document.querySelectorAll(".building-select button").forEach(b => b.classList.remove("active-selection"));
+selectedBuilding = { type: type, index: index };
+btn.classList.add("active-selection");
+};
+poolContainer.appendChild(btn);
+});
+}
+function updateHUDMatrix() {
+document.getElementById("weapon-display").innerText = WEAPON: ${gameState.weapon.name} [${gameState.weapon.phase}];
+let hearts = "";
+for(let i=0; i<gameState.player.maxHp; i++) {
+hearts += i < gameState.player.hp ? "♥" : "♡";
+}
+document.getElementById("hp-display").innerHTML = 'VIT: <span class="heart">${hearts}</span>';
+}
+function showDialoguePanel(speaker, text) {
+document.getElementById("dialogue-box").style.display = "block";
+document.getElementById("dialogue-speaker").innerText = ${speaker}:;
+document.getElementById("dialogue-text").innerText = text;
+}
+function hideDialoguePanel() {
+document.getElementById("dialogue-box").style.display = "none";
+}
+function handleCanvasClick(e) {
+const rect = canvas.getBoundingClientRect();
+const mouseX = e.clientX - rect.left;
+const mouseY = e.clientY - rect.top;
+let xRelative = mouseX - originX;
+let yRelative = mouseY - originY;
+let qFraction = (Math.sqrt(3)/3 * xRelative - 1/3 * yRelative) / hexRadius;
+let rFraction = (2/3 * yRelative) / hexRadius;
+let q = Math.round(qFraction);
+let r = Math.round(rFraction);
+let s = -q - r;
+let qDiff = Math.abs(q - qFraction);
+let rDiff = Math.abs(r - rFraction);
+let sDiff = Math.abs(s - (-qFraction - rFraction));
+if (qDiff > rDiff && qDiff > sDiff) q = -r - s;
+else if (rDiff > sDiff) r = -q - s;
+let key = ${q}_${r};
+if (gameState.currentMode === "TOWN") {
+if (selectedBuilding) {
+if (!gameState.town.placedBuildings[key]) {
+gameState.town.placedBuildings[key] = { type: selectedBuilding.type };
+gameState.player.spheroids.splice(selectedBuilding.index, 1);
+selectedBuilding = null;
+saveGameProfile();
+generateInventoryPoolUI();
+}
+} else if (gameState.town.placedBuildings[key]) {
+let returnedType = gameState.town.placedBuildings[key].type;
+gameState.player.spheroids.push(returnedType);
+delete gameState.town.placedBuildings[key];
+saveGameProfile();
+generateInventoryPoolUI();
+}
+}
+}
+function renderLoop() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+if (gameState.currentMode === "TOWN") {
+drawTownEnvironmentGrid();
+} else {
+drawProceduralDungeonMatrix();
+}
+requestAnimationFrame(renderLoop);
+}
+function drawTownEnvironmentGrid() {
+const range = 5;
+let riverTiles = getStaticRiverCoordinates();
+for (let q = -range; q <= range; q++) {
+let r1 = Math.max(-range, -q - range);
+let r2 = Math.min(range, -q - range);
+for (let r = r1; r <= r2; r++) {
+let isRiver = riverTiles.some(rv => rv.q === q && rv.r === r);
+let color = isRiver ? "#2e86de" : "#2c3e50";
+let borderColor = "#34495e";
+let key = ${q}_${r};
+if (gameState.town.placedBuildings[key]) {
+color = BUILDING_PROFILES[gameState.town.placedBuildings[key].type].color;
+borderColor = "#66fcf1";
+}
+drawIsometricHexCell(q, r, color, borderColor);
+}
+}
+}
+function drawIsometricHexCell(q, r, fillColor, borderColor) {
+let x = hexRadius * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
+let y = hexRadius * (3/2 * r);
+let pixelX = x + originX;
+let pixelY = y + originY;
+ctx.beginPath();
+for (let i = 0; i < 6; i++) {
+let angleDeg = 60 * i - 30;
+let angleRad = Math.PI / 180 * angleDeg;
+let vertexX = pixelX + hexRadius * Math.cos(angleRad);
+let vertexY = pixelY + hexRadius * Math.sin(angleRad);
+if (i === 0) ctx.moveTo(vertexX, vertexY);
+else ctx.lineTo(vertexX, vertexY);
+}
+ctx.closePath();
+ctx.fillStyle = fillColor;
+ctx.fill();
+ctx.strokeStyle = borderColor;
+ctx.lineWidth = 1;
+ctx.stroke();
+let key = ${q}_${r};
+if (gameState.town.placedBuildings[key]) {
+ctx.fillStyle = "#0b0c10";
+ctx.font = "bold 10px Arial";
+ctx.textAlign = "center";
+ctx.fillText(gameState.town.placedBuildings[key].type.substring(0, 4), pixelX, pixelY + 4);
+}
+}
+function drawProceduralDungeonMatrix() {
+ctx.fillStyle = "rgba(11, 12, 16, 0.4)";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.fillStyle = "#66fcf1";
+ctx.font = "16px 'Courier New'";
+ctx.textAlign = "center";
+ctx.fillText("DUNGEON PROXIMITY GENERATOR ACTIVE", canvas.width/2, canvas.height/3);
+ctx.fillText("FOG OF WAR CONDITIONS: DENSE CURSED OVERLAY", canvas.width/2, canvas.height/2);
+ctx.fillStyle = "#ff9f43";
+ctx.font = "12px 'Courier New'";
+ctx.fillText(Causality Modifiers -> Harmony Value: ${gameState.town.harmony}%, canvas.width/2, (canvas.height/3)*2);
+ctx.strokeStyle = "rgba(69, 243, 255, 0.5)";
+ctx.lineWidth = 2;
+ctx.beginPath();
+ctx.arc(canvas.width/2, canvas.height/2 + 50, 45, 0, Math.PI * 2);
+ctx.stroke();
+ctx.fillStyle = "#66fcf1";
+ctx.fillText("3-5m Local Clarity Void", canvas.width/2, canvas.height/2 + 115);
+}
+</script> 
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luminal Systems - Takuzu Matrix Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --wall-color: #21262d;
+            --cell-bg: #21262d;
+            --cell-fixed: #30363d;
+            --cell-empty: #0d1117;
+            --success-color: #238636;
+            --error-color: #da3633;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .container {
+            background-color: var(--panel-bg);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        button {
+            background-color: #21262d;
+            color: var(--text-color);
+            border: 1px solid #30363d;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        button:hover {
+            background-color: #30363d;
+            border-color: #8b949e;
+        }
+
+        button.primary {
+            background-color: #238636;
+            color: #white;
+            border-color: #2ea44f;
+        }
+
+        button.primary:hover {
+            background-color: #2ea44f;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin: 0 auto 20px auto;
+            max-width: 350px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            background-color: var(--cell-empty);
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            aspect-ratio: 1;
+            transition: background-color 0.2s;
+        }
+
+        .cell.wall {
+            background-color: var(--wall-color);
+            border-color: #1f242c;
+            color: transparent;
+            cursor: not-allowed;
+            position: relative;
+        }
+        
+        .cell.wall::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background-color: #0d1117;
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        .cell.fixed {
+            background-color: var(--cell-fixed);
+            color: #f0f6fc;
+            cursor: not-allowed;
+        }
+
+        .cell.user-entered {
+            color: var(--accent-color);
+        }
+
+        .status-panel {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 500;
+            min-height: 24px;
+            margin-top: 15px;
+        }
+        
+        .status-success { color: var(--success-color); }
+        .status-error { color: var(--error-color); }
+
+        .rules-brief {
+            margin-top: 24px;
+            font-size: 0.8rem;
+            opacity: 0.6;
+            border-top: 1px solid #30363d;
+            padding-top: 15px;
+        }
+
+        .rules-brief ul {
+            padding-left: 20px;
+            margin: 5px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Luminal Systems</h1>
+    <div class="subtitle">Takuzu Vector Logic Grid // Prototype v1.0</div>
+</header>
+
+<div class="container">
+    <div class="controls">
+        <button id="new-puzzle-btn" class="primary">Generate Vector</button>
+        <button id="clear-btn">Reset Grid</button>
+        <button id="verify-btn">Verify Constraints</button>
+    </div>
+
+    <div class="grid" id="puzzle-grid"></div>
+
+    <div class="status-panel" id="status-message"></div>
+
+    <div class="rules-brief">
+        <strong>Operational Rules:</strong>
+        <ul>
+            <li>Each playable row & column must contain an equal balance of 0s and 1s (3 each).</li>
+            <li>No more than two identical numbers may be placed consecutively (no 000 or 111).</li>
+            <li>Solid vector blocks (█) act as structural walls and are non-playable.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const MASK = [
+        [' ', ' ', ' ', 'X', ' ', ' ', ' '],
+        [' ', ' ', 'X', ' ', ' ', ' ', ' '],
+        [' ', 'X', ' ', ' ', ' ', ' ', ' '],
+        ['X', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', 'X', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', 'X'],
+        [' ', ' ', ' ', ' ', 'X', ' ', ' ']
+    ];
+
+    let currentSolution = [];
+    let currentPuzzle = [];
+
+    function generateBoard() {
+        let board = MASK.map(row => row.slice());
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 7; c++) {
+                if (board[r][c] === ' ') {
+                    board[r][c] = Math.random() < 0.5 ? 0 : 1;
+                }
+            }
+        }
+        return board;
+    }
+
+    function balanceCounts(board) {
+        let changed = false;
+        const target = 3;
+
+        for (let r = 0; r < 7; r++) {
+            let playable = [];
+            for(let c=0; c<7; c++) if(board[r][c] !== 'X') playable.push(c);
+            let ones = playable.filter(c => board[r][c] === 1).length;
+            let zeros = playable.filter(c => board[r][c] === 0).length;
+
+            if (ones > target) {
+                let onesCols = playable.filter(c => board[r][c] === 1);
+                let idx = onesCols[Math.floor(Math.random() * onesCols.length)];
+                board[r][idx] = 0;
+                changed = true;
+            } else if (zeros > target) {
+                let zerosCols = playable.filter(c => board[r][c] === 0);
+                let idx = zerosCols[Math.floor(Math.random() * zerosCols.length)];
+                board[r][idx] = 1;
+                changed = true;
+            }
+        }
+
+        for (let c = 0; c < 7; c++) {
+            let playable = [];
+            for(let r=0; r<7; r++) if(board[r][c] !== 'X') playable.push(r);
+            let ones = playable.filter(r => board[r][c] === 1).length;
+            let zeros = playable.filter(r => board[r][c] === 0).length;
+
+            if (ones > target) {
+                let onesRows = playable.filter(r => board[r][c] === 1);
+                let idx = onesRows[Math.floor(Math.random() * onesRows.length)];
+                board[idx][c] = 0;
+                changed = true;
+            } else if (zeros > target) {
+                let zerosRows = playable.filter(r => board[r][c] === 0);
+                let idx = zerosRows[Math.floor(Math.random() * zerosRows.length)];
+                board[idx][c] = 1;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    function checkTriplicatesAndFix(board) {
+        let changed = false;
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 5; c++) {
+                if (board[r][c] !== 'X' && board[r][c+1] !== 'X' && board[r][c+2] !== 'X') {
+                    if (board[r][c] === board[r][c+1] && board[r][c+1] === board[r][c+2]) {
+                        board[r][c+1] = 1 - board[r][c+1];
+                        changed = true;
+                    }
+                }
+            }
+        }
+        for (let c = 0; c < 7; c++) {
+            for (let r = 0; r < 5; r++) {
+                if (board[r][c] !== 'X' && board[r+1][c] !== 'X' && board[r+2][c] !== 'X') {
+                    if (board[r][c] === board[r+1][c] && board[r+1][c] === board[r+2][c]) {
+                        board[r+1][c] = 1 - board[r+1][c];
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    function pacmanShiftDuplicates(board) {
+        let changed = false;
+        let seenRows = [];
+        for (let r = 0; r < 7; r++) {
+            let rowStr = board[r].join('');
+            if (seenRows.includes(rowStr)) {
+                board[r] = board[r].slice(1).concat([board[r][0]]);
+                changed = true;
+            } else {
+                seenRows.push(rowStr);
+            }
+        }
+        return changed;
+    }
+
+    function verifyBoardState(board) {
+        const target = 3;
+        for (let i = 0; i < 7; i++) {
+            let rowCells = board[i].filter(cell => cell !== 'X');
+            let colCells = [];
+            for(let r=0; r<7; r++) if(board[r][i] !== 'X') colCells.push(board[r][i]);
+
+            let rOnes = rowCells.filter(c => c === 1).length;
+            let cOnes = colCells.filter(c => c === 1).length;
+            if (rOnes !== target || cOnes !== target) return false;
+        }
+        
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 5; c++) {
+                if (board[r][c] !== 'X' && board[r][c+1] !== 'X' && board[r][c+2] !== 'X') {
+                    if (board[r][c] === board[r][c+1] && board[r][c+1] === board[r][c+2]) return false;
+                }
+            }
+        }
+        for (let c = 0; c < 7; c++) {
+            for (let r = 0; r < 5; r++) {
+                if (board[r][c] !== 'X' && board[r+1][c] !== 'X' && board[r+2][c] !== 'X') {
+                    if (board[r][c] === board[r+1][c] && board[r+1][c] === board[r+2][c]) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function createPuzzleLayer(solutionBoard) {
+        let puzzle = solutionBoard.map(row => row.slice());
+        for (let r = 0; r < 7; r++) {
+            let playableCols = [];
+            for(let c=0; c<7; c++) if(puzzle[r][c] !== 'X') playableCols.push(c);
+            
+            // Shuffle playable columns
+            playableCols.sort(() => Math.random() - 0.5);
+            let numToDig = Math.floor(Math.random() * 2) + 3; // dig 3 or 4 spaces
+            
+            let dug = 0;
+            for (let c of playableCols) {
+                if (dug >= numToDig) break;
+                let saved = puzzle[r][c];
+                puzzle[r][c] = '.';
+                
+                let rowVals = puzzle[r].filter(cell => cell !== 'X');
+                let emptyInRow = rowVals.filter(cell => cell === '.').length;
+                if (emptyInRow > 4) {
+                    puzzle[r][c] = saved;
+                } else {
+                    dug++;
+                }
+            }
+        }
+        return puzzle;
+    }
+
+    function initGame() {
+        document.getElementById('status-message').className = 'status-panel';
+        document.getElementById('status-message').innerText = '';
+        
+        while (true) {
+            currentSolution = generateBoard();
+            for (let i = 0; i < 300; i++) {
+                let b1 = balanceCounts(currentSolution);
+                let b2 = checkTriplicatesAndFix(currentSolution);
+                let b3 = pacmanShiftDuplicates(currentSolution);
+                if (!b1 && !b2 && !b3) break;
+            }
+            if (verifyBoardState(currentSolution)) break;
+        }
+
+        currentPuzzle = createPuzzleLayer(currentSolution);
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const gridContainer = document.getElementById('puzzle-grid');
+        gridContainer.innerHTML = '';
+
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 7; c++) {
+                const cellDiv = document.createElement('div');
+                cellDiv.classList.add('cell');
+                
+                const val = currentPuzzle[r][c];
+                
+                if (val === 'X') {
+                    cellDiv.classList.add('wall');
+                    cellDiv.innerText = '█';
+                } else if (val === 0 || val === 1) {
+                    cellDiv.classList.add('fixed');
+                    cellDiv.innerText = val;
+                } else {
+                    // It's empty or user entered
+                    cellDiv.classList.add('user-entered');
+                    cellDiv.innerText = val === '.' ? '' : val;
+                    
+                    cellDiv.addEventListener('click', () => {
+                        let currentText = cellDiv.innerText;
+                        if (currentText === '') {
+                            cellDiv.innerText = '0';
+                            currentPuzzle[r][c] = 0;
+                        } else if (currentText === '0') {
+                            cellDiv.innerText = '1';
+                            currentPuzzle[r][c] = 1;
+                        } else {
+                            cellDiv.innerText = '';
+                            currentPuzzle[r][c] = '.';
+                        }
+                    });
+                }
+                gridContainer.appendChild(cellDiv);
+            }
+        }
+    }
+
+    document.getElementById('new-puzzle-btn').addEventListener('click', initGame);
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        for(let r=0; r<7; r++) {
+            for(let c=0; c<7; c++) {
+                if(currentPuzzle[r][c] !== 'X' && currentSolution[r][c] !== currentPuzzle[r][c]) {
+                    // Check if it was originally a dot by comparing with solution
+                    // To be simple, clear everything that doesn't match initial state
+                    // We can just re-render grid by reset data layer if we saved initial,
+                    // Let's loop grid childs to clear user data
+                }
+            }
+        }
+        initGame(); // Quick reset by rolling a fresh matrix
+    });
+
+    document.getElementById('verify-btn').addEventListener('click', () => {
+        const statusMsg = document.getElementById('status-message');
+        
+        // Check if all spots filled
+        for(let r=0; r<7; r++) {
+            for(let c=0; c<7; c++) {
+                if(currentPuzzle[r][c] === '.') {
+                    statusMsg.className = 'status-panel status-error';
+                    statusMsg.innerText = 'Vector matrix incomplete. Fill all nodes.';
+                    return;
+                }
+            }
+        }
+
+        // Validate final state
+        if (verifyBoardState(currentPuzzle)) {
+            statusMsg.className = 'status-panel status-success';
+            statusMsg.innerText = 'Constraint satisfaction achieved. Well done, Pilot.';
+        } else {
+            statusMsg.className = 'status-panel status-error';
+            statusMsg.innerText = 'Logic error detected. Structural balance compromised.';
+        }
+    });
+
+    // Fire engine on startup
+    initGame();
+</script>
+</body>
+</html>

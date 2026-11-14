@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luminal DB Engine — Spatial Query & Read-Head Visualizer</title>
+  <!-- Google Fonts: Inter & JetBrains Mono for crisp systems engineering aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================================
+       LUMINAL SYSTEMS DESIGN TOKENS & BASE STYLES
+       Zero external CSS dependencies; pure crisp dark-mode engineering interface
+       ============================================================================ */
+    :root {
+      --bg-void: #07090e;
+      --bg-panel: #0d111a;
+      --bg-surface: #131926;
+      --bg-surface-hover: #1a2234;
+      --bg-node: #161d2c;
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-focus: rgba(56, 189, 248, 0.45);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* Semantic Token & Execution Colors */
+      --tok-use: #38bdf8;       /* Sky Blue - Database Target */
+      --tok-from: #fbbf24;      /* Amber - Table / Column */
+      --tok-where: #c084fc;     /* Purple - Row Predicate */
+      --tok-insert: #34d399;    /* Emerald - Create / Migrate */
+      --tok-delete: #f87171;    /* Crimson - Delete */
+      --tok-move: #2dd4bf;      /* Teal - Move / Update */
+
+      --status-rw: #10b981;
+      --status-ro: #ef4444;
+      --accent-glow: rgba(56, 189, 248, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-void);
+      color: var(--text-primary);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.35);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.55);
+    }
+
+    /* ============================================================================
+       TOP BAR: BRANDING, CONTROLS & LIVE SQL AST TOKENIZER
+       ============================================================================ */
+    header.top-bar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 30;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--tok-use);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 20px;
+      background: var(--border-subtle);
+      margin: 0 2px;
+    }
+
+    button.btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 6px 11px;
+      border-radius: 7px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.16s ease;
+      white-space: nowrap;
+    }
+
+    button.btn:hover:not(:disabled) {
+      background: var(--bg-surface-hover);
+      border-color: rgba(148, 163, 184, 0.35);
+      transform: translateY(-1px);
+    }
+
+    button.btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button.btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      border-color: rgba(125, 211, 252, 0.4);
+      color: #ffffff;
+      box-shadow: 0 2px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    button.btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #38bdf8, #3b82f6);
+      box-shadow: 0 4px 18px rgba(56, 189, 248, 0.45);
+    }
+
+    button.btn-run {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: rgba(52, 211, 153, 0.45);
+      color: #ffffff;
+      box-shadow: 0 2px 14px rgba(16, 185, 129, 0.32);
+    }
+
+    button.btn-run:hover:not(:disabled) {
+      background: linear-gradient(135deg, #34d399, #10b981);
+      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.5);
+    }
+
+    button.btn-danger {
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.25);
+    }
+    button.btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(248, 113, 113, 0.5);
+    }
+
+    /* Live SQL AST Bar */
+    .sql-ast-container {
+      background: #06080d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 46px;
+    }
+
+    .sql-ast-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--tok-insert);
+      box-shadow: 0 0 8px var(--tok-insert);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    .sql-stream {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 74px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .sql-empty-hint {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 0.76rem;
+    }
+
+    /* Query Pill & Individual Color-Coded AST Tokens */
+    .query-statement {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 6px;
+      padding: 3px 6px;
+      transition: all 0.2s ease;
+    }
+
+    .query-statement.active-query {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .query-statement.completed-query {
+      opacity: 0.55;
+    }
+
+    .query-statement.blocked-query {
+      border-color: rgba(239, 68, 68, 0.7);
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .ast-token {
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: all 0.18s ease;
+      font-weight: 500;
+    }
+
+    .ast-token[data-type="USE"] {
+      color: var(--tok-use);
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.22);
+    }
+    .ast-token[data-type="FROM"],
+    .ast-token[data-type="INTO"] {
+      color: var(--tok-from);
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.22);
+    }
+    .ast-token[data-type="WHERE"] {
+      color: var(--tok-where);
+      background: rgba(192, 132, 252, 0.1);
+      border-color: rgba(192, 132, 252, 0.22);
+    }
+    .ast-token[data-type="ACTION_INSERT"] {
+      color: var(--tok-insert);
+      background: rgba(52, 211, 153, 0.12);
+      border-color: rgba(52, 211, 153, 0.25);
+    }
+    .ast-token[data-type="ACTION_DELETE"] {
+      color: var(--tok-delete);
+      background: rgba(248, 113, 113, 0.12);
+      border-color: rgba(248, 113, 113, 0.25);
+    }
+    .ast-token[data-type="ACTION_MOVE"] {
+      color: var(--tok-move);
+      background: rgba(45, 212, 191, 0.12);
+      border-color: rgba(45, 212, 191, 0.25);
+    }
+
+    /* Active Synchronized Token Glow during Read-Head Execution */
+    .ast-token.token-active {
+      transform: scale(1.06);
+      font-weight: 700;
+      box-shadow: 0 0 14px currentColor;
+      border-color: currentColor;
+      background: rgba(255, 255, 255, 0.14);
+      z-index: 2;
+    }
+
+    .query-remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0 3px;
+      line-height: 1;
+    }
+    .query-remove-btn:hover {
+      color: var(--tok-delete);
+    }
+
+    .sql-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================================
+       CENTER STAGE: SPATIAL WORKSPACE + HTML5 READ-HEAD OVERLAY CANVAS
+       ============================================================================ */
+    main.workspace-stage {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+      background-color: var(--bg-void);
+      background-image:
+        radial-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+        linear-gradient(to right, rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+      background-size: 24px 24px, 96px 96px, 96px 96px;
+      display: flex;
+    }
+
+    /* HTML5 Canvas Layer for Mechanical Read-Head(s), Laser Beams & Forcefields */
+    #readHeadCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    /* Viewport Container for Single or Split DBs */
+    .db-viewport-grid {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      padding: 14px;
+      gap: 14px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Center Bridge Indicator in Dual Split Mode */
+    .split-bridge-divider {
+      width: 34px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .split-bridge-line {
+      flex: 1;
+      width: 2px;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(56, 189, 248, 0.35) 0px,
+        rgba(56, 189, 248, 0.35) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+
+    .split-bridge-badge {
+      background: var(--bg-surface);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--tok-use);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 6px 4px;
+      border-radius: 8px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Database Container Card */
+    .db-container {
+      flex: 1;
+      min-width: 0;
+      background: rgba(13, 17, 26, 0.86);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+      position: relative;
+    }
+
+    .db-container.ghost-mode {
+      border-style: dashed;
+      border-color: rgba(56, 189, 248, 0.35);
+      background: rgba(13, 17, 26, 0.55);
+    }
+
+    .db-container.targeted-db {
+      border-color: var(--tok-use);
+      box-shadow: 0 0 28px rgba(56, 189, 248, 0.22);
+    }
+
+    .db-header {
+      padding: 10px 14px;
+      background: rgba(19, 25, 38, 0.92);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .db-title-group {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .db-slot-tag {
+      font-size: 0.66rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(99, 102, 241, 0.18);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+    }
+
+    .db-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    .ghost-pill {
+      font-size: 0.66rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--tok-use);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .db-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Clickable R/W vs READ-ONLY Permission Badge */
+    .perm-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.18s ease;
+    }
+
+    .perm-badge.rw {
+      background: rgba(16, 185, 129, 0.14);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .perm-badge.rw:hover {
+      background: rgba(16, 185, 129, 0.24);
+    }
+
+    .perm-badge.ro {
+      background: rgba(239, 68, 68, 0.16);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.55);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+    }
+    .perm-badge.ro:hover {
+      background: rgba(239, 68, 68, 0.26);
+    }
+
+    /* Ghost Banner Overlay Action */
+    .ghost-banner {
+      background: linear-gradient(90deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.12));
+      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.76rem;
+      color: #bae6fd;
+    }
+
+    /* Columns / Tables Horizontal Lane Container */
+    .db-columns-area {
+      flex: 1;
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .db-column {
+      flex: 1;
+      min-width: 210px;
+      max-width: 340px;
+      background: rgba(19, 25, 38, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+    }
+
+    .db-column.drag-over {
+      border-color: var(--tok-insert);
+      background: rgba(52, 211, 153, 0.08);
+      box-shadow: inset 0 0 20px rgba(52, 211, 153, 0.14);
+    }
+
+    .db-column.targeted-col {
+      border-color: var(--tok-from);
+      box-shadow: 0 0 22px rgba(251, 191, 36, 0.24);
+    }
+
+    .col-header {
+      padding: 9px 11px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(26, 34, 52, 0.65);
+      border-radius: 10px 10px 0 0;
+    }
+
+    .col-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .col-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .col-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.14);
+      color: var(--text-secondary);
+    }
+
+    .col-add-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--tok-insert);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .col-add-btn:hover {
+      background: rgba(52, 211, 153, 0.28);
+      transform: scale(1.06);
+    }
+
+    /* Draggable Row Nodes List */
+    .col-nodes-list {
+      flex: 1;
+      padding: 9px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .row-node {
+      background: var(--bg-node);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 9px;
+      padding: 9px 10px;
+      cursor: grab;
+      position: relative;
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.25s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .row-node:hover {
+      border-color: rgba(56, 189, 248, 0.45);
+      background: #1b2436;
+      transform: translateY(-1px);
+    }
+
+    .row-node:active {
+      cursor: grabbing;
+    }
+
+    .row-node.dragging {
+      opacity: 0.45;
+      transform: scale(0.97);
+    }
+
+    /* Pending Mutation Visual States */
+    .row-node.pending-delete {
+      border-color: rgba(248, 113, 113, 0.65);
+      background: rgba(239, 68, 68, 0.1);
+      opacity: 0.72;
+    }
+    .row-node.pending-delete::after {
+      content: "QUEUED DELETE";
+      position: absolute;
+      bottom: 5px;
+      right: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--tok-delete);
+      background: rgba(239, 68, 68, 0.18);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .row-node.pending-insert {
+      border-style: dashed;
+      border-color: rgba(52, 211, 153, 0.7);
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .row-node.pending-insert::after {
+      content: "STAGED INSERT";
+      position: absolute;
+      bottom: 5px;
+      right: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--tok-insert);
+      background: rgba(16, 185, 129, 0.18);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* Read-Head Active Target Lock States */
+    .row-node.targeted-node {
+      border-color: var(--tok-where);
+      box-shadow: 0 0 22px rgba(192, 132, 252, 0.45);
+      background: rgba(192, 132, 252, 0.14);
+      transform: scale(1.02);
+    }
+
+    .row-node.blocked-node {
+      border-color: var(--status-ro);
+      box-shadow: 0 0 26px rgba(239, 68, 68, 0.65);
+      background: rgba(239, 68, 68, 0.2);
+      animation: shakeNode 0.36s ease;
+    }
+
+    @keyframes shakeNode {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+    }
+
+    .node-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .node-id-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--tok-where);
+      background: rgba(192, 132, 252, 0.14);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .node-del-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .node-del-btn:hover {
+      color: var(--tok-delete);
+      background: rgba(248, 113, 113, 0.15);
+    }
+
+    .node-primary-val {
+      font-weight: 600;
+      font-size: 0.83rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .node-meta-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .node-meta-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.66rem;
+      color: var(--text-secondary);
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* ============================================================================
+       BOTTOM CONSOLE: LIVE PLAIN-ENGLISH NARRATOR & AUDIT TELEMETRY LEDGER
+       ============================================================================ */
+    footer.bottom-console {
+      height: 156px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border-subtle);
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      z-index: 30;
+    }
+
+    .console-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 10px 14px;
+    }
+
+    .console-pane:first-child {
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    .narrator-box {
+      flex: 1;
+      background: #06080d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      overflow-y: auto;
+    }
+
+    .narrator-step-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--tok-use);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .narrator-text {
+      font-size: 0.84rem;
+      line-height: 1.45;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .audit-list {
+      flex: 1;
+      background: #06080d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+    }
+
+    .audit-entry {
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.025);
+      border-left: 3px solid var(--tok-insert);
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .audit-entry.has-error {
+      border-left-color: var(--status-ro);
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .audit-time {
+      color: var(--text-muted);
+      font-size: 0.66rem;
+    }
+
+    /* ============================================================================
+       CUSTOM MODAL FOR ADDING NEW ROW NODE & DRAG MODE CHOICE (NO alert/confirm!)
+       ============================================================================ */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 9, 0.78);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-panel);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .modal-sub {
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+    }
+
+    .form-field {
+      margin-bottom: 11px;
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .form-field input {
+      width: 100%;
+      background: #06080d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      padding: 8px 10px;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .form-field input:focus {
+      border-color: var(--tok-use);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    /* Toast Notification Banner */
+    .toast-banner {
+      position: fixed;
+      bottom: 170px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #f8fafc;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.22s ease;
+      z-index: 70;
+    }
+
+    .toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 900px) {
+      .db-viewport-grid {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .split-bridge-divider {
+        width: 100%;
+        height: 28px;
+        flex-direction: row;
+      }
+      .split-bridge-line {
+        height: 2px;
+        width: auto;
+      }
+      .split-bridge-badge {
+        writing-mode: horizontal-tb;
+        padding: 3px 10px;
+      }
+      footer.bottom-console {
+        grid-template-columns: 1fr;
+        height: 190px;
+      }
+      .console-pane:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hidden File Inputs for Real Client-Side JSON / CSV Parsing -->
+  <input type="file" id="fileInputDb1" accept=".json,.csv" style="display:none" />
+  <input type="file" id="fileInputDb2" accept=".json,.csv" style="display:none" />
+
+  <!-- ==========================================================================
+       TOP BAR: CONTROLS & LIVE COLOR-CODED SQL AST VISUALIZER
+       ========================================================================== -->
+  <header class="top-bar">
+    <div class="toolbar-row">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <!-- Custom SVG Mechanical Read-Head Emblem -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+          </svg>
+        </div>
+        <div class="brand-title">
+          Luminal DB Engine
+          <span class="brand-badge">Spatial AST v1.0</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <button class="btn" id="btnUploadDb1" title="Upload local .json or .csv as Primary Database">
+          <span>📂 Load DB 1 (JSON/CSV)</span>
+        </button>
+        <button class="btn" id="btnPresetDb1" title="Load rich sample Production Users database">
+          <span>⚡ Preset DB 1</span>
+        </button>
+
+        <div class="divider-v"></div>
+
+        <button class="btn btn-primary" id="btnUploadDb2" title="Upload second .json or .csv to activate Dual Split-View">
+          <span>◫ Load DB 2 (Split View)</span>
+        </button>
+        <button class="btn" id="btnPresetDb2" title="Load sample Legacy Cloud Archive to test cross-DB migration">
+          <span>⚡ Preset DB 2</span>
+        </button>
+
+        <div class="divider-v"></div>
+
+        <button class="btn" id="btnToggleLock1" title="Simulate production read-only permission lock on DB 1">
+          <span>🔒 Toggle DB1 Lock</span>
+        </button>
+        <button class="btn" id="btnToggleLock2" style="display:none;" title="Simulate production read-only permission lock on DB 2">
+          <span>🔒 Toggle DB2 Lock</span>
+        </button>
+
+        <button class="btn" id="btnExportJson" title="Download modified database state as JSON">
+          <span>⬇ Export JSON</span>
+        </button>
+        <button class="btn btn-danger" id="btnResetGhost" title="Reset canvas back to Ghost Blueprint">
+          <span>↺ Reset Ghost</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Color-Coded SQL AST Bar -->
+    <div class="sql-ast-container">
+      <div class="sql-ast-label">
+        <span class="pulse-dot"></span>
+        <span>LIVE SQL AST</span>
+      </div>
+
+      <div class="sql-stream" id="sqlStream">
+        <span class="sql-empty-hint">Drag nodes across columns/DBs, click '+' to stage inserts, or click '×' to stage deletes...</span>
+      </div>
+
+      <div class="sql-actions">
+        <button class="btn" id="btnCopySql" title="Copy generated SQL queries to clipboard">
+          <span>📋 Copy SQL</span>
+        </button>
+        <button class="btn btn-run" id="btnRunExec" title="Execute queued queries with mechanical read-head choreography">
+          <span>▶ Run Execution</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       CENTER STAGE: INTERACTIVE SPATIAL CANVAS + HTML5 READ-HEAD GANTRY OVERLAY
+       ========================================================================== -->
+  <main class="workspace-stage" id="workspaceStage">
+    <!-- Mechanical Read-Head & Laser Telemetry Canvas -->
+    <canvas id="readHeadCanvas"></canvas>
+
+    <!-- Spatial Database Containers (Single or Dual Split View) -->
+    <div class="db-viewport-grid" id="dbViewportGrid"></div>
+  </main>
+
+  <!-- ==========================================================================
+       BOTTOM CONSOLE: LIVE PLAIN-ENGLISH NARRATOR & TIMESTAMPED AUDIT LOG
+       ========================================================================== -->
+  <footer class="bottom-console">
+    <div class="console-pane">
+      <div class="pane-header">
+        <span>🤖 Live Execution Narrator (AST Telemetry)</span>
+        <span class="mono" id="execStatusBadge" style="color: var(--tok-use);">IDLE // READY</span>
+      </div>
+      <div class="narrator-box" id="narratorBox">
+        <div class="narrator-step-tag" id="narratorStepTag">SYSTEM STANDBY</div>
+        <div class="narrator-text" id="narratorText">
+          Ghost Blueprint active. Drag any row node to another column, click <strong>+</strong> to add a record, or load a second database to split the canvas into a cross-DB migration bridge.
+        </div>
+      </div>
+    </div>
+
+    <div class="console-pane">
+      <div class="pane-header">
+        <span>📜 Post-Execution Audit Ledger</span>
+        <button class="btn" id="btnClearAudit" style="padding: 2px 7px; font-size: 0.65rem;">Clear</button>
+      </div>
+      <div class="audit-list" id="auditList">
+        <div class="audit-entry">
+          <div class="audit-time">INIT // CLIENT-SIDE SANDBOX</div>
+          <div>Zero-backend spatial execution engine mounted. All file parsing &amp; read-head physics running locally.</div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       CUSTOM MODAL: ADD NEW RECORD NODE
+       ========================================================================== -->
+  <div class="modal-backdrop" id="addNodeModal">
+    <div class="modal-card">
+      <div class="modal-title" id="modalTitle">Stage New Row Node</div>
+      <div class="modal-sub" id="modalSub">Insert a new record into column</div>
+
+      <div class="form-field">
+        <label for="inputNodeId">Record ID (Primary Key)</label>
+        <input type="text" id="inputNodeId" placeholder="e.g., 108" />
+      </div>
+      <div class="form-field">
+        <label for="inputNodeName">Primary Label / Identifier</label>
+        <input type="text" id="inputNodeName" placeholder="e.g., alex_vance" />
+      </div>
+      <div class="form-field">
+        <label for="inputNodeMeta">Metadata (Key: Value)</label>
+        <input type="text" id="inputNodeMeta" placeholder="e.g., clearance: L4" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" id="btnCancelModal">Cancel</button>
+        <button class="btn btn-run" id="btnConfirmModal">+ Stage INSERT Query</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Banner -->
+  <div class="toast-banner" id="toastBanner"></div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT ENGINE: STATE, FILE PARSERS, AST COMPILER & READ-HEAD PHYSICS
+       ========================================================================== -->
+  <script>
+    /**
+     * LUMINAL DB ENGINE — SPATIAL QUERY & READ-HEAD VISUALIZER
+     * Pure Client-Side Architecture (HTML5 / CSS3 / Canvas 2D / Vanilla ES6+)
+     */
+
+    // --------------------------------------------------------------------------
+    // 1. APPLICATION STATE & SAMPLE DATASETS
+    // --------------------------------------------------------------------------
+    const AppState = {
+      isGhost: true,
+      isExecuting: false,
+      db1: null,
+      db2: null,
+      queryQueue: [], // Array of structured AST mutation objects
+      dragPayload: null,
+      modalContext: null,
+      // Mechanical Read-Head Kinematic State (supports Dual Heads in Split View)
+      heads: {
+        head1: {
+          x: 160, y: 90,
+          targetX: 160, targetY: 90,
+          homeX: 160, homeY: 60,
+          color: '#38bdf8',
+          label: 'HEAD-01',
+          state: 'IDLE', // IDLE, MOVING, LOCKED, BLOCKED
+          pulse: 0
+        },
+        head2: {
+          x: 680, y: 90,
+          targetX: 680, targetY: 90,
+          homeX: 680, homeY: 60,
+          color: '#34d399',
+          label: 'HEAD-02',
+          state: 'IDLE',
+          pulse: 0
+        }
+      },
+      // Active visual effects on canvas (laser beams, transfer packets, shield barriers)
+      fx: {
+        beam: null,         // { fromX, fromY, toX, toY, color, progress }
+        packet: null,       // { x, y, label, color }
+        barrier: null,      // { x, y, w, h, alpha }
+        reticle: null       // { x, y, w, h, color }
+      }
+    };
+
+    // Ghost Blueprint Dataset (Initial State)
+    function createGhostDatabase() {
+      return {
+        slot: 'db1',
+        name: 'ghost_blueprint_db',
+        readOnly: false,
+        columns: {
+          users: [
+            { id: '1', label: 'ada_lovelace', meta: 'role: architect' },
+            { id: '2', label: 'alan_turing', meta: 'role: cryptanalyst' },
+            { id: '3', label: 'grace_hopper', meta: 'role: compiler_lead' }
+          ],
+          permissions: [
+            { id: '10', label: 'rw_cluster_alpha', meta: 'scope: global' },
+            { id: '11', label: 'audit_telemetry', meta: 'scope: readonly' }
+          ]
+        }
+      };
+    }
+
+    // Preset DB 1: Production Infrastructure Database
+    function createPresetDb1() {
+      return {
+        slot: 'db1',
+        name: 'prod_core_us_east',
+        readOnly: false,
+        columns: {
+          engineering: [
+            { id: '101', label: 'm_chen', meta: 'tier: principal' },
+            { id: '102', label: 's_connor', meta: 'tier: lead_ops' },
+            { id: '103', label: 'd_vance', meta: 'tier: sys_arch' }
+          ],
+          security_ops: [
+            { id: '201', label: 'k_reeves', meta: 'clearance: L5' },
+            { id: '202', label: 'e_ripley', meta: 'clearance: L4' }
+          ],
+          quarantine: [
+            { id: '909', label: 'legacy_bot_04', meta: 'flag: suspended' }
+          ]
+        }
+      };
+    }
+
+    // Preset DB 2: Cloud Replica / Migration Target (Starts Read-Only or R/W for testing)
+    function createPresetDb2() {
+      return {
+        slot: 'db2',
+        name: 'cloud_replica_eu_west',
+        readOnly: false,
+        columns: {
+          active_nodes: [
+            { id: '501', label: 'eu_gateway_01', meta: 'status: synced' },
+            { id: '502', label: 'eu_gateway_02', meta: 'status: synced' }
+          ],
+          migrated_accounts: [
+            { id: '100', label: 'j_picard', meta: 'origin: legacy' }
+          ]
+        }
+      };
+    }
+
+    // --------------------------------------------------------------------------
+    // 2. DOM REFERENCES
+    // --------------------------------------------------------------------------
+    const dom = {
+      viewportGrid: document.getElementById('dbViewportGrid'),
+      sqlStream: document.getElementById('sqlStream'),
+      narratorStepTag: document.getElementById('narratorStepTag'),
+      narratorText: document.getElementById('narratorText'),
+      execStatusBadge: document.getElementById('execStatusBadge'),
+      auditList: document.getElementById('auditList'),
+      canvas: document.getElementById('readHeadCanvas'),
+      workspaceStage: document.getElementById('workspaceStage'),
+      btnToggleLock1: document.getElementById('btnToggleLock1'),
+      btnToggleLock2: document.getElementById('btnToggleLock2'),
+      btnRunExec: document.getElementById('btnRunExec'),
+      btnCopySql: document.getElementById('btnCopySql'),
+      modal: document.getElementById('addNodeModal'),
+      modalTitle: document.getElementById('modalTitle'),
+      modalSub: document.getElementById('modalSub'),
+      inputNodeId: document.getElementById('inputNodeId'),
+      inputNodeName: document.getElementById('inputNodeName'),
+      inputNodeMeta: document.getElementById('inputNodeMeta'),
+      toast: document.getElementById('toastBanner')
+    };
+
+    const ctx = dom.canvas.getContext('2d');
+
+    // --------------------------------------------------------------------------
+    // 3. UTILITY HELPERS (TOASTS, CLIPBOARD, FILE PARSING)
+    // --------------------------------------------------------------------------
+    let toastTimeout = null;
+    function showToast(msg) {
+      dom.toast.textContent = msg;
+      dom.toast.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        dom.toast.classList.remove('show');
+      }, 2600);
+    }
+
+    // IFrame-safe clipboard copy using document.execCommand('copy')
+    function copyTextToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('✓ SQL queries copied to clipboard');
+      } catch (err) {
+        showToast('⚠ Unable to copy SQL');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * Parses uploaded .json or .csv into the spatial DB column/row schema
+     */
+    function parseUploadedFile(file, slot) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const raw = e.target.result;
+        const cleanDbName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+        try {
+          if (file.name.toLowerCase().endsWith('.json')) {
+            const parsed = JSON.parse(raw);
+            const columns = {};
+
+            // Case A: Object where keys are table/column names mapping to arrays
+            if (!Array.isArray(parsed) && typeof parsed === 'object' && parsed !== null) {
+              Object.entries(parsed).forEach(([colKey, rows]) => {
+                if (Array.isArray(rows)) {
+                  columns[colKey] = rows.map((r, idx) => normalizeRecord(r, idx));
+                }
+              });
+            }
+            // Case B: Flat array of objects -> group by 'role'/'category'/'table' or place in 'records'
+            else if (Array.isArray(parsed)) {
+              parsed.forEach((item, idx) => {
+                const groupKey = item.table || item.column || item.category || item.role || 'records';
+                if (!columns[groupKey]) columns[groupKey] = [];
+                columns[groupKey].push(normalizeRecord(item, idx));
+              });
+            }
+
+            if (Object.keys(columns).length === 0) {
+              columns['records'] = [{ id: '1', label: 'empty_dataset', meta: 'rows: 0' }];
+            }
+
+            mountDatabase(slot, {
+              slot,
+              name: cleanDbName || `${slot}_json`,
+              readOnly: false,
+              columns
+            });
+            showToast(`Loaded ${file.name} into ${slot.toUpperCase()}`);
+          } else if (file.name.toLowerCase().endsWith('.csv')) {
+            const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length < 2) throw new Error('CSV needs header and at least 1 row');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const columns = {};
+
+            // Group rows by second or last categorical column if present, else single 'csv_table'
+            const groupIdx = headers.findIndex(h => /role|dept|category|group|type|status/i.test(h));
+            for (let i = 1; i < lines.length; i++) {
+              const vals = lines[i].split(',').map(v => v.trim());
+              const obj = {};
+              headers.forEach((h, idx) => { obj[h] = vals[idx] || ''; });
+              const colName = groupIdx !== -1 && vals[groupIdx]
+                ? vals[groupIdx].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
+                : 'csv_records';
+              if (!columns[colName]) columns[colName] = [];
+              columns[colName].push(normalizeRecord(obj, i));
+            }
+
+            mountDatabase(slot, {
+              slot,
+              name: cleanDbName || `${slot}_csv`,
+              readOnly: false,
+              columns
+            });
+            showToast(`Parsed CSV ${file.name} into ${slot.toUpperCase()}`);
+          }
+        } catch (err) {
+          showToast(`Error parsing file: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function normalizeRecord(item, idx) {
+      if (typeof item !== 'object' || item === null) {
+        return { id: String(idx + 1), label: String(item), meta: 'type: primitive' };
+      }
+      const keys = Object.keys(item);
+      const idKey = keys.find(k => /^id$/i.test(k)) || keys[0];
+      const labelKey = keys.find(k => /name|user|label|title|email|host/i.test(k)) || keys[1] || idKey;
+      const metaKey = keys.find(k => k !== idKey && k !== labelKey);
+
+      return {
+        id: String(item[idKey] ?? (idx + 1)),
+        label: String(item[labelKey] ?? `record_${idx + 1}`),
+        meta: metaKey ? `${metaKey}: ${item[metaKey]}` : 'verified: true'
+      };
+    }
+
+    function mountDatabase(slot, dbObj) {
+      AppState.isGhost = false;
+      AppState[slot] = dbObj;
+      // Clear stale queries targeting the replaced slot
+      AppState.queryQueue = AppState.queryQueue.filter(q => q.targetDbSlot !== slot && q.sourceDbSlot !== slot);
+      renderAll();
+      updateNarrator(
+        `${slot.toUpperCase()} MOUNTED`,
+        `Loaded schema '${dbObj.name}' (${Object.keys(dbObj.columns).length} columns). Drag nodes or click '+' to queue SQL mutations.`
+      );
+    }
+
+    // --------------------------------------------------------------------------
+    // 4. SPATIAL DOM RENDERING (SINGLE VIEW & DUAL SPLIT VIEW)
+    // --------------------------------------------------------------------------
+    function renderAll() {
+      renderDatabases();
+      renderSqlAstBar();
+      updateToolbarButtons();
+      requestAnimationFrame(recalibrateReadHeadHomes);
+    }
+
+    function updateToolbarButtons() {
+      dom.btnToggleLock2.style.display = AppState.db2 ? 'inline-flex' : 'none';
+      dom.btnRunExec.disabled = AppState.isExecuting || AppState.queryQueue.length === 0;
+    }
+
+    function renderDatabases() {
+      dom.viewportGrid.innerHTML = '';
+
+      if (AppState.db1) {
+        dom.viewportGrid.appendChild(buildDbContainerElement(AppState.db1));
+      }
+
+      if (AppState.db1 && AppState.db2) {
+        // Render Center Migration Bridge Divider
+        const bridge = document.createElement('div');
+        bridge.className = 'split-bridge-divider';
+        bridge.innerHTML = `
+          <div class="split-bridge-line"></div>
+          <div class="split-bridge-badge">ETL BRIDGE</div>
+          <div class="split-bridge-line"></div>
+        `;
+        dom.viewportGrid.appendChild(bridge);
+        dom.viewportGrid.appendChild(buildDbContainerElement(AppState.db2));
+      }
+    }
+
+    function buildDbContainerElement(db) {
+      const container = document.createElement('section');
+      container.className = `db-container ${AppState.isGhost && db.slot === 'db1' ? 'ghost-mode' : ''}`;
+      container.dataset.dbSlot = db.slot;
+      container.id = `container-${db.slot}`;
+
+      // Header with DB Name & Clickable Permission Lock Badge
+      const header = document.createElement('div');
+      header.className = 'db-header';
+      header.id = `header-${db.slot}`;
+      header.innerHTML = `
+        <div class="db-title-group">
+          <span class="db-slot-tag">${db.slot.toUpperCase()}</span>
+          <span class="db-name">${escapeHtml(db.name)}</span>
+          ${AppState.isGhost && db.slot === 'db1' ? '<span class="ghost-pill">GHOST BLUEPRINT</span>' : ''}
+        </div>
+        <div class="db-header-controls">
+          <button class="perm-badge ${db.readOnly ? 'ro' : 'rw'}" data-slot="${db.slot}" title="Click to toggle READ/WRITE vs READ-ONLY permission mode">
+            ${db.readOnly ? '🔒 READ-ONLY' : '🔓 READ / WRITE'}
+          </button>
+        </div>
+      `;
+
+      header.querySelector('.perm-badge').addEventListener('click', () => toggleDbPermission(db.slot));
+      container.appendChild(header);
+
+      // Ghost Blueprint Helper Banner
+      if (AppState.isGhost && db.slot === 'db1') {
+        const banner = document.createElement('div');
+        banner.className = 'ghost-banner';
+        banner.innerHTML = `
+          <span>👻 <strong>Ghost Example Schema:</strong> Try dragging a node between columns, or load Preset DB 1 &amp; DB 2 to test Split-View migration.</span>
+          <button class="btn btn-primary" id="btnMaterializeGhost" style="padding:3px 9px; font-size:0.7rem;">Materialize Schema</button>
+        `;
+        banner.querySelector('#btnMaterializeGhost').addEventListener('click', () => {
+          AppState.isGhost = false;
+          renderAll();
+          showToast('Ghost schema materialized into active workspace');
+        });
+        container.appendChild(banner);
+      }
+
+      // Columns Area
+      const colsArea = document.createElement('div');
+      colsArea.className = 'db-columns-area';
+
+      Object.entries(db.columns).forEach(([colName, rows]) => {
+        const colEl = document.createElement('div');
+        colEl.className = 'db-column';
+        colEl.dataset.dbSlot = db.slot;
+        colEl.dataset.colName = colName;
+        colEl.id = `col-${db.slot}-${colName}`;
+
+        // Drag-and-Drop Column Dropzone Listeners
+        colEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (AppState.isExecuting) return;
+          colEl.classList.add('drag-over');
+        });
+        colEl.addEventListener('dragleave', () => {
+          colEl.classList.remove('drag-over');
+        });
+        colEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          colEl.classList.remove('drag-over');
+          if (AppState.isExecuting || !AppState.dragPayload) return;
+          handleNodeDrop(AppState.dragPayload, db.slot, colName);
+        });
+
+        // Column Header
+        const colHeader = document.createElement('div');
+        colHeader.className = 'col-header';
+        colHeader.innerHTML = `
+          <div class="col-title-wrap">
+            <span class="col-name">${escapeHtml(colName)}</span>
+            <span class="col-count">${rows.length}</span>
+          </div>
+          <button class="col-add-btn" title="Stage new row node in '${escapeHtml(colName)}'">+</button>
+        `;
+        colHeader.querySelector('.col-add-btn').addEventListener('click', () => {
+          if (AppState.isExecuting) return;
+          openAddNodeModal(db.slot, colName);
+        });
+        colEl.appendChild(colHeader);
+
+        // Nodes List
+        const listEl = document.createElement('div');
+        listEl.className = 'col-nodes-list';
+
+        rows.forEach((row) => {
+          const nodeEl = document.createElement('div');
+          nodeEl.className = 'row-node';
+          nodeEl.draggable = !AppState.isExecuting;
+          nodeEl.id = `node-${db.slot}-${colName}-${row.id}`;
+          nodeEl.dataset.dbSlot = db.slot;
+          nodeEl.dataset.colName = colName;
+          nodeEl.dataset.rowId = row.id;
+
+          // Check if node has a staged DELETE or INSERT in queue
+          const isQueuedDel = AppState.queryQueue.some(
+            q => q.type === 'DELETE' && q.targetDbSlot === db.slot && q.targetCol === colName && q.row.id === row.id
+          );
+          if (isQueuedDel) nodeEl.classList.add('pending-delete');
+          if (row._staged) nodeEl.classList.add('pending-insert');
+
+          nodeEl.innerHTML = `
+            <div class="node-top-row">
+              <span class="node-id-badge">id: ${escapeHtml(row.id)}</span>
+              <button class="node-del-btn" title="Stage DELETE query for this node">×</button>
+            </div>
+            <div class="node-primary-val">${escapeHtml(row.label)}</div>
+            <div class="node-meta-grid">
+              <span class="node-meta-chip">${escapeHtml(row.meta)}</span>
+            </div>
+          `;
+
+          // Drag Start
+          nodeEl.addEventListener('dragstart', (e) => {
+            if (AppState.isExecuting) {
+              e.preventDefault();
+              return;
+            }
+            AppState.dragPayload = {
+              sourceDbSlot: db.slot,
+              sourceCol: colName,
+              row: { ...row }
+            };
+            nodeEl.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+          });
+
+          nodeEl.addEventListener('dragend', () => {
+            nodeEl.classList.remove('dragging');
+            AppState.dragPayload = null;
+          });
+
+          // Stage Delete Click
+          nodeEl.querySelector('.node-del-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (AppState.isExecuting) return;
+            stageDeleteQuery(db.slot, colName, row);
+          });
+
+          listEl.appendChild(nodeEl);
+        });
+
+        colEl.appendChild(listEl);
+        colsArea.appendChild(colEl);
+      });
+
+      container.appendChild(colsArea);
+      return container;
+    }
+
+    function toggleDbPermission(slot) {
+      if (AppState.isExecuting || !AppState[slot]) return;
+      AppState[slot].readOnly = !AppState[slot].readOnly;
+      const modeLabel = AppState[slot].readOnly ? 'READ-ONLY (Writes Blocked)' : 'READ / WRITE';
+      renderAll();
+      showToast(`${AppState[slot].name} set to ${modeLabel}`);
+      updateNarrator(
+        `PERMISSION UPDATED // ${slot.toUpperCase()}`,
+        `Database '${AppState[slot].name}' permission flag toggled to ${modeLabel}.`
+      );
+    }
+
+    // --------------------------------------------------------------------------
+    // 5. QUERY STAGING & LIVE SQL AST TOKENIZER
+    // --------------------------------------------------------------------------
+    function stageDeleteQuery(dbSlot, colName, row) {
+      // Toggle off if already staged
+      const existingIdx = AppState.queryQueue.findIndex(
+        q => q.type === 'DELETE' && q.targetDbSlot === dbSlot && q.targetCol === colName && q.row.id === row.id
+      );
+      if (existingIdx !== -1) {
+        AppState.queryQueue.splice(existingIdx, 1);
+        renderAll();
+        return;
+      }
+
+      const db = AppState[dbSlot];
+      AppState.queryQueue.push({
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        type: 'DELETE',
+        targetDbSlot: dbSlot,
+        targetDbName: db.name,
+        targetCol: colName,
+        row: { ...row },
+        tokens: [
+          { type: 'USE', text: `USE ${db.name};` },
+          { type: 'ACTION_DELETE', text: `DELETE '${row.label}'` },
+          { type: 'FROM', text: `FROM ${colName}` },
+          { type: 'WHERE', text: `WHERE id = ${row.id}` }
+        ]
+      });
+
+      renderAll();
+    }
+
+    function stageInsertQuery(dbSlot, colName, newRow) {
+      const db = AppState[dbSlot];
+      // Add visual ghost/staged node immediately so read-head has coordinates to target
+      const stagedNode = { ...newRow, _staged: true };
+      db.columns[colName].push(stagedNode);
+
+      AppState.queryQueue.push({
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        type: 'INSERT',
+        targetDbSlot: dbSlot,
+        targetDbName: db.name,
+        targetCol: colName,
+        row: stagedNode,
+        tokens: [
+          { type: 'USE', text: `USE ${db.name};` },
+          { type: 'ACTION_INSERT', text: `INSERT '${newRow.label}'` },
+          { type: 'INTO', text: `INTO ${colName}` },
+          { type: 'WHERE', text: `VALUES (id=${newRow.id})` }
+        ]
+      });
+
+      renderAll();
+    }
+
+    function handleNodeDrop(payload, targetDbSlot, targetCol) {
+      const { sourceDbSlot, sourceCol, row } = payload;
+      // Ignore drop onto exact same column in same DB
+      if (sourceDbSlot === targetDbSlot && sourceCol === targetCol) return;
+
+      const srcDb = AppState[sourceDbSlot];
+      const dstDb = AppState[targetDbSlot];
+
+      // Case 1: Intra-Database Move between Columns
+      if (sourceDbSlot === targetDbSlot) {
+        AppState.queryQueue.push({
+          id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          type: 'MOVE_COL',
+          sourceDbSlot,
+          targetDbSlot,
+          targetDbName: dstDb.name,
+          sourceCol,
+          targetCol,
+          row: { ...row },
+          tokens: [
+            { type: 'USE', text: `USE ${dstDb.name};` },
+            { type: 'ACTION_MOVE', text: `MOVE '${row.label}'` },
+            { type: 'FROM', text: `FROM ${sourceCol} → ${targetCol}` },
+            { type: 'WHERE', text: `WHERE id = ${row.id}` }
+          ]
+        });
+        renderAll();
+        showToast(`Staged column transfer: ${sourceCol} → ${targetCol}`);
+      }
+      // Case 2: Cross-Database ETL Migration across Split Bridge (DB1 <-> DB2)
+      else {
+        AppState.queryQueue.push({
+          id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          type: 'MIGRATE_DB',
+          sourceDbSlot,
+          sourceDbName: srcDb.name,
+          sourceCol,
+          targetDbSlot,
+          targetDbName: dstDb.name,
+          targetCol,
+          row: { ...row },
+          tokens: [
+            { type: 'USE', text: `BRIDGE ${srcDb.name} → ${dstDb.name};` },
+            { type: 'ACTION_INSERT', text: `MIGRATE '${row.label}'` },
+            { type: 'INTO', text: `INTO ${dstDb.name}.${targetCol}` },
+            { type: 'WHERE', text: `WHERE src.id = ${row.id}` }
+          ]
+        });
+        renderAll();
+        showToast(`Staged Cross-DB Migration: ${srcDb.name} → ${dstDb.name}`);
+      }
+    }
+
+    function renderSqlAstBar() {
+      dom.sqlStream.innerHTML = '';
+
+      if (AppState.queryQueue.length === 0) {
+        dom.sqlStream.innerHTML = `<span class="sql-empty-hint">Drag nodes across columns/DBs, click '+' to stage inserts, or click '×' to stage deletes...</span>`;
+        return;
+      }
+
+      AppState.queryQueue.forEach((query, qIdx) => {
+        const stmtEl = document.createElement('div');
+        stmtEl.className = 'query-statement';
+        stmtEl.id = `stmt-${query.id}`;
+
+        query.tokens.forEach((tok, tIdx) => {
+          const span = document.createElement('span');
+          span.className = 'ast-token';
+          span.dataset.type = tok.type;
+          span.id = `tok-${query.id}-${tIdx}`;
+          span.textContent = tok.text;
+          stmtEl.appendChild(span);
+        });
+
+        if (!AppState.isExecuting) {
+          const rmBtn = document.createElement('button');
+          rmBtn.className = 'query-remove-btn';
+          rmBtn.title = 'Remove query from queue';
+          rmBtn.textContent = '×';
+          rmBtn.addEventListener('click', () => {
+            // If it was a staged insert, also clean up the temporary staged node
+            if (query.type === 'INSERT') {
+              const colArr = AppState[query.targetDbSlot]?.columns[query.targetCol];
+              if (colArr) {
+                const idx = colArr.findIndex(r => r._staged && r.id === query.row.id);
+                if (idx !== -1) colArr.splice(idx, 1);
+              }
+            }
+            AppState.queryQueue.splice(qIdx, 1);
+            renderAll();
+          });
+          stmtEl.appendChild(rmBtn);
+        }
+
+        dom.sqlStream.appendChild(stmtEl);
+      });
+    }
+
+    function getPlainSqlString() {
+      if (AppState.queryQueue.length === 0) return '';
+      return AppState.queryQueue
+        .map(q => q.tokens.map(t => t.text).join(' '))
+        .join('\n');
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. ADD NODE MODAL LOGIC
+    // --------------------------------------------------------------------------
+    function openAddNodeModal(dbSlot, colName) {
+      AppState.modalContext = { dbSlot, colName };
+      const db = AppState[dbSlot];
+      const randomId = Math.floor(300 + Math.random() * 600);
+      dom.modalTitle.textContent = `Insert Node into '${colName}'`;
+      dom.modalSub.textContent = `Target Database: ${db.name} (${dbSlot.toUpperCase()})`;
+      dom.inputNodeId.value = String(randomId);
+      dom.inputNodeName.value = `node_user_${randomId}`;
+      dom.inputNodeMeta.value = `tier: standard`;
+      dom.modal.classList.add('open');
+      dom.inputNodeName.focus();
+    }
+
+    function closeAddNodeModal() {
+      dom.modal.classList.remove('open');
+      AppState.modalContext = null;
+    }
+
+    document.getElementById('btnCancelModal').addEventListener('click', closeAddNodeModal);
+    document.getElementById('btnConfirmModal').addEventListener('click', () => {
+      if (!AppState.modalContext) return;
+      const { dbSlot, colName } = AppState.modalContext;
+      const id = dom.inputNodeId.value.trim() || String(Math.floor(Math.random() * 999));
+      const label = dom.inputNodeName.value.trim() || `record_${id}`;
+      const meta = dom.inputNodeMeta.value.trim() || 'status: active';
+
+      stageInsertQuery(dbSlot, colName, { id, label, meta });
+      closeAddNodeModal();
+    });
+
+    // --------------------------------------------------------------------------
+    // 7. MECHANICAL READ-HEAD CHOREOGRAPHY & SYNCHRONIZED AST EXECUTION
+    // --------------------------------------------------------------------------
+    const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+    function getStageRelativeRect(el) {
+      if (!el) return null;
+      const stageRect = dom.workspaceStage.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      return {
+        x: elRect.left - stageRect.left + elRect.width / 2,
+        y: elRect.top - stageRect.top + elRect.height / 2,
+        left: elRect.left - stageRect.left,
+        top: elRect.top - stageRect.top,
+        width: elRect.width,
+        height: elRect.height
+      };
+    }
+
+    function recalibrateReadHeadHomes() {
+      const stageRect = dom.workspaceStage.getBoundingClientRect();
+      if (AppState.db1 && !AppState.db2) {
+        AppState.heads.head1.homeX = stageRect.width * 0.5;
+        AppState.heads.head1.homeY = 44;
+      } else if (AppState.db1 && AppState.db2) {
+        AppState.heads.head1.homeX = stageRect.width * 0.25;
+        AppState.heads.head1.homeY = 44;
+        AppState.heads.head2.homeX = stageRect.width * 0.75;
+        AppState.heads.head2.homeY = 44;
+      }
+      if (!AppState.isExecuting) {
+        AppState.heads.head1.targetX = AppState.heads.head1.homeX;
+        AppState.heads.head1.targetY = AppState.heads.head1.homeY;
+        AppState.heads.head2.targetX = AppState.heads.head2.homeX;
+        AppState.heads.head2.targetY = AppState.heads.head2.homeY;
+      }
+    }
+
+    function updateNarrator(stepTag, text, isError = false) {
+      dom.narratorStepTag.textContent = stepTag;
+      dom.narratorStepTag.style.color = isError ? 'var(--status-ro)' : 'var(--tok-use)';
+      dom.narratorText.innerHTML = text;
+    }
+
+    function clearVisualHighlights() {
+      document.querySelectorAll('.ast-token').forEach(el => el.classList.remove('token-active'));
+      document.querySelectorAll('.db-container').forEach(el => el.classList.remove('targeted-db'));
+      document.querySelectorAll('.db-column').forEach(el => el.classList.remove('targeted-col'));
+      document.querySelectorAll('.row-node').forEach(el => el.classList.remove('targeted-node', 'blocked-node'));
+      AppState.fx.beam = null;
+      AppState.fx.packet = null;
+      AppState.fx.barrier = null;
+      AppState.fx.reticle = null;
+    }
+
+    async function runExecutionSequence() {
+      if (AppState.isExecuting || AppState.queryQueue.length === 0) return;
+
+      AppState.isExecuting = true;
+      updateToolbarButtons();
+      dom.execStatusBadge.textContent = 'EXECUTING // AST LOCK';
+      dom.execStatusBadge.style.color = 'var(--tok-insert)';
+
+      const startTime = performance.now();
+      const summaryLines = [];
+      let blockedCount = 0;
+      let successCount = 0;
+
+      // Process queued queries sequentially with synchronized token & read-head choreography
+      const queueSnapshot = [...AppState.queryQueue];
+
+      for (let i = 0; i < queueSnapshot.length; i++) {
+        const q = queueSnapshot[i];
+        const stmtEl = document.getElementById(`stmt-${q.id}`);
+        if (stmtEl) stmtEl.classList.add('active-query');
+
+        const activeHead = q.targetDbSlot === 'db2' ? AppState.heads.head2 : AppState.heads.head1;
+        const sourceHead = q.sourceDbSlot === 'db2' ? AppState.heads.head2 : AppState.heads.head1;
+
+        // --------------------------------------------------------------------
+        // STEP 1: TOKEN 0 — USE DATABASE / BRIDGE TARGET
+        // --------------------------------------------------------------------
+        clearVisualHighlights();
+        document.getElementById(`tok-${q.id}-0`)?.classList.add('token-active');
+
+        const dbHeaderEl = document.getElementById(`header-${q.targetDbSlot}`);
+        const dbContainerEl = document.getElementById(`container-${q.targetDbSlot}`);
+        if (dbContainerEl) dbContainerEl.classList.add('targeted-db');
+
+        const dbRect = getStageRelativeRect(dbHeaderEl);
+        if (dbRect) {
+          activeHead.targetX = dbRect.x;
+          activeHead.targetY = dbRect.y;
+          activeHead.state = 'MOVING';
+        }
+
+        updateNarrator(
+          `STEP 1/4 // CLAUSE [USE]`,
+          q.type === 'MIGRATE_DB'
+            ? `Initializing ETL bridge from <strong>${escapeHtml(q.sourceDbName)}</strong> to target database <strong>${escapeHtml(q.targetDbName)}</strong>.`
+            : `Read-Head positioning over database container <strong>${escapeHtml(q.targetDbName)}</strong> because token says <code>${escapeHtml(q.tokens[0].text)}</code>.`
+        );
+        await sleep(680);
+
+        // --------------------------------------------------------------------
+        // STEP 2: TOKEN 2 — FROM / INTO COLUMN SELECTION
+        // --------------------------------------------------------------------
+        clearVisualHighlights();
+        document.getElementById(`tok-${q.id}-2`)?.classList.add('token-active');
+
+        const targetColEl = document.getElementById(`col-${q.targetDbSlot}-${q.targetCol}`);
+        if (targetColEl) targetColEl.classList.add('targeted-col');
+
+        const colRect = getStageRelativeRect(targetColEl?.querySelector('.col-header'));
+        if (colRect) {
+          activeHead.targetX = colRect.x;
+          activeHead.targetY = colRect.y;
+        }
+
+        updateNarrator(
+          `STEP 2/4 // CLAUSE [${q.tokens[2].type}]`,
+          `Scanning schema lane <strong>${escapeHtml(q.targetCol)}</strong> inside <strong>${escapeHtml(q.targetDbName)}</strong>.`
+        );
+        await sleep(650);
+
+        // --------------------------------------------------------------------
+        // STEP 3: TOKEN 3 — WHERE PREDICATE & NODE RETICLE LOCK
+        // --------------------------------------------------------------------
+        clearVisualHighlights();
+        document.getElementById(`tok-${q.id}-3`)?.classList.add('token-active');
+
+        // Determine physical node coordinates to lock onto
+        let lookupSlot = q.targetDbSlot;
+        let lookupCol = q.targetCol;
+        if (q.type === 'MOVE_COL' || q.type === 'MIGRATE_DB') {
+          lookupSlot = q.sourceDbSlot;
+          lookupCol = q.sourceCol;
+        }
+
+        const nodeEl = document.getElementById(`node-${lookupSlot}-${lookupCol}-${q.row.id}`);
+        const nodeRect = getStageRelativeRect(nodeEl);
+
+        if (nodeEl) nodeEl.classList.add('targeted-node');
+        if (nodeRect) {
+          if (q.type === 'MIGRATE_DB') {
+            // Source head locks onto source node while target head aligns with destination column
+            sourceHead.targetX = nodeRect.x;
+            sourceHead.targetY = nodeRect.y;
+            sourceHead.state = 'LOCKED';
+          } else {
+            activeHead.targetX = nodeRect.x;
+            activeHead.targetY = nodeRect.y;
+            activeHead.state = 'LOCKED';
+          }
+          AppState.fx.reticle = {
+            x: nodeRect.left - 4,
+            y: nodeRect.top - 4,
+            w: nodeRect.width + 8,
+            h: nodeRect.height + 8,
+            color: '#c084fc'
+          };
+        }
+
+        updateNarrator(
+          `STEP 3/4 // CLAUSE [WHERE]`,
+          `Predicate matched record <strong>id=${escapeHtml(q.row.id)}</strong> (<code>${escapeHtml(q.row.label)}</code>). Locking targeting reticle onto node.`
+        );
+        await sleep(720);
+
+        // --------------------------------------------------------------------
+        // STEP 4: TOKEN 1 — EXECUTE ACTION OR HIT READ-ONLY PERMISSION BARRIER!
+        // --------------------------------------------------------------------
+        clearVisualHighlights();
+        document.getElementById(`tok-${q.id}-1`)?.classList.add('token-active');
+
+        const targetDbObj = AppState[q.targetDbSlot];
+
+        // CHECK READ-ONLY PERMISSION LOCK!
+        if (targetDbObj && targetDbObj.readOnly) {
+          blockedCount++;
+          activeHead.state = 'BLOCKED';
+          if (stmtEl) {
+            stmtEl.classList.remove('active-query');
+            stmtEl.classList.add('blocked-query');
+          }
+          if (nodeEl) nodeEl.classList.add('blocked-node');
+
+          const barrierRect = nodeRect || colRect || dbRect;
+          if (barrierRect) {
+            activeHead.targetX = barrierRect.x;
+            activeHead.targetY = barrierRect.y;
+            AppState.fx.barrier = {
+              x: (barrierRect.left ?? barrierRect.x - 90) - 6,
+              y: (barrierRect.top ?? barrierRect.y - 24) - 6,
+              w: (barrierRect.width ?? 180) + 12,
+              h: (barrierRect.height ?? 48) + 12
+            };
+          }
+
+          // Clean up temporary staged insert node if blocked
+          if (q.type === 'INSERT') {
+            const arr = targetDbObj.columns[q.targetCol];
+            const idx = arr.findIndex(r => r._staged && r.id === q.row.id);
+            if (idx !== -1) arr.splice(idx, 1);
+          }
+
+          updateNarrator(
+            `⛔ STEP 4/4 // PERMISSION DENIED (READ-ONLY LOCK)`,
+            `<strong>BLOCKED:</strong> Read-Head collided with <code>READ-ONLY</code> lock on <strong>${escapeHtml(targetDbObj.name)}</strong>! Write mutation <code>${escapeHtml(q.tokens[1].text)}</code> rejected.`,
+            true
+          );
+          summaryLines.push(`[BLOCKED: READ-ONLY] ${q.tokens.map(t => t.text).join(' ')}`);
+          await sleep(1150);
+        } else {
+          // EXECUTE VALID MUTATION
+          successCount++;
+          if (q.type === 'MIGRATE_DB' && nodeRect && colRect) {
+            // Animate data packet flying across the ETL bridge from Head 1 to Head 2!
+            AppState.fx.beam = {
+              fromX: nodeRect.x,
+              fromY: nodeRect.y,
+              toX: colRect.x,
+              toY: colRect.y,
+              color: '#34d399'
+            };
+            AppState.fx.packet = {
+              x: nodeRect.x,
+              y: nodeRect.y,
+              label: q.row.label,
+              color: '#34d399'
+            };
+            updateNarrator(
+              `STEP 4/4 // CROSS-DB PACKET TRANSFER`,
+              `Streaming record <strong>'${escapeHtml(q.row.label)}'</strong> across ETL bridge into <strong>${escapeHtml(targetDbObj.name)}.${escapeHtml(q.targetCol)}</strong>...`
+            );
+            // Smoothly animate packet across bridge
+            const frames = 22;
+            for (let f = 1; f <= frames; f++) {
+              const t = f / frames;
+              AppState.fx.packet.x = nodeRect.x + (colRect.x - nodeRect.x) * t;
+              AppState.fx.packet.y = nodeRect.y + (colRect.y - nodeRect.y) * t - Math.sin(t * Math.PI) * 36;
+              await sleep(22);
+            }
+          } else {
+            updateNarrator(
+              `STEP 4/4 // EXECUTING MUTATION`,
+              `Committing <code>${escapeHtml(q.tokens[1].text)}</code> on <strong>${escapeHtml(targetDbObj.name)}.${escapeHtml(q.targetCol)}</strong>...`
+            );
+            await sleep(550);
+          }
+
+          // Commit Mutation to In-Memory Database State
+          commitMutationToState(q);
+          if (stmtEl) {
+            stmtEl.classList.remove('active-query');
+            stmtEl.classList.add('completed-query');
+          }
+          summaryLines.push(`[OK] ${q.tokens.map(t => t.text).join(' ')}`);
+          renderDatabases();
+          await sleep(320);
+        }
+
+        activeHead.state = 'IDLE';
+        sourceHead.state = 'IDLE';
+      }
+
+      // Execution Complete — Clean up & Record Telemetry
+      clearVisualHighlights();
+      AppState.queryQueue = [];
+      AppState.isExecuting = false;
+      recalibrateReadHeadHomes();
+      renderAll();
+
+      const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      dom.execStatusBadge.textContent = 'IDLE // CYCLE COMPLETE';
+      dom.execStatusBadge.style.color = blockedCount > 0 ? 'var(--status-ro)' : 'var(--tok-insert)';
+
+      updateNarrator(
+        `EXECUTION LEDGER // ${timestamp}`,
+        `Completed batch in <strong>${elapsedSec}s</strong>: <strong>${successCount}</strong> committed, <strong>${blockedCount}</strong> blocked by permission locks.`
+      );
+
+      appendAuditEntry({
+        timestamp,
+        elapsedSec,
+        total: queueSnapshot.length,
+        successCount,
+        blockedCount,
+        summaryLines
+      });
+    }
+
+    function commitMutationToState(q) {
+      const targetDb = AppState[q.targetDbSlot];
+      if (!targetDb) return;
+
+      if (q.type === 'DELETE') {
+        const arr = targetDb.columns[q.targetCol];
+        const idx = arr.findIndex(r => r.id === q.row.id);
+        if (idx !== -1) arr.splice(idx, 1);
+      } else if (q.type === 'INSERT') {
+        const arr = targetDb.columns[q.targetCol];
+        const targetNode = arr.find(r => r._staged && r.id === q.row.id);
+        if (targetNode) {
+          delete targetNode._staged;
+        } else {
+          arr.push({ id: q.row.id, label: q.row.label, meta: q.row.meta });
+        }
+      } else if (q.type === 'MOVE_COL') {
+        const srcArr = targetDb.columns[q.sourceCol];
+        const idx = srcArr.findIndex(r => r.id === q.row.id);
+        if (idx !== -1) srcArr.splice(idx, 1);
+        targetDb.columns[q.targetCol].push({ id: q.row.id, label: q.row.label, meta: q.row.meta });
+      } else if (q.type === 'MIGRATE_DB') {
+        // Duplicate/Insert migrated node into destination DB column
+        targetDb.columns[q.targetCol].push({
+          id: q.row.id,
+          label: q.row.label,
+          meta: `${q.row.meta} (src:${q.sourceDbSlot})`
+        });
+      }
+    }
+
+    function appendAuditEntry({ timestamp, elapsedSec, total, successCount, blockedCount, summaryLines }) {
+      const entry = document.createElement('div');
+      entry.className = `audit-entry ${blockedCount > 0 ? 'has-error' : ''}`;
+      entry.innerHTML = `
+        <div class="audit-time">${timestamp} // RAN ${total} QUER${total === 1 ? 'Y' : 'IES'} IN ${elapsedSec}s (${successCount} OK, ${blockedCount} BLOCKED)</div>
+        <div>${summaryLines.map(l => escapeHtml(l)).join('<br>')}</div>
+      `;
+      dom.auditList.prepend(entry);
+    }
+
+    // --------------------------------------------------------------------------
+    // 8. HTML5 CANVAS MECHANICAL READ-HEAD RENDERER (60FPS KINEMATICS)
+    // --------------------------------------------------------------------------
+    function resizeCanvas() {
+      const rect = dom.workspaceStage.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      dom.canvas.width = rect.width * dpr;
+      dom.canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      recalibrateReadHeadHomes();
+    }
+
+    function renderCanvasLoop() {
+      const width = dom.workspaceStage.clientWidth;
+      const height = dom.workspaceStage.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Render Targeting Reticle if locked on a node
+      if (AppState.fx.reticle) {
+        const r = AppState.fx.reticle;
+        ctx.save();
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
+        ctx.restore();
+      }
+
+      // 2. Render Red Permission Forcefield Barrier if blocked
+      if (AppState.fx.barrier) {
+        const b = AppState.fx.barrier;
+        ctx.save();
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(b.x, b.y, b.w, b.h, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Warning Tag above forcefield
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.fillText('⛔ WRITE LOCK BARRIER', b.x + 6, b.y - 6);
+        ctx.restore();
+      }
+
+      // 3. Render Cross-DB ETL Transfer Laser Beam & Data Packet
+      if (AppState.fx.beam) {
+        const bm = AppState.fx.beam;
+        ctx.save();
+        ctx.strokeStyle = bm.color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(bm.fromX, bm.fromY);
+        ctx.quadraticCurveTo((bm.fromX + bm.toX) / 2, Math.min(bm.fromY, bm.toY) - 45, bm.toX, bm.toY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (AppState.fx.packet) {
+        const pk = AppState.fx.packet;
+        ctx.save();
+        ctx.fillStyle = '#064e3b';
+        ctx.strokeStyle = pk.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(pk.x - 48, pk.y - 13, 96, 26, 13);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ecfdf5';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(pk.label.slice(0, 12), pk.x, pk.y + 4);
+        ctx.restore();
+      }
+
+      // 4. Update & Render Mechanical Read-Head(s) + Overhead Gantry Rail
+      drawMechanicalHead(AppState.heads.head1, width);
+      if (AppState.db2) {
+        drawMechanicalHead(AppState.heads.head2, width);
+      }
+
+      requestAnimationFrame(renderCanvasLoop);
+    }
+
+    function drawMechanicalHead(head, stageWidth) {
+      // Smooth spring interpolation toward target coordinates
+      head.x += (head.targetX - head.x) * 0.14;
+      head.y += (head.targetY - head.y) * 0.14;
+      head.pulse += 0.08;
+
+      const isBlocked = head.state === 'BLOCKED';
+      const isLocked = head.state === 'LOCKED';
+      const activeColor = isBlocked ? '#ef4444' : isLocked ? '#c084fc' : head.color;
+
+      ctx.save();
+
+      // Vertical Gantry Actuator Arm extending from top rail down to Read-Head
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.24)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(head.x, 0);
+      ctx.lineTo(head.x, head.y);
+      ctx.stroke();
+
+      // Glowing inner optical fiber line inside gantry arm
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.moveTo(head.x, 0);
+      ctx.lineTo(head.x, head.y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Top Rail Carriage Block
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(head.x - 14, 0, 28, 7);
+      ctx.strokeRect(head.x - 14, 0, 28, 7);
+
+      // Outer Pulse Ring when active
+      if (AppState.isExecuting) {
+        const radius = 18 + Math.sin(head.pulse) * 4;
+        ctx.strokeStyle = activeColor;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Mechanical Read-Head Housing (Hexagonal / Precision Reticle)
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Center Laser Emitter Core
+      ctx.fillStyle = activeColor;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Floating Telemetry Tag next to Read-Head
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(head.x + 16, head.y - 10, 56, 18, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = activeColor;
+      ctx.font = '700 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(head.label, head.x + 22, head.y + 2);
+
+      ctx.restore();
+    }
+
+    // --------------------------------------------------------------------------
+    // 9. EVENT LISTENERS & INITIAL BOOTSTRAP
+    // --------------------------------------------------------------------------
+    document.getElementById('btnUploadDb1').addEventListener('click', () => {
+      document.getElementById('fileInputDb1').click();
+    });
+    document.getElementById('btnUploadDb2').addEventListener('click', () => {
+      document.getElementById('fileInputDb2').click();
+    });
+
+    document.getElementById('fileInputDb1').addEventListener('change', (e) => {
+      if (e.target.files[0]) parseUploadedFile(e.target.files[0], 'db1');
+      e.target.value = '';
+    });
+    document.getElementById('fileInputDb2').addEventListener('change', (e) => {
+      if (e.target.files[0]) parseUploadedFile(e.target.files[0], 'db2');
+      e.target.value = '';
+    });
+
+    document.getElementById('btnPresetDb1').addEventListener('click', () => {
+      if (AppState.isExecuting) return;
+      mountDatabase('db1', createPresetDb1());
+    });
+
+    document.getElementById('btnPresetDb2').addEventListener('click', () => {
+      if (AppState.isExecuting) return;
+      if (!AppState.db1) mountDatabase('db1', createPresetDb1());
+      mountDatabase('db2', createPresetDb2());
+    });
+
+    document.getElementById('btnToggleLock1').addEventListener('click', () => toggleDbPermission('db1'));
+    document.getElementById('btnToggleLock2').addEventListener('click', () => toggleDbPermission('db2'));
+
+    document.getElementById('btnCopySql').addEventListener('click', () => {
+      const sql = getPlainSqlString();
+      if (!sql) {
+        showToast('No SQL queries staged yet');
+        return;
+      }
+      copyTextToClipboard(sql);
+    });
+
+    document.getElementById('btnRunExec').addEventListener('click', runExecutionSequence);
+
+    document.getElementById('btnResetGhost').addEventListener('click', () => {
+      if (AppState.isExecuting) return;
+      AppState.isGhost = true;
+      AppState.db1 = createGhostDatabase();
+      AppState.db2 = null;
+      AppState.queryQueue = [];
+      renderAll();
+      updateNarrator(
+        'GHOST BLUEPRINT RESTORED',
+        'Canvas reset to translucent Ghost Schema. Drag nodes across columns or load DB 1 / DB 2 to begin.'
+      );
+      showToast('Canvas reset to Ghost Blueprint');
+    });
+
+    document.getElementById('btnExportJson').addEventListener('click', () => {
+      const exportPayload = {
+        exportedAt: new Date().toISOString(),
+        engine: 'Luminal Spatial DB Engine v1.0',
+        databases: {
+          db1: AppState.db1,
+          db2: AppState.db2
+        }
+      };
+      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${AppState.db1?.name || 'luminal_db'}_export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Exported modified database JSON');
+    });
+
+    document.getElementById('btnClearAudit').addEventListener('click', () => {
+      dom.auditList.innerHTML = '';
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Boot Application
+    window.onload = function () {
+      AppState.db1 = createGhostDatabase();
+      renderAll();
+      resizeCanvas();
+      requestAnimationFrame(renderCanvasLoop);
+    };
+  </script>
+</body>
+</html>

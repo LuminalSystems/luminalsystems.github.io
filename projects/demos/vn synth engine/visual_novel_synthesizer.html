@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Novel Synthesizer & Interactive Player</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;600;800&family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        title: ['Orbitron', 'sans-serif'],
+                        fantasy: ['Cinzel', 'serif']
+                    },
+                    colors: {
+                        cyber: {
+                            dark: '#0a0a12',
+                            panel: '#121324',
+                            accent: '#ec4899',
+                            cyan: '#06b6d4',
+                            gold: '#f59e0b',
+                            purple: '#8b5cf6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom animations & background graphics */
+        body {
+            background-color: #06060c;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism panel style */
+        .vn-panel {
+            background: rgba(18, 19, 36, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .vn-panel-glow {
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.15);
+        }
+
+        /* Procedural CSS Canvas Background Gradients */
+        .bg-isekai {
+            background: radial-gradient(circle at 50% 30%, #3b0764 0%, #1e1b4b 50%, #09090b 100%);
+        }
+
+        .bg-scifi {
+            background: radial-gradient(circle at 20% 20%, #083344 0%, #0f172a 60%, #020617 100%);
+        }
+
+        .bg-fantasy {
+            background: radial-gradient(circle at 80% 20%, #451a03 0%, #1c1917 60%, #0c0a09 100%);
+        }
+
+        .bg-thriller {
+            background: radial-gradient(circle at 50% 50%, #4c0519 0%, #111827 70%, #030712 100%);
+        }
+
+        /* Scanline Overlay for Cyberpunk/Vibe feel */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+        }
+
+        /* Choice Button Ripple Effect */
+        .choice-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+            border-color: #06b6d4;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #09090b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ec4899;
+        }
+
+        /* Dialogue Typewriter Cursor */
+        .typing-cursor::after {
+            content: '█';
+            display: inline-block;
+            margin-left: 2px;
+            animation: blink 0.8s infinite;
+            color: #ec4899;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Avatar Float Animation */
+        @keyframes avatarFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-8px) scale(1.02); }
+        }
+
+        .animate-avatar {
+            animation: avatarFloat 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col font-sans select-none overflow-hidden">
+
+    <!-- Top Navigation Bar -->
+    <header class="h-14 border-b border-white/10 bg-black/60 backdrop-blur-md px-6 flex items-center justify-between z-40 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-pink-500 to-cyan-400 flex items-center justify-center text-black font-title font-bold text-lg shadow-lg shadow-pink-500/20">
+                VN
+            </div>
+            <span class="font-title tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 font-bold text-lg">
+                SYNTHESIZER <span class="text-xs text-cyan-400 font-mono font-normal">v1.0</span>
+            </span>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button id="btn-mode-builder" onclick="switchTab('builder')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30">
+                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Story Builder
+            </button>
+            <button id="btn-mode-player" onclick="switchTab('player')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10">
+                <i class="fa-solid fa-play mr-2"></i>VN Player
+            </button>
+            <button id="btn-mode-json" onclick="toggleJsonInspector()" class="px-3 py-1.5 rounded-lg text-sm font-mono transition bg-white/5 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20">
+                <i class="fa-solid fa-code mr-2"></i>JSON Schema
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main id="app-viewport" class="flex-1 relative w-full h-full overflow-hidden bg-isekai transition-all duration-700">
+        <div class="absolute inset-0 scanlines pointer-events-none z-10 opacity-30"></div>
+
+        <!-- ==================== TAB 1: STORY BUILDER ==================== -->
+        <section id="view-builder" class="absolute inset-0 z-20 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-4xl w-full vn-panel rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl relative">
+                <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                    <div>
+                        <h1 class="text-2xl font-title font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
+                            Procedural Story Matrix
+                        </h1>
+                        <p class="text-xs text-gray-400 mt-1">Configure narrative parameters to synthesize a decision-tree visual novel.</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-mono bg-cyan-950 text-cyan-400 border border-cyan-800">
+                        Preset Engine Ready
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Genre Selection -->
+                    <div>
+                        <label class="block text-xs font-mono text-pink-400 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-film mr-1.5"></i> Story Genre
+                        </label>
+                        <select id="cfg-genre" onchange="updateGenreTheme()" class="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-pink-500 text-gray-200">
+                            <option value="isekai">Reincarnation / Isekai Fantasy</option>
+                            <option value="scifi">Cyberpunk / Sci-Fi Mystery</option>
+                            <option value="fantasy">Dark High Fantasy Quest</option>
+                            <option value="thriller">Psychological Thriller Loop</option>
+                        </select>
+                    </div>
+
+                    <!-- Core Archetype -->
+                    <div>
+                        <label class="block text-xs font-mono text-pink-400 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-diagram-project mr-1.5"></i> Plot Archetype
+                        </label>
+                        <select id="cfg-archetype" class="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-pink-500 text-gray-200">
+                            <option value="save_world">Save the Realm from Collapse</option>
+                            <option value="escape_loop">Escape the Simulated Reality</option>
+                            <option value="dark_secret">Uncover the Ancient Betrayal</option>
+                        </select>
+                    </div>
+
+                    <!-- Protagonist Archetype -->
+                    <div>
+                        <label class="block text-xs font-mono text-cyan-400 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-user-ninja mr-1.5"></i> Protagonist Type
+                        </label>
+                        <select id="cfg-protagonist" class="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500 text-gray-200">
+                            <option value="reluctant">Reluctant Strategist (Analytical)</option>
+                            <option value="overpowered">Overpowered Maverick (Defiant)</option>
+                            <option value="amnesiac">Amnesiac Investigator (Curious)</option>
+                        </select>
+                    </div>
+
+                    <!-- Antagonist / Rival -->
+                    <div>
+                        <label class="block text-xs font-mono text-cyan-400 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-skull-crossbones mr-1.5"></i> Rival / Antagonist
+                        </label>
+                        <select id="cfg-antagonist" class="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500 text-gray-200">
+                            <option value="shadow_monarch">The Shadow Sovereign (Absolute Order)</option>
+                            <option value="rogue_ai">Corrupted System Kernel (Chaos)</option>
+                            <option value="former_ally">Former Best Friend (Traitor)</option>
+                        </select>
+                    </div>
+
+                    <!-- Tone Slider -->
+                    <div class="md:col-span-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-mono text-purple-400 uppercase tracking-wider">
+                                <i class="fa-solid fa-sliders mr-1.5"></i> Narrative Tone & Stakes
+                            </label>
+                            <span id="tone-label" class="text-xs font-mono text-purple-300">Balanced Heroic</span>
+                        </div>
+                        <input type="range" id="cfg-tone" min="1" max="3" value="2" oninput="updateToneLabel(this.value)" class="w-full accent-pink-500 bg-black/40 h-2 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-mono mt-1">
+                            <span>Lighthearted</span>
+                            <span>Balanced / Tactical</span>
+                            <span>Grim / High Risk</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Title Input -->
+                <div class="mt-6">
+                    <label class="block text-xs font-mono text-gray-400 uppercase tracking-wider mb-2">
+                        Story Title (Leave blank for auto-generation)
+                    </label>
+                    <input type="text" id="cfg-title" placeholder="e.g. Re:BOOT — Memory Cascade" class="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-pink-500 text-gray-200 placeholder-gray-600 font-mono">
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-8 flex justify-end">
+                    <button onclick="synthesizeStory()" class="w-full md:w-auto px-8 py-3.5 rounded-xl font-title font-bold text-sm tracking-wider uppercase bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 hover:from-pink-400 hover:to-cyan-400 text-black shadow-lg shadow-pink-500/25 transition transform active:scale-95 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Synthesize & Launch Game</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: VISUAL NOVEL PLAYER ==================== -->
+        <section id="view-player" class="absolute inset-0 z-20 hidden flex flex-col justify-between p-4 md:p-8">
+            
+            <!-- Top HUD Bar -->
+            <div class="w-full flex justify-between items-center z-30">
+                <!-- Title & Trajectory -->
+                <div class="vn-panel px-4 py-2 rounded-xl border border-white/10 flex items-center space-x-4">
+                    <div>
+                        <span id="player-story-title" class="text-xs font-title text-pink-400 block font-bold">STORY TITLE</span>
+                        <div class="flex items-center space-x-2 mt-0.5">
+                            <span class="text-[10px] font-mono text-gray-400">NODE: <span id="hud-node-id" class="text-cyan-400">1</span></span>
+                            <span class="text-[10px] font-mono text-gray-600">|</span>
+                            <span class="text-[10px] font-mono text-gray-400">TRAJECTORY: <span id="hud-score" class="text-pink-400 font-bold">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="restartCurrentNovel()" class="px-3 py-2 rounded-xl bg-black/50 hover:bg-black/80 border border-white/10 text-xs font-mono text-gray-300 transition" title="Restart Novel">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button onclick="switchTab('builder')" class="px-3 py-2 rounded-xl bg-black/50 hover:bg-black/80 border border-white/10 text-xs font-mono text-gray-300 transition" title="Configure New Story">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Central Portrait & Scene Viewport -->
+            <div class="flex-1 relative flex items-center justify-center my-4 overflow-hidden">
+                <!-- Character Avatar Vector Box -->
+                <div id="character-avatar-container" class="relative z-20 flex flex-col items-center animate-avatar transition-all duration-500">
+                    <!-- SVG Dynamic Avatar -->
+                    <div id="avatar-svg-box" class="w-48 h-48 md:w-64 md:h-64 filter drop-shadow-[0_10px_25px_rgba(236,72,153,0.3)]">
+                        <!-- SVG injected dynamically -->
+                    </div>
+                    <!-- Emotion / Speaker Badge -->
+                    <div id="avatar-emotion-badge" class="mt-2 px-3 py-1 rounded-full text-[11px] font-mono bg-black/80 border border-pink-500/40 text-pink-300 backdrop-blur-md">
+                        Determined
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Dialogue & Choices Container -->
+            <div class="w-full max-w-4xl mx-auto z-30 space-y-4">
+                
+                <!-- Dialogue Panel -->
+                <div class="vn-panel vn-panel-glow rounded-2xl p-5 md:p-6 relative border border-pink-500/30">
+                    <!-- Character Speaker Nameplate -->
+                    <div class="absolute -top-4 left-6 px-4 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-600 font-title text-xs font-bold text-white shadow-md uppercase tracking-wider">
+                        <span id="speaker-name">Character Name</span>
+                    </div>
+
+                    <!-- Dialogue Text Window -->
+                    <div class="mt-2 min-h-[70px] text-sm md:text-base text-gray-100 font-sans leading-relaxed">
+                        <p id="dialogue-text" class="typing-cursor">Initializing narrative loop...</p>
+                    </div>
+
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-white/10 text-[10px] font-mono text-gray-500">
+                        <span>CLICK CHOICE BELOW TO ADVANCE</span>
+                        <span id="typing-indicator" class="text-cyan-400">READY</span>
+                    </div>
+                </div>
+
+                <!-- Choice Option Buttons -->
+                <div id="choices-container" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Dynamic choice buttons inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ENDING EVALUATOR SCREEN ==================== -->
+        <section id="view-ending" class="absolute inset-0 z-30 hidden flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
+            <div class="max-w-2xl w-full vn-panel rounded-2xl p-8 border border-white/20 text-center space-y-6">
+                
+                <div id="ending-badge" class="inline-block px-4 py-1.5 rounded-full font-mono text-xs uppercase tracking-widest bg-pink-500/20 text-pink-400 border border-pink-500/40">
+                    ENDING UNLOCKED
+                </div>
+
+                <h2 id="ending-title" class="text-3xl md:text-4xl font-title font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400">
+                    HEROIC CONVERGENCE
+                </h2>
+
+                <p id="ending-description" class="text-sm md:text-base text-gray-300 leading-relaxed font-sans max-w-xl mx-auto">
+                    Ending narrative details calculated from your path choices...
+                </p>
+
+                <!-- Stats Breakdown Box -->
+                <div class="grid grid-cols-3 gap-4 py-4 border-y border-white/10 bg-black/30 rounded-xl">
+                    <div>
+                        <div class="text-[10px] font-mono text-gray-400">FINAL TRAJECTORY</div>
+                        <div id="stat-score" class="text-xl font-title text-pink-400 font-bold">+3</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-mono text-gray-400">NODES VISITED</div>
+                        <div id="stat-nodes" class="text-xl font-title text-cyan-400 font-bold">4</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-mono text-gray-400">ENDING TIER</div>
+                        <div id="stat-tier" class="text-xl font-title text-purple-400 font-bold">TRUE</div>
+                    </div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                    <button onclick="restartCurrentNovel()" class="w-full sm:w-auto px-6 py-3 rounded-xl font-title text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white transition">
+                        <i class="fa-solid fa-rotate-left mr-2"></i>Replay Path
+                    </button>
+                    <button onclick="switchTab('builder')" class="w-full sm:w-auto px-6 py-3 rounded-xl font-title text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-pink-500 to-cyan-500 text-black shadow-lg shadow-pink-500/20 hover:opacity-90 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>New Story Synthesis
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== SIDEBAR / MODAL: JSON SCHEMA INSPECTOR ==================== -->
+    <div id="modal-json" class="fixed inset-y-0 right-0 w-full md:w-[500px] bg-black/95 border-l border-cyan-500/30 z-50 transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between bg-cyan-950/30">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-code text-cyan-400"></i>
+                <span class="font-title text-sm font-bold text-cyan-300">JSON Story Tree Inspector</span>
+            </div>
+            <button onclick="toggleJsonInspector()" class="text-gray-400 hover:text-white text-lg px-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-4 flex-1 flex flex-col space-y-4 overflow-hidden">
+            <p class="text-xs text-gray-400">
+                View or edit the raw JSON decision tree structure. You can paste custom visual novel schemas here and load them instantly.
+            </p>
+
+            <textarea id="json-editor-textarea" class="flex-1 w-full bg-black/80 font-mono text-xs text-cyan-300 p-4 border border-cyan-500/20 rounded-xl focus:outline-none focus:border-cyan-400 resize-none leading-relaxed"></textarea>
+
+            <div class="flex items-center justify-between gap-2 pt-2">
+                <button onclick="copyStoryJson()" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-gray-300 transition flex items-center">
+                    <i class="fa-regular fa-copy mr-1.5"></i> Copy JSON
+                </button>
+                <button onclick="loadStoryFromJsonText()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-title text-xs font-bold uppercase transition flex items-center">
+                    <i class="fa-solid fa-upload mr-1.5"></i> Import & Play
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT NARRATIVE ENGINE ==================== -->
+    <script>
+        /* =========================================================================
+           GLOBAL STATE & DATA SCHEMAS
+           ========================================================================= */
+        let currentStory = null;
+        let currentNodeId = "node_start";
+        let pathScore = 0;
+        let visitedNodesCount = 0;
+        let isTyping = false;
+        let typingTimer = null;
+
+        // Preset Avatars (Dynamic SVGs)
+        const AVATARS = {
+            hero: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="50" r="45" fill="none" stroke="#06b6d4" stroke-width="2" stroke-dasharray="4 2"/><polygon points="50,15 80,80 50,65 20,80" fill="url(#heroGrad)" stroke="#ec4899" stroke-width="2"/><defs><linearGradient id="heroGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs></svg>`,
+            mentor: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="50" r="42" fill="none" stroke="#a855f7" stroke-width="3"/><polygon points="50,20 75,50 50,80 25,50" fill="#1e1b4b" stroke="#a855f7" stroke-width="2"/><circle cx="50" cy="50" r="12" fill="#06b6d4"/></svg>`,
+            antagonist: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="50" r="45" fill="none" stroke="#ef4444" stroke-width="2"/><path d="M30,30 L70,70 M70,30 L30,70" stroke="#ef4444" stroke-width="4"/><polygon points="50,5 95,50 50,95 5,50" fill="none" stroke="#f59e0b" stroke-width="1.5"/></svg>`
+        };
+
+        // Procedural Schema Templates based on Genre/Archetype
+        const GENRE_TEMPLATES = {
+            isekai: {
+                title: "Re:Zero System Overdrive",
+                bgClass: "bg-isekai",
+                nodes: {
+                    node_start: {
+                        speaker: "System Kernel",
+                        avatar: "mentor",
+                        emotion: "Alert",
+                        text: "Welcome, Operator. Your physical form collapsed at your desk. You have been digitized into the Astral Framework. A corruption threatens the core nexus.",
+                        choices: [
+                            { text: "Accept the divine protocol (+1 Heroic)", score: 1, next: "node_hero_path" },
+                            { text: "Attempt to override system diagnostics (0 Pragmatic)", score: 0, next: "node_tech_path" },
+                            { text: "Reject the realm and force immediate logout (-1 Chaos)", score: -1, next: "node_chaos_path" }
+                        ]
+                    },
+                    node_hero_path: {
+                        speaker: "Aria (High Priestess)",
+                        avatar: "hero",
+                        emotion: "Determined",
+                        text: "Thank goodness you answered our summons! The Shadow Monarch has locked down Sector 9. We need your analytical skills to bypass the firewall.",
+                        choices: [
+                            { text: "Lead the frontline assault directly (+1)", score: 1, next: "node_climax" },
+                            { text: "Set up defensive counter-measures (0)", score: 0, next: "node_climax" }
+                        ]
+                    },
+                    node_tech_path: {
+                        speaker: "Aria (High Priestess)",
+                        avatar: "mentor",
+                        emotion: "Intrigued",
+                        text: "You're analyzing the source code directly? Fascinating. The system architecture is unstable, but your workarounds are holding it together.",
+                        choices: [
+                            { text: "Patch the core memory leaks (+1)", score: 1, next: "node_climax" },
+                            { text: "Siphon system bandwidth for self-defense (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_chaos_path: {
+                        speaker: "The Shadow Sovereign",
+                        avatar: "antagonist",
+                        emotion: "Menacing",
+                        text: "Trying to shatter the digital cage? I respect the defiance. Join me, and we will purge this simulated reality together.",
+                        choices: [
+                            { text: "Betray the Sovereign at the last second (+1)", score: 1, next: "node_climax" },
+                            { text: "Form an alliance to break the server down (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_climax: {
+                        speaker: "Nexus Core AI",
+                        avatar: "antagonist",
+                        emotion: "Critical",
+                        text: "Final Convergence Phase reached. The entire realm's state logic is executing simultaneously. Make your ultimate tactical declaration!",
+                        choices: [
+                            { text: "Execute Full System Restoration (+1)", score: 1, next: "node_end" },
+                            { text: "Maintain Equilibrium State (0)", score: 0, next: "node_end" },
+                            { text: "Initiate Global Memory Wipe (-1)", score: -1, next: "node_end" }
+                        ]
+                    }
+                },
+                endings: {
+                    good: {
+                        title: "HEROIC SYSTEM ARCHITECT",
+                        desc: "You successfully debugged the realm's core framework! You ascend as the primary guardian of the digital nexus, celebrated across all sectors."
+                    },
+                    neutral: {
+                        title: "STABLE LOOP EQUILIBRIUM",
+                        desc: "You preserved the balance of the system. The realm remains intact, operating in a balanced loop while you continue monitoring telemetry."
+                    },
+                    secret: {
+                        title: "DAMN THAT'S COOL: SYSTEM OVERLORD",
+                        desc: "Unbelievable! By embracing pure chaos logic, you unlocked root administrative privileges, rewrote the universe laws, and built your own personal digital empire!"
+                    }
+                }
+            },
+            scifi: {
+                title: "Neo-Veridia 2099: Ghost Protocol",
+                bgClass: "bg-scifi",
+                nodes: {
+                    node_start: {
+                        speaker: "Unit 7-K (AI Companion)",
+                        avatar: "mentor",
+                        emotion: "Analytical",
+                        text: "Rain strikes the neon-drenched glass of Sector 4. An encrypted data drop just pinged your neural implant. It's signed by your former partner who vanished a year ago.",
+                        choices: [
+                            { text: "Decrypt the payload immediately (+1)", score: 1, next: "node_hero_path" },
+                            { text: "Trace the origin signal first (0)", score: 0, next: "node_tech_path" },
+                            { text: "Wipe the file and sell the drive on black market (-1)", score: -1, next: "node_chaos_path" }
+                        ]
+                    },
+                    node_hero_path: {
+                        speaker: "Unit 7-K",
+                        avatar: "hero",
+                        emotion: "Surprised",
+                        text: "The payload reveals corporate conspiracy telemetry! Synthetic memories are being injected into citizens. We have a chance to stop it.",
+                        choices: [
+                            { text: "Broadcast the evidence to the public (+1)", score: 1, next: "node_climax" },
+                            { text: "Confront the Chief Executive in person (0)", score: 0, next: "node_climax" }
+                        ]
+                    },
+                    node_tech_path: {
+                        speaker: "Corrupted Kernel",
+                        avatar: "antagonist",
+                        emotion: "Dangerous",
+                        text: "Smart detective. Tracing my signal leads right to the central mainframe. But are you prepared for what your own memory archives hold?",
+                        choices: [
+                            { text: "Purge the memory firewall (+1)", score: 1, next: "node_climax" },
+                            { text: "Embrace the synthetic implants (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_chaos_path: {
+                        speaker: "Shadow Broker",
+                        avatar: "antagonist",
+                        emotion: "Smug",
+                        text: "A pragmatist! I like you. The corporate lords will pay top credits for this drive. Take the money and leave the city to burn.",
+                        choices: [
+                            { text: "Double cross the broker at exchange (+1)", score: 1, next: "node_climax" },
+                            { text: "Take the credits and vanish into night (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_climax: {
+                        speaker: "Central Grid Interface",
+                        avatar: "hero",
+                        emotion: "Terminal",
+                        text: "The mainframe uplink is active. The city's digital grid awaits your command script.",
+                        choices: [
+                            { text: "Upload Open Source Freedom Protocol (+1)", score: 1, next: "node_end" },
+                            { text: "Lockdown Network in Stasis (0)", score: 0, next: "node_end" },
+                            { text: "Overwrite Neural Grid with Custom Code (-1)", score: -1, next: "node_end" }
+                        ]
+                    }
+                },
+                endings: {
+                    good: {
+                        title: "NEON PROPHET OF FREEDOM",
+                        desc: "You exposed the corporate syndicate and liberated the city's neural network! Neo-Veridia enters a new age of open-source human consciousness."
+                    },
+                    neutral: {
+                        title: "CYBER CITY DETECTIVE",
+                        desc: "You survived the night with your life and code intact. The rain keeps falling on Sector 4 as you await your next contract."
+                    },
+                    secret: {
+                        title: "DAMN THAT'S COOL: DIGITAL GHOST GOD",
+                        desc: "Sensational! You uploaded your mind directly into the city's power grid, becoming an omnipresent digital legend haunting every neon sign and highway camera."
+                    }
+                }
+            },
+            fantasy: {
+                title: "Chronicles of the Sunken Citadel",
+                bgClass: "bg-fantasy",
+                nodes: {
+                    node_start: {
+                        speaker: "Elder Mage Elion",
+                        avatar: "mentor",
+                        emotion: "Grave",
+                        text: "The seal on the Obsidian Spire has fractured. Thunder echoes over the ruins. Traveler, will you wield the ancient blade or seek the hidden runes?",
+                        choices: [
+                            { text: "Draw the Sunken Blade (+1 Heroic)", score: 1, next: "node_hero_path" },
+                            { text: "Study the ward runes (0 Pragmatic)", score: 0, next: "node_tech_path" },
+                            { text: "Claim the dark shadow ember (-1 Chaos)", score: -1, next: "node_chaos_path" }
+                        ]
+                    },
+                    node_hero_path: {
+                        speaker: "Elder Mage Elion",
+                        avatar: "hero",
+                        emotion: "Inspired",
+                        text: "The blade shines with celestial energy! You stand as the prophecy foretold, ready to challenge the Shadow Sovereign.",
+                        choices: [
+                            { text: "Charge into the inner sanctum (+1)", score: 1, next: "node_climax" },
+                            { text: "Rally the temple guardians first (0)", score: 0, next: "node_climax" }
+                        ]
+                    },
+                    node_tech_path: {
+                        speaker: "Rune Sentinel",
+                        avatar: "mentor",
+                        emotion: "Calm",
+                        text: "Your mind is sharper than steel. The ancient runes reveal a secret passage bypassing the demon hordes.",
+                        choices: [
+                            { text: "Seal the demon breach with magic (+1)", score: 1, next: "node_climax" },
+                            { text: "Siphon magic power into yourself (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_chaos_path: {
+                        speaker: "Demon Monarch",
+                        avatar: "antagonist",
+                        emotion: "Triumphant",
+                        text: "You touch the shadow ember without hesitation! You have the hunger of a true conqueror.",
+                        choices: [
+                            { text: "Turn the shadow flame against the Monarch (+1)", score: 1, next: "node_climax" },
+                            { text: "Subjugate the realm under your heel (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_climax: {
+                        speaker: "Ancient Dragon Guardian",
+                        avatar: "antagonist",
+                        emotion: "Majestic",
+                        text: "At the heart of the Spire, the primordial dragon awaits your final decree.",
+                        choices: [
+                            { text: "Banish Darkness Forever (+1)", score: 1, next: "node_end" },
+                            { text: "Seal Dragon & Citadel in Time (0)", score: 0, next: "node_end" },
+                            { text: "Absorb Primordial Flame (-1)", score: -1, next: "node_end" }
+                        ]
+                    }
+                },
+                endings: {
+                    good: {
+                        title: "SAVIOR OF THE SUNKEN REALM",
+                        desc: "With honor and courage, you cleansed the Obsidian Spire and brought a 1,000-year dawn back to the kingdom!"
+                    },
+                    neutral: {
+                        title: "THE WANDERING KNIGHT",
+                        desc: "The Citadel falls silent. You sheath your blade and walk into the mist, a hero whose name becomes quiet legend."
+                    },
+                    secret: {
+                        title: "DAMN THAT'S COOL: DRAGON KING ASCENDANT",
+                        desc: "Absolute madness! You bound the ancient dragon to your will, crowned yourself in shadow flame, and reshaped the continent into your supreme domain!"
+                    }
+                }
+            },
+            thriller: {
+                title: "Temporal Drift: Room 304",
+                bgClass: "bg-thriller",
+                nodes: {
+                    node_start: {
+                        speaker: "Voice on Radio",
+                        avatar: "antagonist",
+                        emotion: "Static",
+                        text: "Tick, tock. You wake up on a cold metal chair. The digital clock on the wall reads 05:59 AM. It resets to 05:00 AM every time you make a mistake.",
+                        choices: [
+                            { text: "Search the desk for clues (+1)", score: 1, next: "node_hero_path" },
+                            { text: "Analyze the clock wiring (0)", score: 0, next: "node_tech_path" },
+                            { text: "Smash the door lock violently (-1)", score: -1, next: "node_chaos_path" }
+                        ]
+                    },
+                    node_hero_path: {
+                        speaker: "Memory Fragment",
+                        avatar: "hero",
+                        emotion: "Mysterious",
+                        text: "You find a handwritten sticky note: 'The loop is a memory castle. Locate the core anchor before the timer hits zero.'",
+                        choices: [
+                            { text: "Reconstruct your lost memories (+1)", score: 1, next: "node_climax" },
+                            { text: "Break through the window frame (0)", score: 0, next: "node_climax" }
+                        ]
+                    },
+                    node_tech_path: {
+                        speaker: "System Operator",
+                        avatar: "mentor",
+                        emotion: "Focused",
+                        text: "The clock circuit isn't mechanical—it's a neural feedback loop running directly inside your subconscious mind.",
+                        choices: [
+                            { text: "Force a manual brain reboot (+1)", score: 1, next: "node_climax" },
+                            { text: "Overclock the simulation parameters (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_chaos_path: {
+                        speaker: "The Captor",
+                        avatar: "antagonist",
+                        emotion: "Laughing",
+                        text: "Violent outbursts won't shatter this cell! You've tried that in 40 previous iterations.",
+                        choices: [
+                            { text: "Use momentum to collapse room wall (+1)", score: 1, next: "node_climax" },
+                            { text: "Surrender to the infinite reset (-1)", score: -1, next: "node_climax" }
+                        ]
+                    },
+                    node_climax: {
+                        speaker: "The Core Memory Mirror",
+                        avatar: "hero",
+                        emotion: "Awakened",
+                        text: "05:59:59 AM. The final second ticks down. You stand face-to-face with your own cognitive reflection.",
+                        choices: [
+                            { text: "Shatter the Loop Mirror (+1)", score: 1, next: "node_end" },
+                            { text: "Accept the Memory Archive (0)", score: 0, next: "node_end" },
+                            { text: "Hijack the Loop Engine (-1)", score: -1, next: "node_end" }
+                        ]
+                    }
+                },
+                endings: {
+                    good: {
+                        title: "AWAKENED FROM THE LOOP",
+                        desc: "You broke the psychological temporal trap! Eyes open to sunlight—you step into true reality, completely restored."
+                    },
+                    neutral: {
+                        title: "ARCHIVIST OF THE DRIFT",
+                        desc: "You mastered the room's mechanics. You remain inside as a peaceful architect of your own mental sanctuary."
+                    },
+                    secret: {
+                        title: "DAMN THAT'S COOL: TIME REAVER",
+                        desc: "Mind-bending triumph! You turned the memory loop inside out, trapped your captor inside Room 304, and gained complete temporal control over your own reality!"
+                    }
+                }
+            }
+        };
+
+        /* =========================================================================
+           UI NAVIGATION & TAB SWITCHING
+           ========================================================================= */
+        function switchTab(tab) {
+            const viewBuilder = document.getElementById('view-builder');
+            const viewPlayer = document.getElementById('view-player');
+            const viewEnding = document.getElementById('view-ending');
+            const btnBuilder = document.getElementById('btn-mode-builder');
+            const btnPlayer = document.getElementById('btn-mode-player');
+
+            if (tab === 'builder') {
+                viewBuilder.classList.remove('hidden');
+                viewPlayer.classList.add('hidden');
+                viewEnding.classList.add('hidden');
+                
+                btnBuilder.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30";
+                btnPlayer.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10";
+            } else if (tab === 'player') {
+                if (!currentStory) {
+                    synthesizeStory(); // Auto synthesize if none loaded
+                }
+                viewBuilder.classList.add('hidden');
+                viewPlayer.classList.remove('hidden');
+                viewEnding.classList.add('hidden');
+
+                btnPlayer.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30";
+                btnBuilder.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10";
+            }
+        }
+
+        function updateToneLabel(val) {
+            const labels = ["Lighthearted & Fun", "Balanced Heroic / Tactical", "Grim / Extreme Stakes"];
+            document.getElementById('tone-label').innerText = labels[val - 1];
+        }
+
+        function updateGenreTheme() {
+            const genre = document.getElementById('cfg-genre').value;
+            const viewport = document.getElementById('app-viewport');
+            viewport.className = `flex-1 relative w-full h-full overflow-hidden transition-all duration-700 ${GENRE_TEMPLATES[genre].bgClass}`;
+        }
+
+        /* =========================================================================
+           STORY SYNTHESIS ENGINE
+           ========================================================================= */
+        function synthesizeStory() {
+            const genre = document.getElementById('cfg-genre').value;
+            const archetype = document.getElementById('cfg-archetype').value;
+            const protagonist = document.getElementById('cfg-protagonist').value;
+            const antagonist = document.getElementById('cfg-antagonist').value;
+            const customTitle = document.getElementById('cfg-title').value.trim();
+
+            const template = GENRE_TEMPLATES[genre];
+
+            // Deep clone story template
+            currentStory = JSON.parse(JSON.stringify(template));
+
+            // Apply custom titles & metadata
+            if (customTitle) {
+                currentStory.title = customTitle;
+            } else {
+                currentStory.title = `${template.title} [${archetype.toUpperCase()}]`;
+            }
+
+            // Sync JSON inspector textarea
+            document.getElementById('json-editor-textarea').value = JSON.stringify(currentStory, null, 2);
+
+            // Launch Player
+            restartCurrentNovel();
+            switchTab('player');
+        }
+
+        /* =========================================================================
+           NOVEL PLAYER ENGINE
+           ========================================================================= */
+        function restartCurrentNovel() {
+            if (!currentStory) return;
+            currentNodeId = "node_start";
+            pathScore = 0;
+            visitedNodesCount = 0;
+
+            document.getElementById('player-story-title').innerText = currentStory.title.toUpperCase();
+            document.getElementById('view-ending').classList.add('hidden');
+            
+            renderNode(currentNodeId);
+        }
+
+        function renderNode(nodeId) {
+            const node = currentStory.nodes[nodeId];
+            if (!node) {
+                console.error("Node not found:", nodeId);
+                return;
+            }
+
+            visitedNodesCount++;
+            currentNodeId = nodeId;
+
+            // Update HUD
+            document.getElementById('hud-node-id').innerText = visitedNodesCount;
+            document.getElementById('hud-score').innerText = (pathScore > 0 ? `+${pathScore}` : pathScore);
+
+            // Update Avatar Graphic
+            const avatarBox = document.getElementById('avatar-svg-box');
+            avatarBox.innerHTML = AVATARS[node.avatar] || AVATARS.hero;
+            document.getElementById('avatar-emotion-badge').innerText = node.emotion || "Focused";
+
+            // Update Speaker Name
+            document.getElementById('speaker-name').innerText = node.speaker || "Unknown";
+
+            // Typewriter Dialogue Effect
+            typeWriterEffect(node.text, () => {
+                renderChoices(node.choices);
+            });
+        }
+
+        function typeWriterEffect(text, onComplete) {
+            const dialogueEl = document.getElementById('dialogue-text');
+            const typingInd = document.getElementById('typing-indicator');
+            
+            if (typingTimer) clearInterval(typingTimer);
+            dialogueEl.innerText = "";
+            dialogueEl.classList.add('typing-cursor');
+            typingInd.innerText = "TYPING...";
+            typingInd.className = "text-pink-400 font-mono animate-pulse";
+            isTyping = true;
+
+            let index = 0;
+            typingTimer = setInterval(() => {
+                if (index < text.length) {
+                    dialogueEl.innerText += text.charAt(index);
+                    index++;
+                } else {
+                    clearInterval(typingTimer);
+                    dialogueEl.classList.remove('typing-cursor');
+                    typingInd.innerText = "WAITING FOR DECISION";
+                    typingInd.className = "text-cyan-400 font-mono";
+                    isTyping = false;
+                    if (onComplete) onComplete();
+                }
+            }, 18);
+        }
+
+        function renderChoices(choices) {
+            const container = document.getElementById('choices-container');
+            container.innerHTML = "";
+
+            if (!choices || choices.length === 0) return;
+
+            choices.forEach((choice, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "choice-btn vn-panel rounded-xl p-3.5 text-left border border-white/15 text-xs md:text-sm text-gray-200 font-sans hover:text-white flex items-center justify-between group";
+                
+                let scoreBadge = choice.score > 0 ? `<span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">+1</span>` : 
+                                 (choice.score < 0 ? `<span class="text-[10px] font-mono text-pink-400 bg-pink-950/60 px-2 py-0.5 rounded border border-pink-800">-1</span>` : 
+                                 `<span class="text-[10px] font-mono text-gray-400 bg-gray-900/60 px-2 py-0.5 rounded border border-gray-700">0</span>`);
+
+                btn.innerHTML = `
+                    <span class="flex items-center space-x-2">
+                        <i class="fa-solid fa-chevron-right text-[10px] text-pink-400 opacity-0 group-hover:opacity-100 transition"></i>
+                        <span>${choice.text}</span>
+                    </span>
+                    ${scoreBadge}
+                `;
+
+                btn.onclick = () => selectChoice(choice);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectChoice(choice) {
+            pathScore += choice.score;
+            
+            if (choice.next === "node_end" || !currentStory.nodes[choice.next]) {
+                triggerEndingEvaluation();
+            } else {
+                renderNode(choice.next);
+            }
+        }
+
+        /* =========================================================================
+           ENDING EVALUATOR ENGINE
+           ========================================================================= */
+        function triggerEndingEvaluation() {
+            const viewEnding = document.getElementById('view-ending');
+            const endings = currentStory.endings;
+
+            let selectedEnding = endings.neutral;
+            let tierName = "STANDARD";
+
+            if (pathScore >= 2) {
+                selectedEnding = endings.good;
+                tierName = "GOOD / HEROIC";
+            } else if (pathScore <= -2 || pathScore === 3) {
+                // Secret trigger on extreme score paths
+                selectedEnding = endings.secret;
+                tierName = "DAMN THAT'S COOL (TRUE)";
+            }
+
+            document.getElementById('ending-title').innerText = selectedEnding.title;
+            document.getElementById('ending-description').innerText = selectedEnding.desc;
+            document.getElementById('stat-score').innerText = (pathScore > 0 ? `+${pathScore}` : pathScore);
+            document.getElementById('stat-nodes').innerText = visitedNodesCount;
+            document.getElementById('stat-tier').innerText = tierName;
+
+            viewEnding.classList.remove('hidden');
+        }
+
+        /* =========================================================================
+           JSON SCHEMA INSPECTOR & CUSTOM IMPORT
+           ========================================================================= */
+        function toggleJsonInspector() {
+            const modal = document.getElementById('modal-json');
+            modal.classList.toggle('translate-x-full');
+        }
+
+        function copyStoryJson() {
+            const textarea = document.getElementById('json-editor-textarea');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Story JSON copied to clipboard!');
+        }
+
+        function loadStoryFromJsonText() {
+            const text = document.getElementById('json-editor-textarea').value;
+            try {
+                const parsed = JSON.parse(text);
+                if (!parsed.nodes || !parsed.nodes.node_start) {
+                    alert('Invalid Story JSON structure! Must contain a "nodes" object with a "node_start" entry.');
+                    return;
+                }
+                currentStory = parsed;
+                toggleJsonInspector();
+                restartCurrentNovel();
+                switchTab('player');
+            } catch (err) {
+                alert('JSON Syntax Error: ' + err.message);
+            }
+        }
+
+        // Initialize default setup on load
+        window.onload = function() {
+            updateGenreTheme();
+            synthesizeStory();
+        };
+    </script>
+</body>
+</html>

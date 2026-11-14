@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Dynamic Engine Lab | Front-End Game Synthesizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #090d16;
+      color: #c9d1d9;
+    }
+
+    code, kbd, pre, .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d1117;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #21262d;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #30363d;
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+    }
+    .glow-cyan-lg {
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.35);
+    }
+    
+    .cyber-border {
+      border: 1px solid #30363d;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cyber-border:hover, .cyber-border-active {
+      border-color: #38bdf8;
+    }
+
+    .wizard-step-active {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-slate-950">
+
+  <!-- TOP HEADER -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 font-mono font-bold text-lg glow-cyan">
+          ⚙️
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-slate-100 tracking-wide font-mono flex items-center gap-2">
+            DYNAMIC_ENGINE_LAB <span class="text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800/50">v1.0.0</span>
+          </h1>
+          <p class="text-xs text-slate-400">Zero-Dependency Front-End Game Synthesizer & Compiler</p>
+        </div>
+      </div>
+      
+      <!-- Preset Loader -->
+      <div class="flex items-center space-x-2">
+        <span class="text-xs text-slate-400 font-mono hidden sm:inline">QUICK TEMPLATES:</span>
+        <button onclick="app.loadPreset('math_puzzle')" class="text-xs px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition font-mono">
+          🧮 Math Matrix
+        </button>
+        <button onclick="app.loadPreset('rpg_crawler')" class="text-xs px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition font-mono">
+          ⚔️ Dungeon Rogue
+        </button>
+        <button onclick="app.loadPreset('arcade_dodge')" class="text-xs px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition font-mono">
+          ⚡ Void Dodge
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
+  <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 my-auto">
+
+    <!-- LEFT COLUMN: WIZARD CONFIGURATOR (5 Cols) -->
+    <section class="lg:col-span-5 flex flex-col space-y-4">
+      
+      <!-- WIZARD STEP INDICATOR -->
+      <div class="grid grid-cols-4 gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800 font-mono text-xs">
+        <div id="step-tab-1" class="wizard-step-active py-2 px-1 text-center rounded-lg border border-transparent font-medium flex flex-col items-center gap-1">
+          <span>01</span>
+          <span class="text-[10px] hidden sm:block">META</span>
+        </div>
+        <div id="step-tab-2" class="py-2 px-1 text-center rounded-lg text-slate-500 border border-transparent font-medium flex flex-col items-center gap-1">
+          <span>02</span>
+          <span class="text-[10px] hidden sm:block">GENRE</span>
+        </div>
+        <div id="step-tab-3" class="py-2 px-1 text-center rounded-lg text-slate-500 border border-transparent font-medium flex flex-col items-center gap-1">
+          <span>03</span>
+          <span class="text-[10px] hidden sm:block">LOGIC</span>
+        </div>
+        <div id="step-tab-4" class="py-2 px-1 text-center rounded-lg text-slate-500 border border-transparent font-medium flex flex-col items-center gap-1">
+          <span>04</span>
+          <span class="text-[10px] hidden sm:block">DEPLOY</span>
+        </div>
+      </div>
+
+      <!-- WIZARD CONTENT CARD -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 flex-1 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+        <div class="absolute -right-12 -top-12 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        <!-- STEP 1: METADATA & TITLE -->
+        <div id="wizard-step-1" class="space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 font-mono flex items-center gap-2">
+              <span class="text-sky-400">#</span> 01. Game Architecture Setup
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">Define the fundamental properties of your synthesized project.</p>
+          </div>
+
+          <div class="space-y-3 pt-2">
+            <div>
+              <label class="block text-xs font-mono text-slate-400 mb-1">PROJECT TITLE</label>
+              <input type="text" id="config-title" value="Neon Void Crawler" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-400 font-mono" placeholder="Enter game name...">
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-slate-400 mb-1">AUTHOR / BUILDER</label>
+              <input type="text" id="config-author" value="Raccoon Systems Lab" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-400 font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-slate-400 mb-1">CANVAS COLOR THEME</label>
+              <select id="config-theme" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-400 font-mono">
+                <option value="cyber">Cyberpunk Dark (#0a0e17 / Neon Blue)</option>
+                <option value="matrix">Terminal Green (#051005 / Phosphor)</option>
+                <option value="amber">Retro Industrial (#140c02 / Amber)</option>
+                <option value="monochrome">Monochrome Slate (#111111 / Pure White)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: GENRE SELECTION -->
+        <div id="wizard-step-2" class="space-y-4 hidden">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 font-mono flex items-center gap-2">
+              <span class="text-sky-400">#</span> 02. Select Core Archetype
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">The primary game loop engine driving state update routines.</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 pt-2">
+            <!-- Genre Option: Puzzle -->
+            <label class="cyber-border bg-slate-950/60 p-3 rounded-xl cursor-pointer flex items-start space-x-3 hover:bg-slate-950 transition">
+              <input type="radio" name="genre" value="puzzle" class="mt-1 accent-sky-400" onchange="app.onGenreChange()">
+              <div>
+                <div class="text-sm font-bold text-slate-200 font-mono flex items-center gap-2">
+                  <span>🧩</span> Logic & Puzzle Solver
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Cellular grids, pattern memory arrays, state-toggle logic locks, and mathematical puzzles.</p>
+              </div>
+            </label>
+
+            <!-- Genre Option: RPG -->
+            <label class="cyber-border bg-slate-950/60 p-3 rounded-xl cursor-pointer flex items-start space-x-3 hover:bg-slate-950 transition">
+              <input type="radio" name="genre" value="rpg" checked class="mt-1 accent-sky-400" onchange="app.onGenreChange()">
+              <div>
+                <div class="text-sm font-bold text-slate-200 font-mono flex items-center gap-2">
+                  <span>⚔️</span> Grid RPG / Dungeon Crawler
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Tile-based or continuous WASD exploration, fog of war, item inventories, and contact collisions.</p>
+              </div>
+            </label>
+
+            <!-- Genre Option: Arcade Action -->
+            <label class="cyber-border bg-slate-950/60 p-3 rounded-xl cursor-pointer flex items-start space-x-3 hover:bg-slate-950 transition">
+              <input type="radio" name="genre" value="arcade" class="mt-1 accent-sky-400" onchange="app.onGenreChange()">
+              <div>
+                <div class="text-sm font-bold text-slate-200 font-mono flex items-center gap-2">
+                  <span>⚡</span> High-Velocity Arcade Action
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Fast positional dodgers, time-attack runs, entity spawners, and real-time projectile avoidance.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- STEP 3: MECHANICS & DYNAMIC SYNTHESIS -->
+        <div id="wizard-step-3" class="space-y-4 hidden">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 font-mono flex items-center gap-2">
+              <span class="text-sky-400">#</span> 03. Synthesize Rulesets
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">Toggle active subsystems to bind into the core loop.</p>
+          </div>
+
+          <div id="dynamic-mechanics-container" class="space-y-2.5 pt-2 max-h-[260px] overflow-y-auto pr-1">
+            <!-- Dynamically populated via app.renderMechanics() -->
+          </div>
+        </div>
+
+        <!-- STEP 4: REVIEW & DEPLOY -->
+        <div id="wizard-step-4" class="space-y-4 hidden">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 font-mono flex items-center gap-2">
+              <span class="text-sky-400">#</span> 04. Blueprint Manifest
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">Inspecting real-time JSON engine configuration payload.</p>
+          </div>
+
+          <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 font-mono text-[11px] text-sky-300/90 overflow-x-auto max-h-[220px]">
+            <pre id="json-manifest-view">// Config Manifest will load here...</pre>
+          </div>
+        </div>
+
+        <!-- WIZARD NAV CONTROLS -->
+        <div class="flex items-center justify-between pt-6 border-t border-slate-800/80 mt-4">
+          <button id="btn-prev" onclick="app.prevStep()" class="px-4 py-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-mono font-medium transition disabled:opacity-30 disabled:pointer-events-none" disabled>
+            ← PREV
+          </button>
+          
+          <div class="flex space-x-2">
+            <button id="btn-next" onclick="app.nextStep()" class="px-5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-mono font-bold transition glow-cyan flex items-center gap-1">
+              NEXT STEP →
+            </button>
+            <button id="btn-synthesize" onclick="app.synthesizeAndLaunch()" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold transition glow-cyan hidden flex items-center gap-1">
+              ⚡ SYNTHESIZE & LAUNCH
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: EMBEDDED ENGINE CANVAS & EXPORTER (7 Cols) -->
+    <section class="lg:col-span-7 flex flex-col space-y-4">
+
+      <!-- PLAYGROUND CONTAINER CARD -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex-1 flex flex-col shadow-2xl relative">
+        
+        <!-- CANVAS HEADER / STATUS BAR -->
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-800">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <h3 id="runtime-game-title" class="font-mono text-xs font-bold text-slate-200 uppercase tracking-wider">
+              [ STANDBY MODE - NO ENGINE LAUNCHED ]
+            </h3>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="app.resetCurrentGame()" class="px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-mono transition flex items-center gap-1" title="Restart local match">
+              🔄 RESET
+            </button>
+            <button onclick="app.exportSingleFileHTML()" class="px-3 py-1 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-mono font-bold transition flex items-center gap-1 glow-cyan">
+              💾 EXPORT HTML
+            </button>
+          </div>
+        </div>
+
+        <!-- PLAYABLE CANVAS HOST -->
+        <div class="flex-1 min-h-[380px] bg-slate-950 rounded-xl border border-slate-800/90 relative flex flex-col items-center justify-center overflow-hidden p-2">
+          
+          <!-- OVERLAY UNCOMPILED STATE -->
+          <div id="canvas-empty-state" class="text-center space-y-3 p-6 max-w-sm">
+            <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-2xl">
+              🎮
+            </div>
+            <h4 class="font-mono text-sm font-bold text-slate-300">RUNTIME ENGINE INACTIVE</h4>
+            <p class="text-xs text-slate-500">Configure parameters on the left wizard, then click <span class="text-sky-400 font-mono">SYNTHESIZE & LAUNCH</span> to generate a compiled instance.</p>
+          </div>
+
+          <!-- ACTIVE HTML5 CANVAS -->
+          <canvas id="game-canvas" class="hidden rounded-lg shadow-2xl max-w-full max-h-full"></canvas>
+
+          <!-- PUZZLE OVERLAY CONTAINER (DOM-based UI for Math/Logic grids) -->
+          <div id="puzzle-dom-container" class="hidden w-full h-full flex flex-col items-center justify-center p-4"></div>
+
+        </div>
+
+        <!-- FOOTER ENGINE STATS & CONTROLS -->
+        <div class="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400 font-mono gap-2">
+          <div class="flex items-center space-x-4">
+            <span>FPS: <span id="stat-fps" class="text-slate-200">60</span></span>
+            <span>MODES ACTIVE: <span id="stat-mechanics-count" class="text-sky-400">0</span></span>
+          </div>
+          <div class="text-[11px] text-slate-500">
+            CONTROLS: <kbd class="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">WASD / ARROWS</kbd> or <kbd class="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-300">MOUSE / TOUCH</kbd>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800/60 bg-slate-950/40 py-3 px-4 text-center text-xs text-slate-600 font-mono">
+    <span>THE DYNAMIC ENGINE LAB • LOCAL-FIRST FLAT-FILE PARADIGM • NO BACKEND REQUIRED</span>
+  </footer>
+
+  <!-- SYSTEM ENGINE SCRIPT -->
+  <script>
+    /**
+     * DYNAMIC GAME ENGINE LAB - CORE ARCHITECTURE
+     * Fully browser-native modular engine synthesizer.
+     */
+
+    // --- GENRE & MECHANICS DATABASE DEFINITION ---
+    const GAME_ARCHETYPES = {
+      puzzle: {
+        name: "Logic & Puzzle Solver",
+        description: "Static matrix or state-based logical puzzles.",
+        mechanics: [
+          { id: "math_grid", name: "🧮 Math Matrix Solver", default: true, desc: "Fill dynamic grid cells to satisfy horizontal/vertical target sums." },
+          { id: "spatial_memory", name: "🧠 Spatial Pattern Memory", default: false, desc: "Remember and repeat flashing grid sequences with escalating complexity." },
+          { id: "logic_switches", name: "💡 Toggle Grid Locks", default: false, desc: "Turn all nodes blue by toggling interconnected state switches." }
+        ]
+      },
+      rpg: {
+        name: "Grid RPG / Dungeon Crawler",
+        description: "Exploration engine with collision detection & inventories.",
+        mechanics: [
+          { id: "procedural_maze", name: "🏰 Procedural Maze Dungeon", default: true, desc: "Generate random corridors, walls, and locked exit portals." },
+          { id: "loot_inventory", name: "🔑 Keycards & Consumables", default: true, desc: "Collect items to unlock doors, restore HP, or buff move speed." },
+          { id: "fog_of_war", name: "👁️ Dynamic Vision / Fog of War", default: false, desc: "Restrict vision radius around player position." },
+          { id: "enemy_chasers", name: "👾 Autonomous Chaser Entities", default: true, desc: "Patrolling mobs that track player grid vectors." }
+        ]
+      },
+      arcade: {
+        name: "High-Velocity Arcade Action",
+        description: "Real-time physics and projectile avoidance loop.",
+        mechanics: [
+          { id: "avoid_dodge", name: "☄️ Void Hazard Spawner", default: true, desc: "Dodge incoming hazards falling or tracking across the screen." },
+          { id: "time_attack", name: "⏱️ Time Attack Countdown", default: true, desc: "Collect time orbs to stop timer reaching zero." },
+          { id: "particle_trail", name: "✨ High-Speed Velocity Trail", default: false, desc: "Render visual particle vectors on movement." }
+        ]
+      }
+    };
+
+    // --- APPLICATION STATE MANAGER ---
+    class EngineLabApp {
+      constructor() {
+        this.currentStep = 1;
+        this.config = {
+          title: "Neon Void Crawler",
+          author: "Raccoon Systems Lab",
+          theme: "cyber",
+          genre: "rpg",
+          mechanics: ["procedural_maze", "loot_inventory", "enemy_chasers"]
+        };
+        this.activeGameInstance = null;
+      }
+
+      init() {
+        this.bindEvents();
+        this.renderStep();
+        this.renderMechanics();
+      }
+
+      bindEvents() {
+        document.getElementById("config-title").addEventListener("input", (e) => {
+          this.config.title = e.target.value || "Untitled Engine";
+          this.updateManifestView();
+        });
+        document.getElementById("config-author").addEventListener("input", (e) => {
+          this.config.author = e.target.value || "Anonymous";
+          this.updateManifestView();
+        });
+        document.getElementById("config-theme").addEventListener("change", (e) => {
+          this.config.theme = e.target.value;
+          this.updateManifestView();
+        });
+      }
+
+      onGenreChange() {
+        const selectedGenre = document.querySelector('input[name="genre"]:checked').value;
+        this.config.genre = selectedGenre;
+        
+        // Reset mechanics to defaults of newly selected genre
+        const archetype = GAME_ARCHETYPES[selectedGenre];
+        this.config.mechanics = archetype.mechanics
+          .filter(m => m.default)
+          .map(m => m.id);
+
+        this.renderMechanics();
+        this.updateManifestView();
+      }
+
+      renderMechanics() {
+        const container = document.getElementById("dynamic-mechanics-container");
+        container.innerHTML = "";
+        
+        const currentArchetype = GAME_ARCHETYPES[this.config.genre];
+        currentArchetype.mechanics.forEach(mech => {
+          const isChecked = this.config.mechanics.includes(mech.id);
+          const label = document.createElement("label");
+          label.className = "cyber-border bg-slate-950/70 p-3 rounded-xl cursor-pointer flex items-start space-x-3 hover:bg-slate-950 transition block";
+          label.innerHTML = `
+            <input type="checkbox" value="${mech.id}" ${isChecked ? 'checked' : ''} class="mt-1 accent-sky-400" onchange="app.toggleMechanic('${mech.id}')">
+            <div>
+              <div class="text-xs font-bold text-slate-200 font-mono">${mech.name}</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">${mech.desc}</div>
+            </div>
+          `;
+          container.appendChild(label);
+        });
+      }
+
+      toggleMechanic(id) {
+        const idx = this.config.mechanics.indexOf(id);
+        if (idx > -1) {
+          this.config.mechanics.splice(idx, 1);
+        } else {
+          this.config.mechanics.push(id);
+        }
+        this.updateManifestView();
+      }
+
+      nextStep() {
+        if (this.currentStep < 4) {
+          this.currentStep++;
+          this.renderStep();
+        }
+      }
+
+      prevStep() {
+        if (this.currentStep > 1) {
+          this.currentStep--;
+          this.renderStep();
+        }
+      }
+
+      goToStep(step) {
+        this.currentStep = step;
+        this.renderStep();
+      }
+
+      renderStep() {
+        for (let i = 1; i <= 4; i++) {
+          const stepEl = document.getElementById(`wizard-step-${i}`);
+          const tabEl = document.getElementById(`step-tab-${i}`);
+          
+          if (i === this.currentStep) {
+            stepEl.classList.remove("hidden");
+            tabEl.className = "wizard-step-active py-2 px-1 text-center rounded-lg border font-medium flex flex-col items-center gap-1 cursor-pointer";
+          } else {
+            stepEl.classList.add("hidden");
+            tabEl.className = "py-2 px-1 text-center rounded-lg text-slate-500 border border-transparent font-medium flex flex-col items-center gap-1 cursor-pointer hover:text-slate-300";
+          }
+          tabEl.onclick = () => this.goToStep(i);
+        }
+
+        // Nav Buttons Toggle
+        const btnPrev = document.getElementById("btn-prev");
+        const btnNext = document.getElementById("btn-next");
+        const btnSynth = document.getElementById("btn-synthesize");
+
+        btnPrev.disabled = (this.currentStep === 1);
+
+        if (this.currentStep === 4) {
+          btnNext.classList.add("hidden");
+          btnSynth.classList.remove("hidden");
+          this.updateManifestView();
+        } else {
+          btnNext.classList.remove("hidden");
+          btnSynth.classList.add("hidden");
+        }
+      }
+
+      updateManifestView() {
+        const jsonView = document.getElementById("json-manifest-view");
+        jsonView.textContent = JSON.stringify(this.config, null, 2);
+      }
+
+      loadPreset(presetType) {
+        if (presetType === 'math_puzzle') {
+          this.config = {
+            title: "Matrix Sum Solver",
+            author: "Math Architect",
+            theme: "matrix",
+            genre: "puzzle",
+            mechanics: ["math_grid"]
+          };
+        } else if (presetType === 'rpg_crawler') {
+          this.config = {
+            title: "Cyber Rogue Core",
+            author: "Raccoon Dev",
+            theme: "cyber",
+            genre: "rpg",
+            mechanics: ["procedural_maze", "loot_inventory", "enemy_chasers", "fog_of_war"]
+          };
+        } else if (presetType === 'arcade_dodge') {
+          this.config = {
+            title: "Orbital Hazard Dodge",
+            author: "Velocity Studio",
+            theme: "amber",
+            genre: "arcade",
+            mechanics: ["avoid_dodge", "time_attack", "particle_trail"]
+          };
+        }
+
+        // Update UI inputs
+        document.getElementById("config-title").value = this.config.title;
+        document.getElementById("config-author").value = this.config.author;
+        document.getElementById("config-theme").value = this.config.theme;
+
+        const genreRadios = document.querySelectorAll('input[name="genre"]');
+        genreRadios.forEach(r => r.checked = (r.value === this.config.genre));
+
+        this.renderMechanics();
+        this.updateManifestView();
+        this.synthesizeAndLaunch();
+      }
+
+      synthesizeAndLaunch() {
+        // Hide empty state
+        document.getElementById("canvas-empty-state").classList.add("hidden");
+        document.getElementById("runtime-game-title").textContent = `[ LIVE ENGINE: ${this.config.title.toUpperCase()} ]`;
+        document.getElementById("stat-mechanics-count").textContent = this.config.mechanics.length;
+
+        // Destroy prior game loop
+        if (this.activeGameInstance) {
+          this.activeGameInstance.destroy();
+          this.activeGameInstance = null;
+        }
+
+        const canvas = document.getElementById("game-canvas");
+        const puzzleDom = document.getElementById("puzzle-dom-container");
+
+        // Route generation based on Genre
+        if (this.config.genre === "puzzle") {
+          canvas.classList.add("hidden");
+          puzzleDom.classList.remove("hidden");
+          this.activeGameInstance = new PuzzleEngineRuntime(puzzleDom, this.config);
+        } else {
+          puzzleDom.classList.add("hidden");
+          canvas.classList.remove("hidden");
+          
+          if (this.config.genre === "rpg") {
+            this.activeGameInstance = new RPGEngineRuntime(canvas, this.config);
+          } else if (this.config.genre === "arcade") {
+            this.activeGameInstance = new ArcadeEngineRuntime(canvas, this.config);
+          }
+        }
+
+        this.activeGameInstance.init();
+      }
+
+      resetCurrentGame() {
+        if (this.activeGameInstance) {
+          this.activeGameInstance.reset();
+        } else {
+          this.synthesizeAndLaunch();
+        }
+      }
+
+      exportSingleFileHTML() {
+        const exportedHTML = generateStandaloneHTMLBundle(this.config);
+        const blob = new Blob([exportedHTML], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${this.config.title.toLowerCase().replace(/[^a-z0-9]/g, "_")}_game.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+
+
+    // ==========================================
+    // RUNTIME ENGINE IMPLEMENTATIONS
+    // ==========================================
+
+    // --- 1. RPG ENGINE RUNTIME (Canvas 2D Grid Dungeon) ---
+    class RPGEngineRuntime {
+      constructor(canvas, config) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.config = config;
+        this.gridSize = 12;
+        this.tileSize = 32;
+        this.isRunning = false;
+        this.animId = null;
+
+        this.player = { x: 1, y: 1, hp: 100, maxHp: 100, keys: 0, score: 0 };
+        this.grid = [];
+        this.enemies = [];
+        this.items = [];
+        this.exitPos = { x: 10, y: 10 };
+        this.keysPressed = {};
+
+        this.handleKeyDown = this.handleKeyDown.bind(this);
+      }
+
+      init() {
+        this.canvas.width = this.gridSize * this.tileSize;
+        this.canvas.height = this.gridSize * this.tileSize;
+        this.generateLevel();
+
+        window.addEventListener("keydown", this.handleKeyDown);
+        this.isRunning = true;
+        this.loop();
+      }
+
+      generateLevel() {
+        // 0: Empty, 1: Wall, 2: Door
+        this.grid = Array(this.gridSize).fill(0).map(() => Array(this.gridSize).fill(0));
+        
+        // Outer Walls
+        for (let i = 0; i < this.gridSize; i++) {
+          this.grid[0][i] = 1;
+          this.grid[this.gridSize - 1][i] = 1;
+          this.grid[i][0] = 1;
+          this.grid[i][this.gridSize - 1] = 1;
+        }
+
+        // Internal Procedural Obstacles
+        if (this.config.mechanics.includes("procedural_maze")) {
+          for (let i = 2; i < this.gridSize - 2; i += 2) {
+            for (let j = 2; j < this.gridSize - 2; j += 2) {
+              this.grid[i][j] = 1;
+              if (Math.random() > 0.4) this.grid[i + 1][j] = 1;
+            }
+          }
+        }
+
+        // Spawn Exit Door
+        this.exitPos = { x: this.gridSize - 2, y: this.gridSize - 2 };
+        this.grid[this.exitPos.y][this.exitPos.x] = 2;
+
+        // Items
+        this.items = [];
+        if (this.config.mechanics.includes("loot_inventory")) {
+          this.items.push({ x: 3, y: 1, type: "key", icon: "🔑" });
+          this.items.push({ x: 1, y: 5, type: "potion", icon: "🧪" });
+          this.items.push({ x: 7, y: 3, type: "gem", icon: "💎" });
+        }
+
+        // Enemies
+        this.enemies = [];
+        if (this.config.mechanics.includes("enemy_chasers")) {
+          this.enemies.push({ x: 5, y: 5, hp: 20 });
+          this.enemies.push({ x: 8, y: 2, hp: 20 });
+        }
+
+        this.player.x = 1;
+        this.player.y = 1;
+        this.player.hp = 100;
+        this.player.keys = 0;
+      }
+
+      handleKeyDown(e) {
+        if (!this.isRunning) return;
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") dy = -1;
+        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") dy = 1;
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") dx = -1;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") dx = 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const newX = this.player.x + dx;
+          const newY = this.player.y + dy;
+
+          if (this.grid[newY][newX] !== 1) {
+            // Check Door
+            if (this.grid[newY][newX] === 2) {
+              if (this.config.mechanics.includes("loot_inventory") && this.player.keys < 1) {
+                // Locked!
+                return;
+              } else {
+                alert("🎉 LEVEL CLEARED! Dungeon Portal Mastered.");
+                this.generateLevel();
+                return;
+              }
+            }
+
+            this.player.x = newX;
+            this.player.y = newY;
+            this.checkInteractions();
+            this.updateEnemies();
+          }
+        }
+      }
+
+      checkInteractions() {
+        // Collect items
+        this.items = this.items.filter(item => {
+          if (item.x === this.player.x && item.y === this.player.y) {
+            if (item.type === "key") this.player.keys++;
+            if (item.type === "potion") this.player.hp = Math.min(100, this.player.hp + 30);
+            if (item.type === "gem") this.player.score += 50;
+            return false;
+          }
+          return true;
+        });
+      }
+
+      updateEnemies() {
+        this.enemies.forEach(en => {
+          // Simple AI pathing toward player
+          let dx = 0, dy = 0;
+          if (en.x < this.player.x) dx = 1;
+          else if (en.x > this.player.x) dx = -1;
+          else if (en.y < this.player.y) dy = 1;
+          else if (en.y > this.player.y) dy = -1;
+
+          if (this.grid[en.y + dy][en.x + dx] === 0) {
+            en.x += dx;
+            en.y += dy;
+          }
+
+          // Damage player on contact
+          if (en.x === this.player.x && en.y === this.player.y) {
+            this.player.hp -= 15;
+            if (this.player.hp <= 0) {
+              alert("💀 GAME OVER! Slain by Dungeon Chaser.");
+              this.generateLevel();
+            }
+          }
+        });
+      }
+
+      draw() {
+        const ctx = this.ctx;
+        const ts = this.tileSize;
+
+        // Theme Background
+        ctx.fillStyle = this.config.theme === 'matrix' ? '#051005' : '#090d16';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw Map Tiles
+        for (let r = 0; r < this.gridSize; r++) {
+          for (let c = 0; c < this.gridSize; c++) {
+            const isVisible = !this.config.mechanics.includes("fog_of_war") ||
+              (Math.abs(c - this.player.x) <= 2 && Math.abs(r - this.player.y) <= 2);
+
+            if (!isVisible) {
+              ctx.fillStyle = "#020408";
+              ctx.fillRect(c * ts, r * ts, ts, ts);
+              continue;
+            }
+
+            if (this.grid[r][c] === 1) {
+              ctx.fillStyle = "#1e293b";
+              ctx.fillRect(c * ts, r * ts, ts - 1, ts - 1);
+            } else if (this.grid[r][c] === 2) {
+              ctx.fillStyle = "#eab308";
+              ctx.fillRect(c * ts, r * ts, ts - 1, ts - 1);
+            } else {
+              ctx.fillStyle = "#0f172a";
+              ctx.fillRect(c * ts, r * ts, ts - 1, ts - 1);
+            }
+          }
+        }
+
+        // Draw Items
+        this.items.forEach(item => {
+          ctx.font = "18px sans-serif";
+          ctx.fillText(item.icon, item.x * ts + 6, item.y * ts + 24);
+        });
+
+        // Draw Enemies
+        ctx.fillStyle = "#ef4444";
+        this.enemies.forEach(en => {
+          ctx.beginPath();
+          ctx.arc(en.x * ts + ts/2, en.y * ts + ts/2, ts/3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Draw Player
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(this.player.x * ts + ts/2, this.player.y * ts + ts/2, ts/2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // UI Overlay inside Canvas
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px monospace";
+        ctx.fillText(`HP: ${this.player.hp} | KEYS: ${this.player.keys} | SCORE: ${this.player.score}`, 10, 20);
+      }
+
+      loop() {
+        if (!this.isRunning) return;
+        this.draw();
+        this.animId = requestAnimationFrame(() => this.loop());
+      }
+
+      reset() {
+        this.generateLevel();
+      }
+
+      destroy() {
+        this.isRunning = false;
+        window.removeEventListener("keydown", this.handleKeyDown);
+        if (this.animId) cancelAnimationFrame(this.animId);
+      }
+    }
+
+
+    // --- 2. ARCADE ACTION ENGINE RUNTIME (Canvas Real-Time Physics) ---
+    class ArcadeEngineRuntime {
+      constructor(canvas, config) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.config = config;
+        this.isRunning = false;
+        this.animId = null;
+
+        this.player = { x: 200, y: 300, radius: 12, speed: 4 };
+        this.hazards = [];
+        this.particles = [];
+        this.score = 0;
+        this.timeLeft = 30;
+        this.keys = {};
+
+        this.handleKeyDown = (e) => this.keys[e.key] = true;
+        this.handleKeyUp = (e) => this.keys[e.key] = false;
+      }
+
+      init() {
+        this.canvas.width = 400;
+        this.canvas.height = 350;
+        this.player.x = 200;
+        this.player.y = 175;
+        this.hazards = [];
+        this.score = 0;
+        this.timeLeft = 30;
+
+        window.addEventListener("keydown", this.handleKeyDown);
+        window.addEventListener("keyup", this.handleKeyUp);
+
+        // Timer Interval
+        if (this.config.mechanics.includes("time_attack")) {
+          this.timerInt = setInterval(() => {
+            if (this.isRunning) {
+              this.timeLeft--;
+              if (this.timeLeft <= 0) {
+                alert(`⏰ TIME'S UP! Final Score: ${this.score}`);
+                this.reset();
+              }
+            }
+          }, 1000);
+        }
+
+        this.isRunning = true;
+        this.loop();
+      }
+
+      spawnHazard() {
+        if (Math.random() < 0.08) {
+          this.hazards.push({
+            x: Math.random() * this.canvas.width,
+            y: -10,
+            radius: Math.random() * 8 + 6,
+            vy: Math.random() * 3 + 2,
+            vx: (Math.random() - 0.5) * 2
+          });
+        }
+      }
+
+      update() {
+        // Player Controls
+        if (this.keys["ArrowLeft"] || this.keys["a"]) this.player.x -= this.player.speed;
+        if (this.keys["ArrowRight"] || this.keys["d"]) this.player.x += this.player.speed;
+        if (this.keys["ArrowUp"] || this.keys["w"]) this.player.y -= this.player.speed;
+        if (this.keys["ArrowDown"] || this.keys["s"]) this.player.y += this.player.speed;
+
+        // Bounds Clamp
+        this.player.x = Math.max(12, Math.min(this.canvas.width - 12, this.player.x));
+        this.player.y = Math.max(12, Math.min(this.canvas.height - 12, this.player.y));
+
+        // Trail particles
+        if (this.config.mechanics.includes("particle_trail")) {
+          this.particles.push({
+            x: this.player.x, y: this.player.y, alpha: 1, radius: 4
+          });
+        }
+
+        // Particle Decay
+        this.particles.forEach(p => { p.alpha -= 0.05; p.radius *= 0.95; });
+        this.particles = this.particles.filter(p => p.alpha > 0);
+
+        // Update Hazards
+        if (this.config.mechanics.includes("avoid_dodge")) {
+          this.spawnHazard();
+          this.hazards.forEach(h => {
+            h.x += h.vx;
+            h.y += h.vy;
+
+            // Collision with Player
+            const dist = Math.hypot(this.player.x - h.x, this.player.y - h.y);
+            if (dist < this.player.radius + h.radius) {
+              alert(`💥 IMPACT COLLISION! Game Over. Final Score: ${this.score}`);
+              this.reset();
+            }
+          });
+
+          this.hazards = this.hazards.filter(h => h.y < this.canvas.height + 20);
+        }
+
+        this.score++;
+      }
+
+      draw() {
+        const ctx = this.ctx;
+        ctx.fillStyle = "#0a0e17";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw Trails
+        this.particles.forEach(p => {
+          ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Draw Hazards
+        ctx.fillStyle = "#f43f5e";
+        this.hazards.forEach(h => {
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Draw Player
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // UI Text
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px monospace";
+        ctx.fillText(`SCORE: ${this.score}`, 15, 25);
+        if (this.config.mechanics.includes("time_attack")) {
+          ctx.fillText(`TIME: ${this.timeLeft}s`, 300, 25);
+        }
+      }
+
+      loop() {
+        if (!this.isRunning) return;
+        this.update();
+        this.draw();
+        this.animId = requestAnimationFrame(() => this.loop());
+      }
+
+      reset() {
+        this.player.x = 200;
+        this.player.y = 175;
+        this.hazards = [];
+        this.score = 0;
+        this.timeLeft = 30;
+      }
+
+      destroy() {
+        this.isRunning = false;
+        window.removeEventListener("keydown", this.handleKeyDown);
+        window.removeEventListener("keyup", this.handleKeyUp);
+        if (this.timerInt) clearInterval(this.timerInt);
+        if (this.animId) cancelAnimationFrame(this.animId);
+      }
+    }
+
+
+    // --- 3. PUZZLE ENGINE RUNTIME (DOM-Based Dynamic Matrix) ---
+    class PuzzleEngineRuntime {
+      constructor(container, config) {
+        this.container = container;
+        this.config = config;
+        this.score = 0;
+      }
+
+      init() {
+        this.render();
+      }
+
+      render() {
+        this.container.innerHTML = "";
+        
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex flex-col items-center justify-center space-y-4 max-w-sm w-full";
+
+        if (this.config.mechanics.includes("math_grid")) {
+          // Render Math Sum Cell Matrix
+          const title = document.createElement("div");
+          title.className = "text-xs font-mono text-sky-400 font-bold uppercase tracking-wide";
+          title.textContent = "Math Matrix: Fill values to match Target Sum (10)";
+          wrapper.appendChild(title);
+
+          const grid = document.createElement("div");
+          grid.className = "grid grid-cols-3 gap-2 w-full max-w-[240px]";
+          
+          let cellValues = [3, 2, 5, 1, 4, 5, 2, 3, 5];
+          cellValues.forEach((val, idx) => {
+            const cell = document.createElement("button");
+            cell.className = "h-14 rounded-lg bg-slate-900 border border-slate-700 font-mono text-lg font-bold text-slate-100 hover:border-sky-400 transition";
+            cell.textContent = val;
+            cell.onclick = () => {
+              cellValues[idx] = (cellValues[idx] % 9) + 1;
+              cell.textContent = cellValues[idx];
+              // Check row 1 sum
+              const sumRow1 = cellValues[0] + cellValues[1] + cellValues[2];
+              if (sumRow1 === 10) {
+                cell.classList.add("border-emerald-400", "text-emerald-400");
+              }
+            };
+            grid.appendChild(cell);
+          });
+          wrapper.appendChild(grid);
+
+        } else if (this.config.mechanics.includes("spatial_memory")) {
+          const title = document.createElement("div");
+          title.className = "text-xs font-mono text-sky-400 font-bold uppercase tracking-wide";
+          title.textContent = "Spatial Memory Array: Repeat Flashing Sequence";
+          wrapper.appendChild(title);
+
+          const grid = document.createElement("div");
+          grid.className = "grid grid-cols-2 gap-3 w-full max-w-[200px]";
+          for (let i = 0; i < 4; i++) {
+            const btn = document.createElement("button");
+            btn.className = "h-20 rounded-xl bg-slate-900 border border-slate-700 hover:bg-sky-500/20 transition active:scale-95";
+            btn.innerHTML = `<span class="text-xl">NODE ${i+1}</span>`;
+            grid.appendChild(btn);
+          }
+          wrapper.appendChild(grid);
+
+        } else {
+          // Default fallback puzzle view
+          wrapper.innerHTML = `
+            <div class="text-center font-mono text-xs text-slate-400">
+              Generic State Toggle Solver Activated.<br>Click nodes to trigger interconnected switches.
+            </div>
+          `;
+        }
+
+        this.container.appendChild(wrapper);
+      }
+
+      reset() {
+        this.render();
+      }
+
+      destroy() {
+        this.container.innerHTML = "";
+      }
+    }
+
+
+    // ==========================================
+    // STANDALONE SINGLE-FILE HTML EXPORTER BUNDLER
+    // ==========================================
+    function generateStandaloneHTMLBundle(config) {
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${config.title}</title>
+  <style>
+    body { background: #090d16; color: #fff; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    #canvas-container { border: 2px solid #38bdf8; border-radius: 12px; overflow: hidden; box-shadow: 0 0 20px rgba(56,189,248,0.3); }
+    h1 { font-size: 1.2rem; margin-bottom: 4px; color: #38bdf8; }
+    p { font-size: 0.8rem; color: #94a3b8; margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>${config.title}</h1>
+  <p>Engine Synthesized by ${config.author} | Standalone Executable</p>
+  <div id="canvas-container">
+    <canvas id="game"></canvas>
+  </div>
+  <script>
+    const config = ${JSON.stringify(config)};
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = 400; canvas.height = 350;
+    let x = 200, y = 175;
+    
+    function draw() {
+      ctx.fillStyle = "#0a0e17";
+      ctx.fillRect(0, 0, 400, 350);
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") x -= 10;
+      if (e.key === "ArrowRight" || e.key === "d") x += 10;
+      if (e.key === "ArrowUp" || e.key === "w") y -= 10;
+      if (e.key === "ArrowDown" || e.key === "s") y += 10;
+    });
+    draw();
+  <\/script>
+</body>
+</html>`;
+    }
+
+    // --- INITIALIZE APPLICATION ON WINDOW LOAD ---
+    let app;
+    window.onload = function() {
+      app = new EngineLabApp();
+      app.init();
+    };
+  </script>
+</body>
+</html>

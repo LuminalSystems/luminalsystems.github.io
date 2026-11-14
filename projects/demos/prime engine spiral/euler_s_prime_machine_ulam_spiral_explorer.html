@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Euler's Prime Machine (n² + n + 41) — Interactive Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#080c14',
+            panel: '#0f172a',
+            panelBorder: '#1e293b',
+            primeCyan: '#10b981',
+            primeGlow: '#34d399',
+            breakRed: '#f43f5e',
+            eulerGold: '#f59e0b',
+            geomBlue: '#3b82f6',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scientific lab styling and scrollbar */
+    body {
+      background-color: #080c14;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Range slider custom styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      margin-top: -6px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+      transition: transform 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Subtle grid background */
+    .lab-grid-bg {
+      background-image: 
+        linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Pulse animation for active token */
+    @keyframes tokenDrop {
+      0% { transform: translateY(-16px) scale(0.8); opacity: 0.2; }
+      60% { transform: translateY(2px) scale(1.06); opacity: 1; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .animate-token {
+      animation: tokenDrop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen font-sans antialiased lab-grid-bg flex flex-col">
+
+  <!-- Top Navigation & Global Synchronized Control Header -->
+  <header class="sticky top-0 z-30 bg-obsidian/90 backdrop-blur-md border-b border-slate-800/90 px-4 py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      
+      <!-- Brand / Title -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-amber-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner">
+            <span class="font-mono font-bold text-emerald-400 text-sm">41</span>
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-100 flex items-center gap-2">
+              Euler’s Prime Machine
+              <span class="hidden sm:inline-block text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-amber-500/30">
+                n² + n + c
+              </span>
+            </h1>
+            <p class="text-xs text-slate-400">40 primes in a row — until quadratic geometry snaps at n = c − 1 &amp; n = c</p>
+          </div>
+        </div>
+
+        <!-- Mobile Quick Status Badge -->
+        <div id="mobileStatusBadge" class="lg:hidden font-mono text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          PRIME
+        </div>
+      </div>
+
+      <!-- Synchronized Global Controls (n slider, step buttons, Auto-Run, constant c) -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 bg-slate-900/90 border border-slate-800 rounded-2xl px-3 py-2">
+        <!-- Constant c selector -->
+        <div class="flex items-center gap-1.5">
+          <label for="cSelect" class="text-xs font-mono text-slate-400">c =</label>
+          <select id="cSelect" class="bg-slate-800 border border-slate-700 text-amber-400 font-mono text-xs font-semibold rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500">
+            <option value="41" selected>41 (Euler Max)</option>
+            <option value="17">17</option>
+            <option value="11">11</option>
+            <option value="5">5</option>
+            <option value="3">3</option>
+            <option value="2">2</option>
+          </select>
+        </div>
+
+        <div class="h-5 w-px bg-slate-800 hidden sm:block"></div>
+
+        <!-- Step controls & Slider -->
+        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+          <button id="prevNBtn" title="Previous n" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95 font-mono text-xs">
+            −1
+          </button>
+          <div class="flex flex-col flex-1">
+            <div class="flex justify-between text-[11px] font-mono mb-0.5">
+              <span class="text-slate-400">Input <strong id="nDisplayTop" class="text-sky-400">n = 0</strong></span>
+              <span class="text-slate-400">Output <strong id="valDisplayTop" class="text-emerald-400">41</strong></span>
+            </div>
+            <input id="nSlider" type="range" min="0" max="50" value="0" class="w-full" />
+          </div>
+          <button id="nextNBtn" title="Next n" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95 font-mono text-xs">
+            +1
+          </button>
+        </div>
+
+        <!-- Quick Jump Breakpoints -->
+        <div class="flex items-center gap-1">
+          <button id="jumpBreak1Btn" class="px-2 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono text-[11px] transition" title="Jump to first break (n = c - 1)">
+            n=40
+          </button>
+          <button id="jumpBreak2Btn" class="px-2 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[11px] transition" title="Jump to p² + 2p break (n = c)">
+            n=41
+          </button>
+        </div>
+
+        <!-- Auto-Run Animation Button -->
+        <button id="autoRunBtn" class="px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition active:scale-95">
+          <span id="autoRunIcon">▶</span>
+          <span id="autoRunText">Auto-Run</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile / Tablet Section Tab Bar (Visible on smaller screens; all 3 panels accessible on desktop or via view mode) -->
+    <div class="max-w-7xl mx-auto mt-2.5 flex items-center justify-between gap-2">
+      <div class="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-800 w-full sm:w-auto">
+        <button data-view="all" class="view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-sky-400 shadow-sm transition">
+          All Lab Panels
+        </button>
+        <button data-view="machine" class="view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          1. Prime Machine
+        </button>
+        <button data-view="traps" class="view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          2. Mod Traps
+        </button>
+        <button data-view="spiral" class="view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          3. Ulam Spiral
+        </button>
+      </div>
+
+      <div class="hidden md:flex items-center gap-4 text-[11px] font-mono text-slate-400">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_8px_#34d399]"></span> Prime Output</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-[0_0_8px_#f43f5e]"></span> Composite Break</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_8px_#f59e0b]"></span> Euler Diagonal</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Grid -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 1: EULER'S PRIME MACHINE & GEOMETRIC BREAKDOWN (n² + n + c)   -->
+    <!-- ===================================================================== -->
+    <section id="panel-machine" class="lg:col-span-7 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[11px] font-mono uppercase tracking-wider text-sky-400">Module 01 // Mechanical &amp; Geometric Proof</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-100">Euler’s Prime Machine &amp; The <span class="text-amber-400 font-mono">p² + 2p</span> Snap</h2>
+        </div>
+        <div id="primalityBadge" class="px-3 py-1.5 rounded-xl font-mono text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm">
+          41 IS PRIME (Streak: 1/40)
+        </div>
+      </div>
+
+      <!-- Schematic Hopper & Output Ring Canvas -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <!-- Left: Schematic Hopper + Output Ring -->
+        <div class="md:col-span-6 bg-slate-950/90 border border-slate-800/90 rounded-2xl p-3 flex flex-col items-center relative">
+          <div class="w-full flex justify-between items-center text-[11px] font-mono text-slate-400 mb-1">
+            <span>HOPPER &amp; OUTPUT RING</span>
+            <span id="streakCounter" class="text-emerald-400">Streak: 1 / 40</span>
+          </div>
+          <div class="w-full aspect-square max-w-[290px] relative">
+            <canvas id="machineCanvas" class="w-full h-full block rounded-xl"></canvas>
+          </div>
+          <p class="text-[11px] text-slate-400 text-center mt-1">
+            Click any token around the ring to inspect that <span class="font-mono text-slate-200">n</span> step.
+          </p>
+        </div>
+
+        <!-- Right: Geometric Block Proof (n² + n + c) & Roof Threshold -->
+        <div class="md:col-span-6 bg-slate-950/90 border border-slate-800/90 rounded-2xl p-3.5 flex flex-col justify-between gap-3 h-full">
+          <div>
+            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1.5">
+              <span>GEOMETRIC BLOCK DECOMPOSITION</span>
+              <span id="formulaEquation" class="text-slate-200 font-semibold">0² + 0 + 41 = 41</span>
+            </div>
+
+            <!-- Interactive Geometric Tile Canvas -->
+            <div class="w-full aspect-[4/3] bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden relative">
+              <canvas id="geometryCanvas" class="w-full h-full block"></canvas>
+            </div>
+          </div>
+
+          <!-- Legend & Algebraic Insight Box -->
+          <div id="geometricInsightBox" class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs leading-relaxed text-slate-300">
+            At <span class="font-mono text-sky-400">n = 0</span>, the machine outputs <span class="font-mono text-amber-400">41</span>. Every step adds a growing <span class="text-blue-400 font-medium">n² square</span> and <span class="text-cyan-400 font-medium">+n bar</span> onto the <span class="text-amber-400 font-medium">+41 block</span>.
+          </div>
+
+          <!-- Roof Threshold Gauge (c² = 1681) -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+            <div class="flex justify-between items-center text-[11px] font-mono mb-1">
+              <span class="text-slate-400">ROOF THRESHOLD (<span id="roofLabel">c² = 1,681</span>)</span>
+              <span id="roofRatioText" class="text-emerald-400">41 / 1,681 (2.4%)</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden relative">
+              <div id="roofProgressBar" class="h-full bg-gradient-to-r from-emerald-500 to-sky-400 transition-all duration-200" style="width: 2.4%"></div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1 font-mono">
+              Below c², no factor ≥ c can divide the output unless n reaches c − 1.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sequence Pill Strip (n = 0 to 50 quick selector) -->
+      <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] font-mono text-slate-400">OUTPUT LEDGER (n = 0 → 50)</span>
+          <span class="text-[11px] font-mono text-slate-500">Green = Prime • Red = Composite</span>
+        </div>
+        <div id="sequenceStrip" class="flex gap-1.5 overflow-x-auto pb-1.5">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 3: ULAM SPIRAL CENTERED AT 41 (Right Column on Desktop)        -->
+    <!-- ===================================================================== -->
+    <section id="panel-spiral" class="lg:col-span-5 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[11px] font-mono uppercase tracking-wider text-amber-400">Module 03 // Spatial Topology</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-100">Ulam Spiral Centered at <span id="spiralCenterTitle" class="text-amber-400 font-mono">41</span></h2>
+        </div>
+
+        <!-- Center Toggle (41 vs 1) -->
+        <div class="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+          <button id="center41Btn" class="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition">
+            Center: 41
+          </button>
+          <button id="center1Btn" class="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+            Center: 1
+          </button>
+        </div>
+      </div>
+
+      <!-- Spiral Controls Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-slate-400 text-[11px]">Grid:</span>
+          <button data-grid="35" class="grid-size-btn px-2 py-1 rounded-lg font-mono text-[11px] bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">35×35</button>
+          <button data-grid="55" class="grid-size-btn px-2 py-1 rounded-lg font-mono text-[11px] bg-sky-500/20 text-sky-300 border border-sky-500/40">55×55</button>
+          <button data-grid="75" class="grid-size-btn px-2 py-1 rounded-lg font-mono text-[11px] bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">75×75</button>
+        </div>
+
+        <label class="inline-flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-mono text-slate-300">
+          <input id="toggleEulerLine" type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0" />
+          <span>Highlight Euler Diagonal</span>
+        </label>
+      </div>
+
+      <!-- Ulam Spiral Canvas Wrapper -->
+      <div class="w-full aspect-square bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden relative shadow-inner">
+        <canvas id="ulamCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Hover / Selected Cell Readout Overlay -->
+        <div id="ulamTooltip" class="pointer-events-none absolute bottom-3 left-3 right-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl px-3 py-2 flex items-center justify-between text-xs font-mono shadow-lg">
+          <div>
+            <span class="text-slate-400">Cell:</span>
+            <strong id="ulamCellVal" class="text-slate-100 ml-1">41</strong>
+            <span id="ulamCellTag" class="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">PRIME • n=0</span>
+          </div>
+          <span id="ulamCellFactor" class="text-slate-400 text-[11px]">Prime</span>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        When centered at <span class="font-mono text-amber-400">41</span>, the quadratic sequence <span class="font-mono text-slate-200">n² + n + 41</span> marches straight along a diagonal ray of <span class="text-emerald-400 font-medium">40 consecutive primes</span> before hitting <span class="font-mono text-rose-400">1681 (41²)</span> and <span class="font-mono text-rose-400">1763 (41×43)</span>.
+      </p>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 2: MODULAR PRIME TRAPS (2 to 37 + c) — Full Width Bottom Row   -->
+    <!-- ===================================================================== -->
+    <section id="panel-traps" class="lg:col-span-12 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[11px] font-mono uppercase tracking-wider text-rose-400">Module 02 // Modular Arithmetic Sieve</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-100">Modular Prime Traps (<span class="font-mono text-slate-300">(n² + n + c) mod p</span>)</h2>
+        </div>
+        <div class="text-xs text-slate-400 font-mono bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
+          <span class="text-rose-400 font-bold">RED TOP SLOT (0 mod p)</span> = Divisible by p (Trap!)
+        </div>
+      </div>
+
+      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-4xl">
+        For any small prime <span class="font-mono text-sky-400">p &lt; 41</span>, the expression <span class="font-mono text-slate-200">n² + n + 41</span> never lands on <span class="font-mono text-rose-400">0 (mod p)</span>—its orbit completely dodges the red trap slot at the top of every clock! Only when we include the <span class="font-mono text-amber-400">p = 41</span> clock does the ball finally drop straight into the <span class="font-mono text-rose-400">0 (mod 41)</span> trap at <span class="font-mono text-rose-300">n = 40</span> and <span class="font-mono text-rose-300">n = 41</span>.
+      </p>
+
+      <!-- Responsive Grid of Modular Clocks -->
+      <div id="trapsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <!-- Populated dynamically via JS for primes 2..37 plus active c -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Subtle Footer -->
+  <footer class="max-w-7xl w-full mx-auto px-4 py-4 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-mono border-t border-slate-900 mt-4">
+    <span>Euler’s Prime-Generating Polynomial Lab // n² + n + c</span>
+    <span>At n = p: p² + p + p = p² + 2p = p(p + 2)</span>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- INTERACTIVE SIMULATION & VISUALIZATION ENGINE                           -->
+  <!-- ======================================================================= -->
+  <script>
+    (() => {
+      // -----------------------------------------------------------------------
+      // 1. STATE & MATHEMATICAL HELPERS
+      // -----------------------------------------------------------------------
+      const state = {
+        n: 0,
+        c: 41,
+        maxN: 50,
+        isAutoRunning: false,
+        autoTimer: null,
+        spiralCenter: 41, // 41 or 1
+        spiralGridSize: 55, // odd integer: 35, 55, 75
+        highlightEulerLine: true,
+        hoveredSpiralCell: null,
+        activeView: 'all', // 'all' | 'machine' | 'traps' | 'spiral'
+        animProgress: 1, // 0..1 bounce animation when n changes
+      };
+
+      // Cache primality checks for fast rendering
+      const primeCache = new Map();
+      function isPrime(num) {
+        if (num < 2) return false;
+        if (primeCache.has(num)) return primeCache.get(num);
+        if (num === 2 || num === 3) {
+          primeCache.set(num, true);
+          return true;
+        }
+        if (num % 2 === 0 || num % 3 === 0) {
+          primeCache.set(num, false);
+          return false;
+        }
+        const limit = Math.floor(Math.sqrt(num));
+        for (let i = 5; i <= limit; i += 6) {
+          if (num % i === 0 || num % (i + 2) === 0) {
+            primeCache.set(num, false);
+            return false;
+          }
+        }
+        primeCache.set(num, true);
+        return true;
+      }
+
+      // Return smallest prime factor for clear composite breakdown
+      function getFactorization(num) {
+        if (num < 2) return `${num}`;
+        if (isPrime(num)) return 'Prime';
+        for (let i = 2; i <= Math.floor(Math.sqrt(num)); i++) {
+          if (num % i === 0) {
+            const other = num / i;
+            return `${i} × ${other}`;
+          }
+        }
+        return 'Composite';
+      }
+
+      // Evaluate Euler polynomial f(n) = n^2 + n + c
+      function evalEuler(n, c = state.c) {
+        return n * n + n + c;
+      }
+
+      // Small primes for Modular Prime Traps
+      const BASE_TRAP_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+
+      // -----------------------------------------------------------------------
+      // 2. DOM REFERENCES
+      // -----------------------------------------------------------------------
+      const nSlider = document.getElementById('nSlider');
+      const nDisplayTop = document.getElementById('nDisplayTop');
+      const valDisplayTop = document.getElementById('valDisplayTop');
+      const cSelect = document.getElementById('cSelect');
+      const prevNBtn = document.getElementById('prevNBtn');
+      const nextNBtn = document.getElementById('nextNBtn');
+      const jumpBreak1Btn = document.getElementById('jumpBreak1Btn');
+      const jumpBreak2Btn = document.getElementById('jumpBreak2Btn');
+      const autoRunBtn = document.getElementById('autoRunBtn');
+      const autoRunIcon = document.getElementById('autoRunIcon');
+      const autoRunText = document.getElementById('autoRunText');
+
+      const primalityBadge = document.getElementById('primalityBadge');
+      const mobileStatusBadge = document.getElementById('mobileStatusBadge');
+      const streakCounter = document.getElementById('streakCounter');
+      const formulaEquation = document.getElementById('formulaEquation');
+      const geometricInsightBox = document.getElementById('geometricInsightBox');
+      const roofLabel = document.getElementById('roofLabel');
+      const roofRatioText = document.getElementById('roofRatioText');
+      const roofProgressBar = document.getElementById('roofProgressBar');
+      const sequenceStrip = document.getElementById('sequenceStrip');
+
+      const machineCanvas = document.getElementById('machineCanvas');
+      const geometryCanvas = document.getElementById('geometryCanvas');
+      const ulamCanvas = document.getElementById('ulamCanvas');
+      const trapsGrid = document.getElementById('trapsGrid');
+
+      const spiralCenterTitle = document.getElementById('spiralCenterTitle');
+      const center41Btn = document.getElementById('center41Btn');
+      const center1Btn = document.getElementById('center1Btn');
+      const toggleEulerLine = document.getElementById('toggleEulerLine');
+      const ulamCellVal = document.getElementById('ulamCellVal');
+      const ulamCellTag = document.getElementById('ulamCellTag');
+      const ulamCellFactor = document.getElementById('ulamCellFactor');
+
+      // -----------------------------------------------------------------------
+      // 3. CANVAS HIGH-DPI RESIZING UTILITY
+      // -----------------------------------------------------------------------
+      function fitCanvasToContainer(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const targetW = Math.max(10, Math.floor(rect.width * dpr));
+        const targetH = Math.max(10, Math.floor(rect.height * dpr));
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { ctx, width: rect.width, height: rect.height };
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. SECTION 1A: SCHEMATIC HOPPER & OUTPUT RING CANVAS
+      // -----------------------------------------------------------------------
+      let machineTokenHitboxes = [];
+
+      function drawMachineCanvas() {
+        const { ctx, width, height } = fitCanvasToContainer(machineCanvas);
+        ctx.clearRect(0, 0, width, height);
+
+        const cx = width / 2;
+        const cy = height * 0.56;
+        const ringRadius = Math.min(width, height) * 0.35;
+
+        // Draw subtle radial grid rings
+        ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringRadius * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Draw Top Schematic Hopper & Gearbox Chute
+        const hopperTopY = 8;
+        const hopperBotY = cy - ringRadius - 14;
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+
+        // Trapezoid hopper
+        ctx.beginPath();
+        ctx.moveTo(cx - 34, hopperTopY);
+        ctx.lineTo(cx + 34, hopperTopY);
+        ctx.lineTo(cx + 14, hopperBotY - 12);
+        ctx.lineTo(cx - 14, hopperBotY - 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Chute pipe
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(cx - 8, hopperBotY - 12, 16, 12);
+
+        // Hopper label
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '600 9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`n² + n + ${state.c}`, cx, hopperTopY + 13);
+
+        // Input ball entering hopper
+        const dropOffset = (1 - state.animProgress) * -10;
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(cx, hopperTopY + 24 + dropOffset, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw 42 token slots around the output ring (n = 0 to 41, or up to max(41, state.n))
+        const ringCount = Math.max(42, state.n + 1);
+        machineTokenHitboxes = [];
+
+        for (let i = 0; i < ringCount; i++) {
+          // Start at top (-PI/2) and go clockwise
+          const angle = -Math.PI / 2 + (i / ringCount) * Math.PI * 2;
+          const tx = cx + Math.cos(angle) * ringRadius;
+          const ty = cy + Math.sin(angle) * ringRadius;
+
+          const val = evalEuler(i, state.c);
+          const prime = isPrime(val);
+          const isCurrent = i === state.n;
+          const isPast = i <= state.n;
+
+          const r = isCurrent ? 7.5 : 4.5;
+          machineTokenHitboxes.push({ n: i, x: tx, y: ty, r: 10 });
+
+          if (isCurrent) {
+            // Outer glow
+            ctx.beginPath();
+            ctx.arc(tx, ty, r + 5, 0, Math.PI * 2);
+            ctx.fillStyle = prime ? 'rgba(16, 185, 129, 0.28)' : 'rgba(244, 63, 94, 0.35)';
+            ctx.fill();
+          }
+
+          ctx.beginPath();
+          ctx.arc(tx, ty, r, 0, Math.PI * 2);
+          if (!isPast) {
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = prime ? '#10b981' : '#f43f5e';
+            ctx.fill();
+            if (isCurrent) {
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Center Core Readout inside Ring
+        const currentVal = evalEuler(state.n, state.c);
+        const currentPrime = isPrime(currentVal);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 10px "JetBrains Mono", monospace';
+        ctx.fillText(`n = ${state.n}`, cx, cy - 18);
+
+        ctx.fillStyle = currentPrime ? '#34d399' : '#fb7185';
+        ctx.font = '700 22px "JetBrains Mono", monospace';
+        ctx.fillText(currentVal.toLocaleString(), cx, cy + 6);
+
+        ctx.fillStyle = currentPrime ? '#10b981' : '#f43f5e';
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillText(currentPrime ? 'PRIME' : getFactorization(currentVal), cx, cy + 23);
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. SECTION 1B: GEOMETRIC BLOCK PROOF CANVAS (n² + n + c & p² + 2p)
+      // -----------------------------------------------------------------------
+      function drawGeometryCanvas() {
+        const { ctx, width, height } = fitCanvasToContainer(geometryCanvas);
+        ctx.clearRect(0, 0, width, height);
+
+        const n = state.n;
+        const c = state.c;
+        const val = evalEuler(n, c);
+
+        // We visualize the area decomposition:
+        // 1) n x n square (Blue)
+        // 2) n x 1 bar (Cyan)
+        // 3) c x 1 bar (Amber)
+        // And we specially highlight when n = c - 1 (snaps into c x c square!)
+        // and when n = c (splits into p² + p + p = p² + 2p = p(p + 2)!)
+
+        const pad = 16;
+        const availW = width - pad * 2;
+        const availH = height - pad * 2 - 22; // leave bottom space for legend
+
+        // Determine scaling grid dimensions
+        // Max visual grid dimension is max(n + 2, c + 1, 10)
+        const dim = Math.max(n + 2, c + 2, 12);
+        const cellSize = Math.min(availW / (dim + 2), availH / dim);
+
+        const totalShapeW = (n + 2) * cellSize;
+        const totalShapeH = Math.max(n, c) * cellSize;
+        const startX = Math.max(pad, (width - totalShapeW) / 2);
+        const startY = pad + Math.max(0, (availH - totalShapeH) / 2);
+
+        // Draw n x n square (Blue)
+        if (n > 0) {
+          const sqW = n * cellSize;
+          const sqH = n * cellSize;
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.28)';
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(startX, startY, sqW, sqH);
+          ctx.strokeRect(startX, startY, sqW, sqH);
+
+          // Draw subtle inner grid if cellSize >= 4
+          if (cellSize >= 4.5 && n <= 45) {
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.22)';
+            ctx.lineWidth = 0.5;
+            for (let i = 1; i < n; i++) {
+              ctx.beginPath();
+              ctx.moveTo(startX + i * cellSize, startY);
+              ctx.lineTo(startX + i * cellSize, startY + sqH);
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.moveTo(startX, startY + i * cellSize);
+              ctx.lineTo(startX + sqW, startY + i * cellSize);
+              ctx.stroke();
+            }
+          }
+
+          // Label n²
+          if (sqW > 24) {
+            ctx.fillStyle = '#93c5fd';
+            ctx.font = '700 11px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`n² = ${n * n}`, startX + sqW / 2, startY + sqH / 2 + 4);
+          }
+        }
+
+        // Draw + n column (Cyan) immediately right of n²
+        const col1X = startX + n * cellSize;
+        if (n > 0) {
+          const colH = n * cellSize;
+          ctx.fillStyle = 'rgba(6, 182, 212, 0.35)';
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(col1X, startY, cellSize, colH);
+          ctx.strokeRect(col1X, startY, cellSize, colH);
+        }
+
+        // Draw + c column (Amber) next to +n
+        const col2X = col1X + (n > 0 ? cellSize + 3 : 0);
+        const cColH = c * cellSize;
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(col2X, startY, cellSize, cColH);
+        ctx.strokeRect(col2X, startY, cellSize, cColH);
+
+        // Special Algebraic Snap Overlays!
+        if (n === c - 1) {
+          // n = 40: n(n+1) + c = 40*41 + 41 = 41 x 41 perfect square!
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(startX - 2, startY - 2, (c) * cellSize + 7, c * cellSize + 4);
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#fb7185';
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(`SNAP! ${c} × ${c} = ${c * c}`, startX, startY - 5);
+        } else if (n === c) {
+          // n = 41: p² + p + p = p² + 2p = p(p + 2)
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(startX - 2, startY - 2, (c + 2) * cellSize + 7, c * cellSize + 4);
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#fb7185';
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(`p² + 2p = ${c} × ${c + 2} = ${val}`, startX, startY - 5);
+        }
+
+        // Bottom color legend inside canvas
+        const legY = height - 8;
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+
+        ctx.fillStyle = '#60a5fa';
+        ctx.fillText(`■ n² (${n * n})`, pad, legY);
+
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillText(`■ +n (${n})`, pad + 82, legY);
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`■ +c (${c})`, pad + 152, legY);
+      }
+
+      // -----------------------------------------------------------------------
+      // 6. SECTION 2: MODULAR PRIME TRAPS (2 to 37 + c)
+      // -----------------------------------------------------------------------
+      function renderModularTraps() {
+        const primesToShow = [...BASE_TRAP_PRIMES];
+        if (!primesToShow.includes(state.c)) {
+          primesToShow.push(state.c);
+        }
+        primesToShow.sort((a, b) => a - b);
+
+        const currentVal = evalEuler(state.n, state.c);
+        trapsGrid.innerHTML = '';
+
+        primesToShow.forEach((p) => {
+          const remainder = ((currentVal % p) + p) % p;
+          const isTrapped = remainder === 0;
+
+          const card = document.createElement('div');
+          card.className = `rounded-xl p-2.5 border transition flex flex-col items-center justify-between ${
+            isTrapped
+              ? 'bg-rose-950/40 border-rose-500/70 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+              : p === state.c
+              ? 'bg-amber-950/20 border-amber-500/40'
+              : 'bg-slate-950/90 border-slate-800'
+          }`;
+
+          // Build SVG clock for prime p
+          const size = 84;
+          const cx = size / 2;
+          const cy = size / 2;
+          const r = 30;
+
+          let ticksSvg = '';
+          // For larger primes like 37 or 41, draw clean dots around the perimeter
+          for (let k = 0; k < p; k++) {
+            const angle = -Math.PI / 2 + (k / p) * Math.PI * 2;
+            const x = cx + Math.cos(angle) * r;
+            const y = cy + Math.sin(angle) * r;
+            const isZero = k === 0;
+            const isActive = k === remainder;
+
+            const dotR = isActive ? 4.2 : isZero ? 3.2 : p > 20 ? 1.3 : 2;
+            const fill = isActive
+              ? isTrapped
+                ? '#f43f5e'
+                : '#10b981'
+              : isZero
+              ? '#f43f5e'
+              : '#334155';
+
+            ticksSvg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR}" fill="${fill}" />`;
+          }
+
+          // Pointer line from center to active remainder
+          const activeAngle = -Math.PI / 2 + (remainder / p) * Math.PI * 2;
+          const ax = cx + Math.cos(activeAngle) * (r - 2);
+          const ay = cy + Math.sin(activeAngle) * (r - 2);
+          const lineColor = isTrapped ? '#f43f5e' : '#10b981';
+
+          card.innerHTML = `
+            <div class="w-full flex items-center justify-between text-[11px] font-mono mb-1">
+              <span class="${p === state.c ? 'text-amber-400 font-bold' : 'text-slate-400'}">mod ${p}</span>
+              <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                isTrapped ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/10 text-emerald-400'
+              }">${isTrapped ? 'TRAP!' : `r = ${remainder}`}</span>
+            </div>
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="overflow-visible">
+              <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1e293b" stroke-width="1" />
+              <line x1="${cx}" y1="${cy}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="${lineColor}" stroke-width="1.75" />
+              ${ticksSvg}
+              <circle cx="${cx}" cy="${cy}" r="2.5" fill="#64748b" />
+            </svg>
+            <div class="text-[10px] font-mono text-center mt-1 ${
+              isTrapped ? 'text-rose-300 font-semibold' : 'text-slate-500'
+            }">
+              ${isTrapped ? `Divisible by ${p}!` : 'Dodges 0 slot'}
+            </div>
+          `;
+
+          trapsGrid.appendChild(card);
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. SECTION 3: ULAM SPIRAL CENTERED AT 41 (OR 1)
+      // -----------------------------------------------------------------------
+      let ulamCells = []; // Store cell coordinates for hover/click inspection
+
+      function generateUlamGrid(gridSize, startNum) {
+        // Build gridSize x gridSize matrix spiraling counter-clockwise from center
+        const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+        let x = Math.floor(gridSize / 2);
+        let y = Math.floor(gridSize / 2);
+
+        let val = startNum;
+        grid[y][x] = val++;
+
+        // Directions: Right, Up, Left, Down (standard Ulam counter-clockwise)
+        const dirs = [
+          [1, 0],
+          [0, -1],
+          [-1, 0],
+          [0, 1],
+        ];
+        let dirIdx = 0;
+        let stepLen = 1;
+
+        while (val < startNum + gridSize * gridSize) {
+          for (let repeat = 0; repeat < 2; repeat++) {
+            const [dx, dy] = dirs[dirIdx % 4];
+            for (let s = 0; s < stepLen; s++) {
+              x += dx;
+              y += dy;
+              if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+                grid[y][x] = val++;
+              }
+            }
+            dirIdx++;
+          }
+          stepLen++;
+        }
+        return grid;
+      }
+
+      function drawUlamSpiral() {
+        const { ctx, width, height } = fitCanvasToContainer(ulamCanvas);
+        ctx.clearRect(0, 0, width, height);
+
+        const N = state.spiralGridSize;
+        const centerVal = state.spiralCenter;
+        const grid = generateUlamGrid(N, centerVal);
+
+        const cellW = width / N;
+        const cellH = height / N;
+
+        // Precompute Euler sequence values for current c so we can highlight the diagonal ray
+        const eulerMap = new Map(); // value -> n
+        for (let k = 0; k <= 80; k++) {
+          eulerMap.set(evalEuler(k, state.c), k);
+        }
+
+        const currentTargetVal = evalEuler(state.n, state.c);
+        const break1Val = evalEuler(state.c - 1, state.c); // 1681 when c=41
+        const break2Val = evalEuler(state.c, state.c);     // 1763 when c=41
+
+        ulamCells = [];
+        let activeCoords = null;
+        const eulerLinePoints = [];
+
+        for (let row = 0; row < N; row++) {
+          for (let col = 0; col < N; col++) {
+            const val = grid[row][col];
+            const px = col * cellW;
+            const py = row * cellH;
+            const prime = isPrime(val);
+            const eulerN = eulerMap.has(val) ? eulerMap.get(val) : null;
+
+            ulamCells.push({
+              val,
+              row,
+              col,
+              px,
+              py,
+              w: cellW,
+              h: cellH,
+              prime,
+              eulerN,
+            });
+
+            if (eulerN !== null) {
+              eulerLinePoints.push({ n: eulerN, cx: px + cellW / 2, cy: py + cellH / 2 });
+            }
+
+            // Base cell fill
+            if (val === currentTargetVal) {
+              activeCoords = { px, py, val, prime, eulerN };
+            }
+
+            if (val === break1Val || val === break2Val) {
+              // Breaking composite points on Euler's polynomial
+              ctx.fillStyle = '#f43f5e';
+              ctx.fillRect(px + 0.5, py + 0.5, cellW - 1, cellH - 1);
+            } else if (state.highlightEulerLine && eulerN !== null) {
+              // Euler polynomial path
+              ctx.fillStyle = prime ? '#f59e0b' : '#fb7185';
+              ctx.fillRect(px + 0.5, py + 0.5, cellW - 1, cellH - 1);
+            } else if (prime) {
+              // Regular prime
+              ctx.fillStyle = '#10b981';
+              ctx.fillRect(px + 0.8, py + 0.8, cellW - 1.6, cellH - 1.6);
+            } else {
+              // Composite background dot
+              ctx.fillStyle = '#0f172a';
+              ctx.fillRect(px + 0.5, py + 0.5, cellW - 1, cellH - 1);
+            }
+
+            // Draw numbers inside cells when grid is zoomed in (35x35)
+            if (N <= 35 && cellW >= 11) {
+              ctx.fillStyle =
+                val === break1Val || val === break2Val || (state.highlightEulerLine && eulerN !== null)
+                  ? '#080c14'
+                  : prime
+                  ? '#052e16'
+                  : '#475569';
+              ctx.font = `600 ${Math.max(6, Math.floor(cellW * 0.34))}px "JetBrains Mono", monospace`;
+              ctx.textAlign = 'center';
+              ctx.fillText(val, px + cellW / 2, py + cellH / 2 + 2.5);
+            }
+          }
+        }
+
+        // Draw connecting gold line along the Euler diagonal when enabled
+        if (state.highlightEulerLine && eulerLinePoints.length > 1) {
+          eulerLinePoints.sort((a, b) => a.n - b.n);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+          ctx.lineWidth = Math.max(1.2, cellW * 0.16);
+          ctx.beginPath();
+          eulerLinePoints.forEach((pt, idx) => {
+            if (idx === 0) ctx.moveTo(pt.cx, pt.cy);
+            else ctx.lineTo(pt.cx, pt.cy);
+          });
+          ctx.stroke();
+        }
+
+        // Highlight the currently selected n cell with a crisp white/cyan reticle
+        if (activeCoords) {
+          const { px, py } = activeCoords;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(px - 1, py - 1, cellW + 2, cellH + 2);
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(px + cellW / 2, py + cellH / 2, Math.max(cellW * 0.95, 7), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Update tooltip readout (either hovered cell or current n cell)
+        const inspect = state.hoveredSpiralCell || {
+          val: currentTargetVal,
+          prime: isPrime(currentTargetVal),
+          eulerN: state.n,
+        };
+        updateUlamTooltip(inspect);
+      }
+
+      function updateUlamTooltip(cell) {
+        ulamCellVal.textContent = cell.val.toLocaleString();
+        if (cell.eulerN !== null) {
+          ulamCellTag.textContent = `${cell.prime ? 'PRIME' : 'BREAK'} • n=${cell.eulerN}`;
+          ulamCellTag.className = cell.prime
+            ? 'ml-2 px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 text-[10px]'
+            : 'ml-2 px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-300 text-[10px]';
+        } else {
+          ulamCellTag.textContent = cell.prime ? 'PRIME' : 'COMPOSITE';
+          ulamCellTag.className = cell.prime
+            ? 'ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]'
+            : 'ml-2 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]';
+        }
+        ulamCellFactor.textContent = getFactorization(cell.val);
+      }
+
+      // -----------------------------------------------------------------------
+      // 8. SEQUENCE LEDGER STRIP & TEXT READOUT SYNCHRONIZATION
+      // -----------------------------------------------------------------------
+      function renderSequenceStrip() {
+        sequenceStrip.innerHTML = '';
+        for (let i = 0; i <= state.maxN; i++) {
+          const val = evalEuler(i, state.c);
+          const prime = isPrime(val);
+          const isCurrent = i === state.n;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.n = i;
+          btn.className = `shrink-0 px-2 py-1 rounded-lg font-mono text-[11px] border transition flex flex-col items-center min-w-[46px] ${
+            isCurrent
+              ? prime
+                ? 'bg-emerald-500 text-slate-950 font-bold border-white scale-105 shadow-md'
+                : 'bg-rose-500 text-white font-bold border-white scale-105 shadow-md'
+              : prime
+              ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/50'
+              : 'bg-rose-950/40 text-rose-300 border-rose-500/40 hover:bg-rose-900/50'
+          }`;
+          btn.innerHTML = `
+            <span class="text-[9px] opacity-75">n=${i}</span>
+            <span>${val}</span>
+          `;
+          btn.addEventListener('click', () => {
+            stopAutoRun();
+            setN(i);
+          });
+          sequenceStrip.appendChild(btn);
+        }
+
+        // Scroll active pill smoothly into view
+        const activeBtn = sequenceStrip.querySelector(`button[data-n="${state.n}"]`);
+        if (activeBtn) {
+          activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+
+      function updateReadouts() {
+        const n = state.n;
+        const c = state.c;
+        const val = evalEuler(n, c);
+        const prime = isPrime(val);
+        const streakMax = c - 1; // Euler polynomials n^2 + n + c produce c - 1 consecutive primes (0 to c - 2)
+
+        nSlider.value = n;
+        nDisplayTop.textContent = `n = ${n}`;
+        valDisplayTop.textContent = val.toLocaleString();
+        valDisplayTop.className = prime ? 'text-emerald-400' : 'text-rose-400';
+
+        // Update quick jump button labels
+        jumpBreak1Btn.textContent = `n=${c - 1}`;
+        jumpBreak2Btn.textContent = `n=${c}`;
+
+        // Update Primality Status Badges
+        if (prime) {
+          const streakNum = n < streakMax ? n + 1 : streakMax;
+          primalityBadge.textContent = `${val.toLocaleString()} IS PRIME ${n < streakMax ? `(Streak: ${streakNum}/${streakMax})` : '(Bonus Prime!)'}`;
+          primalityBadge.className = 'px-3 py-1.5 rounded-xl font-mono text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm';
+          mobileStatusBadge.textContent = 'PRIME';
+          mobileStatusBadge.className = 'lg:hidden font-mono text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+        } else {
+          primalityBadge.textContent = `MACHINE BREAKS: ${val.toLocaleString()} = ${getFactorization(val)}`;
+          primalityBadge.className = 'px-3 py-1.5 rounded-xl font-mono text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-sm';
+          mobileStatusBadge.textContent = 'BREAK';
+          mobileStatusBadge.className = 'lg:hidden font-mono text-xs px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        }
+
+        streakCounter.textContent = n < streakMax ? `Streak: ${n + 1} / ${streakMax}` : `Streak Broken at n = ${c - 1}`;
+        streakCounter.className = n < streakMax ? 'text-emerald-400' : 'text-rose-400';
+
+        // Formula & Geometric Explanation
+        formulaEquation.textContent = `${n}² + ${n} + ${c} = ${val.toLocaleString()}`;
+
+        if (n === c - 1) {
+          geometricInsightBox.innerHTML = `<strong class="text-rose-400">FIRST BREAK (n = ${c - 1}):</strong> Notice that <span class="font-mono">${n}² + ${n} + ${c} = ${n}(${n + 1}) + ${c}</span>. Since <span class="font-mono">${n + 1} = ${c}</span>, the <span class="text-amber-400">+${c} bar</span> snaps the shape into an exact <strong class="text-rose-300 font-mono">${c} × ${c} = ${val.toLocaleString()}</strong> square!`;
+        } else if (n === c) {
+          geometricInsightBox.innerHTML = `<strong class="text-amber-400">THE p² + 2p SNAP (n = ${c}):</strong> Plugging in <span class="font-mono">n = ${c}</span> yields <span class="font-mono text-slate-100">${c}² + ${c} + ${c}</span> — literally <strong class="text-cyan-300 font-mono">p² + 2p</strong>! Factoring out <span class="font-mono">${c}</span> gives <strong class="text-rose-300 font-mono">${c} × (${c} + 2) = ${val.toLocaleString()}</strong>.`;
+        } else if (!prime) {
+          geometricInsightBox.innerHTML = `<strong class="text-rose-400">COMPOSITE OUTPUT:</strong> Beyond the <span class="font-mono">${c}²</span> roof, larger prime factors divide the polynomial: <span class="font-mono text-rose-300">${val.toLocaleString()} = ${getFactorization(val)}</span>.`;
+        } else {
+          geometricInsightBox.innerHTML = `At <span class="font-mono text-sky-400">n = ${n}</span>, <span class="font-mono text-blue-400">${n}²</span> + <span class="font-mono text-cyan-400">${n}</span> + <span class="font-mono text-amber-400">${c}</span> = <strong class="text-emerald-400 font-mono">${val.toLocaleString()}</strong>. It sits safely under the <span class="font-mono">${c}² = ${(c * c).toLocaleString()}</span> roof and dodges every modular trap.`;
+        }
+
+        // Roof Threshold Gauge (c^2)
+        const roof = c * c;
+        const pct = Math.min(100, (val / roof) * 100);
+        roofLabel.textContent = `c² = ${roof.toLocaleString()}`;
+        roofRatioText.textContent = `${val.toLocaleString()} / ${roof.toLocaleString()} (${pct.toFixed(1)}%)`;
+        roofRatioText.className = val >= roof ? 'text-rose-400 font-bold' : 'text-emerald-400';
+        roofProgressBar.style.width = `${pct}%`;
+        roofProgressBar.className =
+          val >= roof
+            ? 'h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-200'
+            : 'h-full bg-gradient-to-r from-emerald-500 to-sky-400 transition-all duration-200';
+      }
+
+      // -----------------------------------------------------------------------
+      // 9. MASTER SYNCHRONIZED RENDER LOOP
+      // -----------------------------------------------------------------------
+      function setN(newN) {
+        state.n = Math.max(0, Math.min(state.maxN, newN));
+        state.hoveredSpiralCell = null;
+        state.animProgress = 0;
+
+        updateReadouts();
+        renderSequenceStrip();
+        renderModularTraps();
+        drawUlamSpiral();
+        triggerBounceAnimation();
+      }
+
+      function triggerBounceAnimation() {
+        const start = performance.now();
+        const duration = 220;
+        function step(now) {
+          const t = Math.min(1, (now - start) / duration);
+          state.animProgress = t;
+          drawMachineCanvas();
+          drawGeometryCanvas();
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+      function renderAll() {
+        updateReadouts();
+        renderSequenceStrip();
+        renderModularTraps();
+        drawMachineCanvas();
+        drawGeometryCanvas();
+        drawUlamSpiral();
+      }
+
+      // -----------------------------------------------------------------------
+      // 10. AUTO-RUN ANIMATION & EVENT LISTENERS
+      // -----------------------------------------------------------------------
+      function stopAutoRun() {
+        state.isAutoRunning = false;
+        if (state.autoTimer) {
+          clearInterval(state.autoTimer);
+          state.autoTimer = null;
+        }
+        autoRunIcon.textContent = '▶';
+        autoRunText.textContent = 'Auto-Run';
+        autoRunBtn.className =
+          'px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition active:scale-95';
+      }
+
+      function toggleAutoRun() {
+        if (state.isAutoRunning) {
+          stopAutoRun();
+          return;
+        }
+        state.isAutoRunning = true;
+        autoRunIcon.textContent = '⏸';
+        autoRunText.textContent = 'Pause';
+        autoRunBtn.className =
+          'px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition active:scale-95';
+
+        if (state.n >= state.c + 2) {
+          setN(0);
+        }
+
+        state.autoTimer = setInterval(() => {
+          if (state.n < state.maxN) {
+            setN(state.n + 1);
+            // Pause briefly on the dramatic break points n = c - 1 and n = c
+            if (state.n === state.c) {
+              stopAutoRun();
+            }
+          } else {
+            stopAutoRun();
+          }
+        }, 320);
+      }
+
+      nSlider.addEventListener('input', (e) => {
+        stopAutoRun();
+        setN(parseInt(e.target.value, 10));
+      });
+
+      prevNBtn.addEventListener('click', () => {
+        stopAutoRun();
+        setN(state.n - 1);
+      });
+
+      nextNBtn.addEventListener('click', () => {
+        stopAutoRun();
+        setN(state.n + 1);
+      });
+
+      jumpBreak1Btn.addEventListener('click', () => {
+        stopAutoRun();
+        setN(state.c - 1);
+      });
+
+      jumpBreak2Btn.addEventListener('click', () => {
+        stopAutoRun();
+        setN(state.c);
+      });
+
+      autoRunBtn.addEventListener('click', toggleAutoRun);
+
+      cSelect.addEventListener('change', (e) => {
+        stopAutoRun();
+        state.c = parseInt(e.target.value, 10);
+        // Update spiral center if it was tracking previous c
+        if (state.spiralCenter !== 1) {
+          state.spiralCenter = state.c;
+          spiralCenterTitle.textContent = state.c;
+          center41Btn.textContent = `Center: ${state.c}`;
+        }
+        setN(0);
+      });
+
+      // Machine Ring Canvas Click Interaction
+      machineCanvas.addEventListener('click', (e) => {
+        const rect = machineCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        for (const hit of machineTokenHitboxes) {
+          const dist = Math.hypot(mx - hit.x, my - hit.y);
+          if (dist <= hit.r) {
+            stopAutoRun();
+            setN(hit.n);
+            break;
+          }
+        }
+      });
+
+      // Ulam Spiral Controls & Hover/Click Inspection
+      center41Btn.addEventListener('click', () => {
+        state.spiralCenter = state.c;
+        spiralCenterTitle.textContent = state.c;
+        center41Btn.className = 'px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition';
+        center1Btn.className = 'px-2.5 py-1 rounded-lg font-mono text-xs font-semibold text-slate-400 hover:text-slate-200 transition';
+        drawUlamSpiral();
+      });
+
+      center1Btn.addEventListener('click', () => {
+        state.spiralCenter = 1;
+        spiralCenterTitle.textContent = '1';
+        center1Btn.className = 'px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40 transition';
+        center41Btn.className = 'px-2.5 py-1 rounded-lg font-mono text-xs font-semibold text-slate-400 hover:text-slate-200 transition';
+        drawUlamSpiral();
+      });
+
+      toggleEulerLine.addEventListener('change', (e) => {
+        state.highlightEulerLine = e.target.checked;
+        drawUlamSpiral();
+      });
+
+      document.querySelectorAll('.grid-size-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.spiralGridSize = parseInt(btn.dataset.grid, 10);
+          document.querySelectorAll('.grid-size-btn').forEach((b) => {
+            b.className = 'grid-size-btn px-2 py-1 rounded-lg font-mono text-[11px] bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700';
+          });
+          btn.className = 'grid-size-btn px-2 py-1 rounded-lg font-mono text-[11px] bg-sky-500/20 text-sky-300 border border-sky-500/40';
+          drawUlamSpiral();
+        });
+      });
+
+      ulamCanvas.addEventListener('mousemove', (e) => {
+        const rect = ulamCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const found = ulamCells.find(
+          (c) => mx >= c.px && mx <= c.px + c.w && my >= c.py && my <= c.py + c.h
+        );
+        if (found) {
+          state.hoveredSpiralCell = found;
+          updateUlamTooltip(found);
+        }
+      });
+
+      ulamCanvas.addEventListener('mouseleave', () => {
+        state.hoveredSpiralCell = null;
+        drawUlamSpiral();
+      });
+
+      ulamCanvas.addEventListener('click', (e) => {
+        const rect = ulamCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const found = ulamCells.find(
+          (c) => mx >= c.px && mx <= c.px + c.w && my >= c.py && my <= c.py + c.h
+        );
+        if (found && found.eulerN !== null && found.eulerN <= state.maxN) {
+          stopAutoRun();
+          setN(found.eulerN);
+        }
+      });
+
+      // View Tab Switcher (All Panels vs Focused Module)
+      document.querySelectorAll('.view-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const view = btn.dataset.view;
+          state.activeView = view;
+
+          document.querySelectorAll('.view-tab-btn').forEach((b) => {
+            b.className = 'view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+          });
+          btn.className = 'view-tab-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-sky-400 shadow-sm transition';
+
+          const pMachine = document.getElementById('panel-machine');
+          const pSpiral = document.getElementById('panel-spiral');
+          const pTraps = document.getElementById('panel-traps');
+
+          if (view === 'all') {
+            pMachine.classList.remove('hidden');
+            pSpiral.classList.remove('hidden');
+            pTraps.classList.remove('hidden');
+            pMachine.className = 'lg:col-span-7 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4';
+            pSpiral.className = 'lg:col-span-5 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3';
+          } else if (view === 'machine') {
+            pMachine.classList.remove('hidden');
+            pSpiral.classList.add('hidden');
+            pTraps.classList.add('hidden');
+            pMachine.className = 'lg:col-span-12 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4';
+          } else if (view === 'traps') {
+            pMachine.classList.add('hidden');
+            pSpiral.classList.add('hidden');
+            pTraps.classList.remove('hidden');
+          } else if (view === 'spiral') {
+            pMachine.classList.add('hidden');
+            pSpiral.classList.remove('hidden');
+            pTraps.classList.add('hidden');
+            pSpiral.className = 'lg:col-span-8 lg:col-start-3 bg-panel/95 border border-panelBorder rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3';
+          }
+
+          // Re-measure canvases after layout shift
+          requestAnimationFrame(() => {
+            drawMachineCanvas();
+            drawGeometryCanvas();
+            drawUlamSpiral();
+          });
+        });
+      });
+
+      // Keyboard Left/Right Arrow support for stepping through n
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+        if (e.key === 'ArrowRight') {
+          stopAutoRun();
+          setN(state.n + 1);
+        } else if (e.key === 'ArrowLeft') {
+          stopAutoRun();
+          setN(state.n - 1);
+        }
+      });
+
+      // Responsive window resize redraw
+      window.addEventListener('resize', () => {
+        drawMachineCanvas();
+        drawGeometryCanvas();
+        drawUlamSpiral();
+      });
+
+      // Initial render on load
+      window.addEventListener('load', renderAll);
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

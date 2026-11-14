@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Myers Fractal & Ulam Spiral Ghost Layer Overlay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            voidBlack: '#05070a',
+            labPanel: '#0b0f17',
+            labCard: '#111827',
+            labBorder: '#1e293b',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #05070a;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #05070a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      height: 5px;
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 14px;
+      width: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      margin-top: -4.5px;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.65);
+      transition: transform 0.12s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+  </style>
+</head>
+<body class="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col lg:flex-row font-sans antialiased select-none">
+
+  <!-- ===================================================================== -->
+  <!-- LEFT / MAIN INTERACTIVE VIEWPORT CANVAS                               -->
+  <!-- ===================================================================== -->
+  <div class="relative flex-1 h-[62vh] sm:h-[68vh] lg:h-full bg-voidBlack overflow-hidden flex flex-col">
+    <!-- Top Floating Header & Camera Controls -->
+    <div class="absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+      <div class="pointer-events-auto bg-labPanel/85 backdrop-blur-md border border-slate-800/90 rounded-2xl px-3.5 py-2 shadow-xl flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/20 via-fuchsia-500/20 to-emerald-500/20 border border-cyan-400/40 flex items-center justify-center">
+          <span class="font-mono font-bold text-xs text-cyan-300">0,0</span>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-bold tracking-tight text-slate-100">
+            Myers Interlock &amp; Ulam Ghost Overlay
+          </h1>
+          <p class="text-[11px] text-slate-400 hidden sm:block">
+            4-Cardinal H-Tree + Y-Tree Topology vs. Ulam Prime Lattice
+          </p>
+        </div>
+      </div>
+
+      <!-- Camera & Snap Quick Actions -->
+      <div class="pointer-events-auto flex items-center gap-1.5 bg-labPanel/85 backdrop-blur-md border border-slate-800/90 rounded-2xl p-1.5 shadow-xl">
+        <button id="snapGridBtn" class="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 font-mono text-[11px] font-semibold transition active:scale-95" title="Lock H-Tree base length to an exact power-of-2 multiple of the Ulam grid step">
+          ⌖ Snap H-Tree to Grid
+        </button>
+        <button id="zoomOutBtn" class="w-8 h-8 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-mono text-sm transition" title="Zoom Out">−</button>
+        <span id="zoomReadout" class="font-mono text-[11px] text-slate-400 px-1.5 min-w-[46px] text-center">100%</span>
+        <button id="zoomInBtn" class="w-8 h-8 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-mono text-sm transition" title="Zoom In">+</button>
+        <button id="resetCamBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px] transition" title="Recenter (0,0)">
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Full-Bleed High-DPI Canvas -->
+    <canvas id="overlayCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+
+    <!-- Bottom HUD: Cell Inspector & Live Alignment Telemetry -->
+    <div class="absolute bottom-3 left-3 right-3 z-20 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-2 pointer-events-none">
+      <!-- Hovered Cell Readout -->
+      <div class="pointer-events-auto bg-labPanel/90 backdrop-blur-md border border-slate-800/90 rounded-2xl px-3.5 py-2.5 shadow-xl flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono">
+        <div>
+          <span class="text-slate-500">Coord:</span>
+          <strong id="hudCoord" class="text-sky-300">(0, 0)</strong>
+        </div>
+        <div>
+          <span class="text-slate-500">Ulam n:</span>
+          <strong id="hudVal" class="text-slate-100">1</strong>
+          <span id="hudPrimeBadge" class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">UNIT</span>
+        </div>
+        <div>
+          <span class="text-slate-500">Vertex Lock:</span>
+          <strong id="hudVertexStatus" class="text-slate-400">Origin (0,0)</strong>
+        </div>
+      </div>
+
+      <!-- Compact Legend -->
+      <div class="pointer-events-auto hidden md:flex items-center gap-3 bg-labPanel/90 backdrop-blur-md border border-slate-800/90 rounded-2xl px-3.5 py-2 text-[11px] font-mono text-slate-400 shadow-xl">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-300 shadow-[0_0_8px_#fcd34d]"></span> Prime</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> H-Vertex</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-fuchsia-400"></span> Y-Vertex</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full border-2 border-emerald-400"></span> Direct Prime Hit</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- RIGHT SIDEBAR: 4 GHOST LAYERS & ANTI-BIAS ALIGNMENT ANALYZER          -->
+  <!-- ===================================================================== -->
+  <aside class="w-full lg:w-[390px] xl:w-[420px] lg:h-full bg-labPanel border-t lg:border-t-0 lg:border-l border-slate-800/90 flex flex-col overflow-y-auto z-30 shadow-2xl">
+    
+    <!-- Bias-Check Alignment & Overlap Metrics Card -->
+    <div class="p-4 border-b border-slate-800/90 bg-gradient-to-b from-slate-900/90 to-labPanel">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+          Anti-Bias Alignment Telemetry
+        </span>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg">
+          <input id="highlightHitsToggle" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-emerald-400 focus:ring-0" />
+          <span>Highlight Hits</span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-mono mb-2">
+        <!-- H-Tree Alignment Stat -->
+        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5">
+          <div class="text-[10px] text-cyan-400 mb-0.5">H-TREE PRIME HITS</div>
+          <div class="text-base font-bold text-slate-100">
+            <span id="statHHits">0</span> <span class="text-xs font-normal text-slate-500">/ <span id="statHTotal">0</span></span>
+          </div>
+          <div id="statHRatio" class="text-[11px] text-emerald-400 mt-0.5">0.0% hit rate</div>
+        </div>
+
+        <!-- Y-Tree Alignment Stat -->
+        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5">
+          <div class="text-[10px] text-fuchsia-400 mb-0.5">Y-TREE PRIME HITS</div>
+          <div class="text-base font-bold text-slate-100">
+            <span id="statYHits">0</span> <span class="text-xs font-normal text-slate-500">/ <span id="statYTotal">0</span></span>
+          </div>
+          <div id="statYRatio" class="text-[11px] text-slate-400 mt-0.5">0.0% hit rate</div>
+        </div>
+      </div>
+
+      <!-- Baseline Prime Density Comparison Bar -->
+      <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl px-3 py-2 flex items-center justify-between text-[11px] font-mono">
+        <span class="text-slate-400">Ulam Grid Baseline Density:</span>
+        <span id="statBaselineDensity" class="text-amber-300 font-semibold">0.0%</span>
+      </div>
+      <p id="verdictText" class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+        Compare H-Tree hit rate against baseline prime density to test whether vertex locks exceed random grid chance.
+      </p>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GHOST LAYER 1: 4-CARDINAL H-TREE (N / E / S / W)                    -->
+    <!-- =================================================================== -->
+    <div class="p-4 border-b border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="layer1Toggle" type="checkbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-400 focus:ring-0" />
+          <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px]">L1</span>
+            Ghost Layer 1: 4-Cardinal H-Tree
+          </span>
+        </label>
+        <span id="layer1OpacityVal" class="font-mono text-[11px] text-cyan-300">90%</span>
+      </div>
+
+      <!-- Opacity Slider -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono text-slate-500 w-14">Opacity</span>
+        <input id="layer1Opacity" type="range" min="0" max="100" value="90" class="flex-1" />
+      </div>
+
+      <!-- H-Tree Geometric Parameters -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Depth</span>
+            <span id="hDepthVal" class="text-cyan-300">5</span>
+          </div>
+          <input id="hDepth" type="range" min="1" max="7" value="5" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Trunk Len</span>
+            <span id="hLenVal" class="text-cyan-300">128px</span>
+          </div>
+          <input id="hLen" type="range" min="24" max="260" step="2" value="128" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Decay Ratio</span>
+            <span id="hRatioVal" class="text-cyan-300">0.50</span>
+          </div>
+          <input id="hRatio" type="range" min="0.35" max="0.72" step="0.01" value="0.50" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2 flex flex-col justify-center">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] font-mono text-slate-300">
+            <input id="hShowNodes" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-cyan-400 focus:ring-0" />
+            <span>Vertex Dots</span>
+          </label>
+          <span class="text-[9px] text-slate-500 font-mono mt-0.5">Mark H-endpoints</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GHOST LAYER 2: 4-CARDINAL Y-TREE / BINARY TREE (N / E / S / W)      -->
+    <!-- =================================================================== -->
+    <div class="p-4 border-b border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="layer2Toggle" type="checkbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-fuchsia-400 focus:ring-0" />
+          <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-300 font-mono text-[10px]">L2</span>
+            Ghost Layer 2: 4-Cardinal Y-Tree
+          </span>
+        </label>
+        <span id="layer2OpacityVal" class="font-mono text-[11px] text-fuchsia-300">85%</span>
+      </div>
+
+      <!-- Opacity Slider -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono text-slate-500 w-14">Opacity</span>
+        <input id="layer2Opacity" type="range" min="0" max="100" value="85" class="flex-1" />
+      </div>
+
+      <!-- Y-Tree Parameters -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Depth</span>
+            <span id="yDepthVal" class="text-fuchsia-300">6</span>
+          </div>
+          <input id="yDepth" type="range" min="1" max="8" value="6" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Branch Angle</span>
+            <span id="yAngleVal" class="text-fuchsia-300">45°</span>
+          </div>
+          <input id="yAngle" type="range" min="15" max="65" step="1" value="45" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Trunk Len</span>
+            <span id="yLenVal" class="text-fuchsia-300">112px</span>
+          </div>
+          <input id="yLen" type="range" min="24" max="240" step="2" value="112" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Decay Ratio</span>
+            <span id="yRatioVal" class="text-fuchsia-300">0.71</span>
+          </div>
+          <input id="yRatio" type="range" min="0.45" max="0.82" step="0.01" value="0.71" class="w-full" />
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GHOST LAYER 3: ULAM SPIRAL (PRIMES LIT UP)                          -->
+    <!-- =================================================================== -->
+    <div class="p-4 border-b border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="layer3Toggle" type="checkbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-400 focus:ring-0" />
+          <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px]">L3</span>
+            Ghost Layer 3: Ulam Prime Spiral
+          </span>
+        </label>
+        <span id="layer3OpacityVal" class="font-mono text-[11px] text-amber-300">95%</span>
+      </div>
+
+      <!-- Opacity Slider -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono text-slate-500 w-14">Opacity</span>
+        <input id="layer3Opacity" type="range" min="0" max="100" value="95" class="flex-1" />
+      </div>
+
+      <!-- Ulam Start Number & Scale Controls -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 mb-1">
+            <span>Origin Value</span>
+            <div class="flex gap-1">
+              <button id="ulamStart1Btn" class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px]">1</button>
+              <button id="ulamStart41Btn" class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[9px]">41</button>
+            </div>
+          </div>
+          <input id="ulamStartInput" type="number" min="1" max="99999" value="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 font-mono text-xs text-amber-300 focus:outline-none focus:border-amber-500" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Cell Step (Δ)</span>
+            <span id="ulamCellSizeVal" class="text-amber-300">16px</span>
+          </div>
+          <input id="ulamCellSize" type="range" min="6" max="36" step="1" value="16" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <span>Grid Radius</span>
+            <span id="ulamRadiusVal" class="text-amber-300">33×33</span>
+          </div>
+          <input id="ulamRadius" type="range" min="10" max="45" step="1" value="16" class="w-full" />
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2 flex flex-col justify-center">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] font-mono text-slate-300">
+            <input id="ulamShowComposites" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-amber-400 focus:ring-0" />
+            <span>Dim Composites</span>
+          </label>
+          <span class="text-[9px] text-slate-500 font-mono mt-0.5">Show non-prime dots</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GHOST LAYER 4: COORDINATE GRID & ORIGIN CROSSHAIRS                  -->
+    <!-- =================================================================== -->
+    <div class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="layer4Toggle" type="checkbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-sky-400 focus:ring-0" />
+          <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px]">L4</span>
+            Ghost Layer 4: Lattice &amp; Axes
+          </span>
+        </label>
+        <span id="layer4OpacityVal" class="font-mono text-[11px] text-sky-300">45%</span>
+      </div>
+
+      <!-- Opacity Slider -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono text-slate-500 w-14">Opacity</span>
+        <input id="layer4Opacity" type="range" min="0" max="100" value="45" class="flex-1" />
+      </div>
+
+      <!-- Grid Toggles -->
+      <div class="grid grid-cols-2 gap-2 pt-1 text-[11px] font-mono text-slate-300">
+        <label class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2 flex items-center gap-2 cursor-pointer">
+          <input id="gridShowDiagonals" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-sky-400 focus:ring-0" />
+          <span>y = ±x Diagonals</span>
+        </label>
+        <label class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2 flex items-center gap-2 cursor-pointer">
+          <input id="gridShowRings" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-sky-400 focus:ring-0" />
+          <span>Spiral Shells</span>
+        </label>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ======================================================================= -->
+  <!-- SIMULATION, FRACTAL RECURSION & ALIGNMENT ENGINE                        -->
+  <!-- ======================================================================= -->
+  <script>
+    (() => {
+      // -----------------------------------------------------------------------
+      // 1. STATE & CONFIGURATION
+      // -----------------------------------------------------------------------
+      const state = {
+        // Camera transform (centered at (0,0) in world space)
+        camX: 0,
+        camY: 0,
+        zoom: 1.0,
+        isDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+
+        // Ghost Layer 1: 4-Cardinal H-Tree
+        l1Enabled: true,
+        l1Opacity: 0.90,
+        hDepth: 5,
+        hLen: 128,
+        hRatio: 0.50,
+        hShowNodes: true,
+
+        // Ghost Layer 2: 4-Cardinal Y-Tree
+        l2Enabled: true,
+        l2Opacity: 0.85,
+        yDepth: 6,
+        yAngle: 45, // degrees
+        yLen: 112,
+        yRatio: 0.71,
+
+        // Ghost Layer 3: Ulam Spiral
+        l3Enabled: true,
+        l3Opacity: 0.95,
+        ulamStart: 1,
+        ulamCellSize: 16,
+        ulamRadius: 16, // grid extends [-radius, +radius]
+        ulamShowComposites: true,
+
+        // Ghost Layer 4: Coordinate Grid & Axes
+        l4Enabled: true,
+        l4Opacity: 0.45,
+        gridShowDiagonals: true,
+        gridShowRings: true,
+
+        // Alignment Analyzer
+        highlightHits: true,
+        hoveredGridCoord: null, // { gx, gy }
+      };
+
+      // -----------------------------------------------------------------------
+      // 2. NUMBER THEORY UTILITIES (FAST PRIMALITY & FACTORIZATION)
+      // -----------------------------------------------------------------------
+      const primeCache = new Map();
+      function isPrime(n) {
+        if (n < 2) return false;
+        if (primeCache.has(n)) return primeCache.get(n);
+        if (n === 2 || n === 3) {
+          primeCache.set(n, true);
+          return true;
+        }
+        if (n % 2 === 0 || n % 3 === 0) {
+          primeCache.set(n, false);
+          return false;
+        }
+        const limit = Math.floor(Math.sqrt(n));
+        for (let i = 5; i <= limit; i += 6) {
+          if (n % i === 0 || n % (i + 2) === 0) {
+            primeCache.set(n, false);
+            return false;
+          }
+        }
+        primeCache.set(n, true);
+        return true;
+      }
+
+      function getFactorization(n) {
+        if (n < 2) return 'Unit';
+        if (isPrime(n)) return 'Prime';
+        for (let i = 2; i <= Math.floor(Math.sqrt(n)); i++) {
+          if (n % i === 0) return `${i} × ${n / i}`;
+        }
+        return 'Composite';
+      }
+
+      // Compute Ulam Spiral integer value at integer lattice coordinate (gx, gy)
+      // Standard counter-clockwise Ulam spiral:
+      // (0,0) -> startNum
+      // (1,0) -> startNum + 1, (1,-1) -> +2, (0,-1) -> +3, (-1,-1) -> +4 ...
+      // Note: screen Y goes down, math Y goes up; we map screen gy < 0 as North (math +y)
+      function getUlamValueAt(gx, gy, startNum) {
+        const x = gx;
+        const y = -gy; // Convert canvas Y-down to standard Cartesian Y-up so North is +Y
+        if (x === 0 && y === 0) return startNum;
+
+        const k = Math.max(Math.abs(x), Math.abs(y));
+        // Max value on inner ring (k - 1) is (2k - 1)^2
+        const innerMax = (2 * k - 1) * (2 * k - 1);
+        const sideLen = 2 * k;
+        let offset = 0;
+
+        if (x === k && y > -k) {
+          // Right edge moving North: from y = -k + 1 to +k
+          offset = y - (-k);
+        } else if (y === k && x < k) {
+          // Top edge moving West: from x = k - 1 to -k
+          offset = sideLen + (k - x);
+        } else if (x === -k && y < k) {
+          // Left edge moving South: from y = k - 1 to -k
+          offset = 2 * sideLen + (k - y);
+        } else {
+          // Bottom edge moving East: from x = -k + 1 to +k
+          offset = 3 * sideLen + (x - (-k));
+        }
+
+        return startNum - 1 + innerMax + offset;
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. IRIDESCENT DEPTH COLOR PALETTE (MATCHING MYERS FRACTAL AESTHETIC)
+      // -----------------------------------------------------------------------
+      const DEPTH_PALETTE = [
+        '#38bdf8', // Depth 0: Electric Cyan
+        '#34d399', // Depth 1: Neon Emerald
+        '#a3e635', // Depth 2: Lime / Yellow-Green
+        '#facc15', // Depth 3: Solar Gold
+        '#fb923c', // Depth 4: Amber Orange
+        '#f472b6', // Depth 5: Magenta Pink
+        '#c084fc', // Depth 6: Ultraviolet Purple
+        '#60a5fa', // Depth 7: Cobalt Blue
+      ];
+
+      function getDepthColor(depth) {
+        return DEPTH_PALETTE[depth % DEPTH_PALETTE.length];
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. FRACTAL GEOMETRY GENERATORS (4-CARDINAL H-TREE & Y-TREE)
+      // -----------------------------------------------------------------------
+      // Generates segments and unique vertex points in world coordinates (0,0 origin)
+      function buildCardinalHTree() {
+        const segments = [];
+        const vertexMap = new Map(); // "x,y" -> { x, y, depth }
+
+        function addVertex(x, y, depth) {
+          const key = `${Math.round(x * 100) / 100},${Math.round(y * 100) / 100}`;
+          if (!vertexMap.has(key)) {
+            vertexMap.set(key, { x, y, depth });
+          }
+        }
+
+        // Recursive H-branching sub-tree starting at (cx, cy) with orientation
+        // dirAngle: 0 = East, -PI/2 = North, PI = West, PI/2 = South
+        function recurseH(cx, cy, len, depth, isHorizontal) {
+          if (depth > state.hDepth || len < 1) return;
+
+          const half = len / 2;
+          let x1, y1, x2, y2;
+
+          if (isHorizontal) {
+            x1 = cx - half;
+            y1 = cy;
+            x2 = cx + half;
+            y2 = cy;
+          } else {
+            x1 = cx;
+            y1 = cy - half;
+            x2 = cx;
+            y2 = cy + half;
+          }
+
+          segments.push({ x1, y1, x2, y2, depth });
+          addVertex(x1, y1, depth);
+          addVertex(x2, y2, depth);
+
+          const nextLen = len * state.hRatio;
+          recurseH(x1, y1, nextLen, depth + 1, !isHorizontal);
+          recurseH(x2, y2, nextLen, depth + 1, !isHorizontal);
+        }
+
+        // Myers Interlock Principle: 4 cardinal trunks extending N, E, S, W from (0,0)
+        const cardinals = [
+          { dx: 0, dy: -1, horizCross: true },  // North trunk -> East-West crossbar
+          { dx: 1, dy: 0, horizCross: false },  // East trunk  -> North-South crossbar
+          { dx: 0, dy: 1, horizCross: true },   // South trunk -> East-West crossbar
+          { dx: -1, dy: 0, horizCross: false }, // West trunk  -> North-South crossbar
+        ];
+
+        addVertex(0, 0, 0);
+        cardinals.forEach(({ dx, dy, horizCross }) => {
+          const ex = dx * state.hLen;
+          const ey = dy * state.hLen;
+          segments.push({ x1: 0, y1: 0, x2: ex, y2: ey, depth: 0 });
+          addVertex(ex, ey, 0);
+          recurseH(ex, ey, state.hLen, 1, horizCross);
+        });
+
+        return { segments, vertices: Array.from(vertexMap.values()) };
+      }
+
+      function buildCardinalYTree() {
+        const segments = [];
+        const vertexMap = new Map();
+        const spreadRad = (state.yAngle * Math.PI) / 180;
+
+        function addVertex(x, y, depth) {
+          const key = `${Math.round(x * 100) / 100},${Math.round(y * 100) / 100}`;
+          if (!vertexMap.has(key)) {
+            vertexMap.set(key, { x, y, depth });
+          }
+        }
+
+        function recurseY(x, y, angle, len, depth) {
+          if (depth > state.yDepth || len < 1) return;
+
+          const nx = x + Math.cos(angle) * len;
+          const ny = y + Math.sin(angle) * len;
+
+          segments.push({ x1: x, y1: y, x2: nx, y2: ny, depth });
+          addVertex(nx, ny, depth);
+
+          const nextLen = len * state.yRatio;
+          recurseY(nx, ny, angle - spreadRad, nextLen, depth + 1);
+          recurseY(nx, ny, angle + spreadRad, nextLen, depth + 1);
+        }
+
+        // 4 Cardinal directions: North (-PI/2), East (0), South (PI/2), West (PI)
+        const baseAngles = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
+        addVertex(0, 0, 0);
+        baseAngles.forEach((ang) => {
+          recurseY(0, 0, ang, state.yLen, 0);
+        });
+
+        return { segments, vertices: Array.from(vertexMap.values()) };
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. DOM REFERENCES & CANVAS SETUP
+      // -----------------------------------------------------------------------
+      const canvas = document.getElementById('overlayCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const zoomReadout = document.getElementById('zoomReadout');
+      const hudCoord = document.getElementById('hudCoord');
+      const hudVal = document.getElementById('hudVal');
+      const hudPrimeBadge = document.getElementById('hudPrimeBadge');
+      const hudVertexStatus = document.getElementById('hudVertexStatus');
+
+      const statHHits = document.getElementById('statHHits');
+      const statHTotal = document.getElementById('statHTotal');
+      const statHRatio = document.getElementById('statHRatio');
+      const statYHits = document.getElementById('statYHits');
+      const statYTotal = document.getElementById('statYTotal');
+      const statYRatio = document.getElementById('statYRatio');
+      const statBaselineDensity = document.getElementById('statBaselineDensity');
+      const verdictText = document.getElementById('verdictText');
+
+      // Cache latest computed alignment data for HUD hover inspection
+      let latestAlignment = {
+        hGridHits: new Set(), // "gx,gy"
+        yGridHits: new Set(), // "gx,gy"
+        primeHitCoords: [],   // [{ gx, gy, val, isH, isY }]
+      };
+
+      // -----------------------------------------------------------------------
+      // 6. MAIN RENDER & ALIGNMENT ANALYSIS ENGINE
+      // -----------------------------------------------------------------------
+      function render() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.max(10, Math.floor(rect.width * dpr));
+        const h = Math.max(10, Math.floor(rect.height * dpr));
+
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const viewW = rect.width;
+        const viewH = rect.height;
+
+        // Clear pitch-black void background
+        ctx.fillStyle = '#05070a';
+        ctx.fillRect(0, 0, viewW, viewH);
+
+        // Build fractal structures & Ulam prime map
+        const hTree = buildCardinalHTree();
+        const yTree = buildCardinalYTree();
+
+        const step = state.ulamCellSize;
+        const R = state.ulamRadius;
+
+        // Build Ulam grid map & compute baseline prime density
+        const ulamCells = [];
+        const primeSet = new Set(); // "gx,gy"
+        let totalCells = 0;
+        let totalPrimes = 0;
+
+        for (let gy = -R; gy <= R; gy++) {
+          for (let gx = -R; gx <= R; gx++) {
+            const val = getUlamValueAt(gx, gy, state.ulamStart);
+            const prime = isPrime(val);
+            totalCells++;
+            if (prime) {
+              totalPrimes++;
+              primeSet.add(`${gx},${gy}`);
+            }
+            ulamCells.push({ gx, gy, val, prime });
+          }
+        }
+
+        // Evaluate exact vertex-to-cell intersections (tolerance = 22% of cell step)
+        const snapTolerance = 0.22;
+        const hGridHits = new Set();
+        const yGridHits = new Set();
+        const primeHitMap = new Map();
+
+        let hInBoundsCount = 0;
+        let hPrimeHitCount = 0;
+        const checkedHCells = new Set();
+
+        hTree.vertices.forEach((v) => {
+          const gx = Math.round(v.x / step);
+          const gy = Math.round(v.y / step);
+          const dist = Math.hypot(v.x / step - gx, v.y / step - gy);
+          if (dist <= snapTolerance && Math.abs(gx) <= R && Math.abs(gy) <= R) {
+            const key = `${gx},${gy}`;
+            hGridHits.add(key);
+            if (!checkedHCells.has(key)) {
+              checkedHCells.add(key);
+              hInBoundsCount++;
+              if (primeSet.has(key)) {
+                hPrimeHitCount++;
+                primeHitMap.set(key, {
+                  gx,
+                  gy,
+                  val: getUlamValueAt(gx, gy, state.ulamStart),
+                  isH: true,
+                  isY: false,
+                });
+              }
+            }
+          }
+        });
+
+        let yInBoundsCount = 0;
+        let yPrimeHitCount = 0;
+        const checkedYCells = new Set();
+
+        yTree.vertices.forEach((v) => {
+          const gx = Math.round(v.x / step);
+          const gy = Math.round(v.y / step);
+          const dist = Math.hypot(v.x / step - gx, v.y / step - gy);
+          if (dist <= snapTolerance && Math.abs(gx) <= R && Math.abs(gy) <= R) {
+            const key = `${gx},${gy}`;
+            yGridHits.add(key);
+            if (!checkedYCells.has(key)) {
+              checkedYCells.add(key);
+              yInBoundsCount++;
+              if (primeSet.has(key)) {
+                yPrimeHitCount++;
+                if (primeHitMap.has(key)) {
+                  primeHitMap.get(key).isY = true;
+                } else {
+                  primeHitMap.set(key, {
+                    gx,
+                    gy,
+                    val: getUlamValueAt(gx, gy, state.ulamStart),
+                    isH: false,
+                    isY: true,
+                  });
+                }
+              }
+            }
+          }
+        });
+
+        latestAlignment = {
+          hGridHits,
+          yGridHits,
+          primeHitCoords: Array.from(primeHitMap.values()),
+        };
+
+        // Update Telemetry DOM Stats
+        const baselinePct = totalCells > 0 ? (totalPrimes / totalCells) * 100 : 0;
+        const hPct = hInBoundsCount > 0 ? (hPrimeHitCount / hInBoundsCount) * 100 : 0;
+        const yPct = yInBoundsCount > 0 ? (yPrimeHitCount / yInBoundsCount) * 100 : 0;
+
+        statHHits.textContent = hPrimeHitCount;
+        statHTotal.textContent = hInBoundsCount;
+        statHRatio.textContent = `${hPct.toFixed(1)}% hit rate`;
+        statHRatio.className =
+          hInBoundsCount > 0 && hPct > baselinePct + 3
+            ? 'text-[11px] text-emerald-400 font-semibold mt-0.5'
+            : 'text-[11px] text-cyan-300 mt-0.5';
+
+        statYHits.textContent = yPrimeHitCount;
+        statYTotal.textContent = yInBoundsCount;
+        statYRatio.textContent = `${yPct.toFixed(1)}% hit rate`;
+
+        statBaselineDensity.textContent = `${baselinePct.toFixed(1)}% (${totalPrimes}/${totalCells})`;
+
+        if (hInBoundsCount === 0) {
+          verdictText.innerHTML = `<span class="text-amber-300">No H-tree vertices snapped to grid nodes.</span> Click <strong>"Snap H-Tree to Grid"</strong> above to lock vertex coordinates onto exact integer lattice points.`;
+        } else {
+          const diff = hPct - baselinePct;
+          if (diff > 5) {
+            verdictText.innerHTML = `<span class="text-emerald-400 font-semibold">+${diff.toFixed(1)}% above baseline!</span> The H-tree vertices are phase-locking onto prime-rich parity lanes (odd-step symmetry avoids even composite rows/columns).`;
+          } else if (diff < -5) {
+            verdictText.innerHTML = `<span class="text-rose-400 font-semibold">${diff.toFixed(1)}% vs baseline:</span> Current step size lands H-tree endpoints on even lattice coordinates (where composite numbers cluster).`;
+          } else {
+            verdictText.innerHTML = `<span class="text-sky-300 font-semibold">Near baseline (${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%):</span> Vertices align cleanly with the square lattice, sampling primes at roughly the grid's natural prime density.`;
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // APPLY CAMERA TRANSFORM (CENTERED AT 0,0)
+        // ---------------------------------------------------------------------
+        ctx.save();
+        ctx.translate(viewW / 2 + state.camX, viewH / 2 + state.camY);
+        ctx.scale(state.zoom, state.zoom);
+
+        // =====================================================================
+        // RENDER GHOST LAYER 4: COORDINATE GRID & ORIGIN CROSSHAIRS
+        // =====================================================================
+        if (state.l4Enabled && state.l4Opacity > 0) {
+          ctx.save();
+          ctx.globalAlpha = state.l4Opacity;
+
+          const extent = R * step;
+
+          // Subtle integer cell lattice lines
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 0.75 / state.zoom;
+          ctx.beginPath();
+          for (let i = -R; i <= R; i++) {
+            const pos = i * step;
+            ctx.moveTo(pos, -extent);
+            ctx.lineTo(pos, extent);
+            ctx.moveTo(-extent, pos);
+            ctx.lineTo(extent, pos);
+          }
+          ctx.stroke();
+
+          // Concentric square spiral shells (every 4th ring)
+          if (state.gridShowRings) {
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+            ctx.lineWidth = 1 / state.zoom;
+            for (let k = 2; k <= R; k += 4) {
+              const s = k * step;
+              ctx.strokeRect(-s, -s, s * 2, s * 2);
+            }
+          }
+
+          // Diagonal axes y = ±x (where quadratic prime streaks run!)
+          if (state.gridShowDiagonals) {
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+            ctx.setLineDash([4 / state.zoom, 4 / state.zoom]);
+            ctx.lineWidth = 1.1 / state.zoom;
+            ctx.beginPath();
+            ctx.moveTo(-extent, -extent);
+            ctx.lineTo(extent, extent);
+            ctx.moveTo(-extent, extent);
+            ctx.lineTo(extent, -extent);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Primary N/E/S/W Origin Axes (0,0)
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+          ctx.lineWidth = 1.4 / state.zoom;
+          ctx.beginPath();
+          ctx.moveTo(-extent - step, 0);
+          ctx.lineTo(extent + step, 0);
+          ctx.moveTo(0, -extent - step);
+          ctx.lineTo(0, extent + step);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // RENDER GHOST LAYER 3: ULAM SPIRAL (PRIMES LIT UP)
+        // =====================================================================
+        if (state.l3Enabled && state.l3Opacity > 0) {
+          ctx.save();
+          ctx.globalAlpha = state.l3Opacity;
+
+          const primeRadius = Math.max(1.8, Math.min(step * 0.24, 5.2));
+          const compRadius = Math.max(0.8, Math.min(step * 0.09, 1.8));
+
+          // Pass 1: Composite dots (if enabled)
+          if (state.ulamShowComposites) {
+            ctx.fillStyle = '#334155';
+            ctx.beginPath();
+            for (let i = 0; i < ulamCells.length; i++) {
+              const cell = ulamCells[i];
+              if (!cell.prime) {
+                const cx = cell.gx * step;
+                const cy = cell.gy * step;
+                ctx.moveTo(cx + compRadius, cy);
+                ctx.arc(cx, cy, compRadius, 0, Math.PI * 2);
+              }
+            }
+            ctx.fill();
+          }
+
+          // Pass 2: Glowing Prime Stars
+          for (let i = 0; i < ulamCells.length; i++) {
+            const cell = ulamCells[i];
+            if (cell.prime) {
+              const cx = cell.gx * step;
+              const cy = cell.gy * step;
+
+              // Outer halo
+              ctx.fillStyle = 'rgba(251, 191, 36, 0.22)';
+              ctx.beginPath();
+              ctx.arc(cx, cy, primeRadius * 1.9, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Bright star core
+              ctx.fillStyle = '#fef08a';
+              ctx.beginPath();
+              ctx.arc(cx, cy, primeRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          // Origin marker (0,0)
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.5 / state.zoom;
+          ctx.strokeRect(-step * 0.42, -step * 0.42, step * 0.84, step * 0.84);
+
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // RENDER GHOST LAYER 2: 4-CARDINAL Y-TREE (N / E / S / W)
+        // =====================================================================
+        if (state.l2Enabled && state.l2Opacity > 0) {
+          ctx.save();
+          ctx.globalAlpha = state.l2Opacity;
+          ctx.lineCap = 'round';
+
+          // Group segments by depth for fast batched strokes with neon glow
+          const byDepth = new Map();
+          yTree.segments.forEach((seg) => {
+            if (!byDepth.has(seg.depth)) byDepth.set(seg.depth, []);
+            byDepth.get(seg.depth).push(seg);
+          });
+
+          byDepth.forEach((segs, depth) => {
+            const color = getDepthColor((depth + 5) % DEPTH_PALETTE.length);
+            ctx.strokeStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = Math.max(2, 8 - depth);
+            ctx.lineWidth = Math.max(0.8, (2.6 - depth * 0.25) / Math.sqrt(state.zoom));
+
+            ctx.beginPath();
+            for (let i = 0; i < segs.length; i++) {
+              const s = segs[i];
+              ctx.moveTo(s.x1, s.y1);
+              ctx.lineTo(s.x2, s.y2);
+            }
+            ctx.stroke();
+          });
+
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // RENDER GHOST LAYER 1: 4-CARDINAL H-TREE (N / E / S / W)
+        // =====================================================================
+        if (state.l1Enabled && state.l1Opacity > 0) {
+          ctx.save();
+          ctx.globalAlpha = state.l1Opacity;
+          ctx.lineCap = 'round';
+
+          const byDepth = new Map();
+          hTree.segments.forEach((seg) => {
+            if (!byDepth.has(seg.depth)) byDepth.set(seg.depth, []);
+            byDepth.get(seg.depth).push(seg);
+          });
+
+          byDepth.forEach((segs, depth) => {
+            const color = getDepthColor(depth);
+            ctx.strokeStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = Math.max(3, 10 - depth);
+            ctx.lineWidth = Math.max(0.9, (3.0 - depth * 0.3) / Math.sqrt(state.zoom));
+
+            ctx.beginPath();
+            for (let i = 0; i < segs.length; i++) {
+              const s = segs[i];
+              ctx.moveTo(s.x1, s.y1);
+              ctx.lineTo(s.x2, s.y2);
+            }
+            ctx.stroke();
+          });
+
+          // Render crisp H-Tree vertex endpoint dots if toggled
+          if (state.hShowNodes) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#22d3ee';
+            const dotR = Math.max(1.3, 2.4 / Math.sqrt(state.zoom));
+            ctx.beginPath();
+            for (let i = 0; i < hTree.vertices.length; i++) {
+              const v = hTree.vertices[i];
+              ctx.moveTo(v.x + dotR, v.y);
+              ctx.arc(v.x, v.y, dotR, 0, Math.PI * 2);
+            }
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // RENDER ALIGNMENT HIT RINGS (WHERE FRACTAL VERTICES LOCK ONTO PRIMES)
+        // =====================================================================
+        if (state.highlightHits && latestAlignment.primeHitCoords.length > 0) {
+          ctx.save();
+          const ringR = Math.max(4.5, step * 0.44);
+          ctx.lineWidth = 1.75 / Math.sqrt(state.zoom);
+
+          latestAlignment.primeHitCoords.forEach((hit) => {
+            const cx = hit.gx * step;
+            const cy = hit.gy * step;
+
+            ctx.strokeStyle = hit.isH && hit.isY ? '#ffffff' : hit.isH ? '#10b981' : '#e879f9';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
+
+        // =====================================================================
+        // RENDER HOVER RETICLE ON INSPECTED GRID CELL
+        // =====================================================================
+        if (state.hoveredGridCoord) {
+          const { gx, gy } = state.hoveredGridCoord;
+          const cx = gx * step;
+          const cy = gy * step;
+          ctx.save();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5 / state.zoom;
+          ctx.strokeRect(cx - step * 0.48, cy - step * 0.48, step * 0.96, step * 0.96);
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. HUD CELL INSPECTOR UPDATE
+      // -----------------------------------------------------------------------
+      function updateHudForCell(gx, gy) {
+        const val = getUlamValueAt(gx, gy, state.ulamStart);
+        const prime = isPrime(val);
+        const key = `${gx},${gy}`;
+
+        hudCoord.textContent = `(${gx}, ${-gy})`; // Display standard math +Y North
+        hudVal.textContent = val.toLocaleString();
+
+        if (val === 1) {
+          hudPrimeBadge.textContent = 'UNIT (1)';
+          hudPrimeBadge.className = 'ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300';
+        } else if (prime) {
+          hudPrimeBadge.textContent = 'PRIME ★';
+          hudPrimeBadge.className = 'ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-bold';
+        } else {
+          hudPrimeBadge.textContent = getFactorization(val);
+          hudPrimeBadge.className = 'ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400';
+        }
+
+        const isH = latestAlignment.hGridHits.has(key);
+        const isY = latestAlignment.yGridHits.has(key);
+        if (gx === 0 && gy === 0) {
+          hudVertexStatus.textContent = 'Shared Origin (0,0)';
+          hudVertexStatus.className = 'text-cyan-300';
+        } else if (isH && isY) {
+          hudVertexStatus.textContent = prime ? 'H + Y PRIME LOCK!' : 'H + Y Vertex';
+          hudVertexStatus.className = prime ? 'text-emerald-400 font-bold' : 'text-purple-300';
+        } else if (isH) {
+          hudVertexStatus.textContent = prime ? 'H-TREE PRIME HIT!' : 'H-Tree Vertex';
+          hudVertexStatus.className = prime ? 'text-emerald-400 font-bold' : 'text-cyan-300';
+        } else if (isY) {
+          hudVertexStatus.textContent = prime ? 'Y-TREE PRIME HIT!' : 'Y-Tree Vertex';
+          hudVertexStatus.className = prime ? 'text-emerald-400 font-bold' : 'text-fuchsia-300';
+        } else {
+          hudVertexStatus.textContent = 'Open Lattice Cell';
+          hudVertexStatus.className = 'text-slate-500';
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 8. PAN, ZOOM & POINTER INTERACTION
+      // -----------------------------------------------------------------------
+      function screenToWorld(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = clientX - rect.left;
+        const sy = clientY - rect.top;
+        const wx = (sx - rect.width / 2 - state.camX) / state.zoom;
+        const wy = (sy - rect.height / 2 - state.camY) / state.zoom;
+        return { wx, wy };
+      }
+
+      canvas.addEventListener('mousedown', (e) => {
+        state.isDragging = true;
+        state.dragStartX = e.clientX - state.camX;
+        state.dragStartY = e.clientY - state.camY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (state.isDragging) {
+          state.camX = e.clientX - state.dragStartX;
+          state.camY = e.clientY - state.dragStartY;
+          render();
+          return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        if (
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom
+        ) {
+          const { wx, wy } = screenToWorld(e.clientX, e.clientY);
+          const gx = Math.round(wx / state.ulamCellSize);
+          const gy = Math.round(wy / state.ulamCellSize);
+
+          if (Math.abs(gx) <= state.ulamRadius && Math.abs(gy) <= state.ulamRadius) {
+            state.hoveredGridCoord = { gx, gy };
+            updateHudForCell(gx, gy);
+          } else {
+            state.hoveredGridCoord = null;
+          }
+          render();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.isDragging = false;
+      });
+
+      // Touch pan support for mobile
+      let lastTouchDist = null;
+      canvas.addEventListener(
+        'touchstart',
+        (e) => {
+          if (e.touches.length === 1) {
+            state.isDragging = true;
+            state.dragStartX = e.touches[0].clientX - state.camX;
+            state.dragStartY = e.touches[0].clientY - state.camY;
+          } else if (e.touches.length === 2) {
+            state.isDragging = false;
+            lastTouchDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+          }
+        },
+        { passive: true }
+      );
+
+      canvas.addEventListener(
+        'touchmove',
+        (e) => {
+          if (e.touches.length === 1 && state.isDragging) {
+            state.camX = e.touches[0].clientX - state.dragStartX;
+            state.camY = e.touches[0].clientY - state.dragStartY;
+            render();
+          } else if (e.touches.length === 2 && lastTouchDist) {
+            const newDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            const scaleFactor = newDist / lastTouchDist;
+            setZoom(state.zoom * scaleFactor);
+            lastTouchDist = newDist;
+          }
+        },
+        { passive: true }
+      );
+
+      canvas.addEventListener('touchend', () => {
+        state.isDragging = false;
+        lastTouchDist = null;
+      });
+
+      function setZoom(newZoom) {
+        state.zoom = Math.max(0.25, Math.min(6.0, newZoom));
+        zoomReadout.textContent = `${Math.round(state.zoom * 100)}%`;
+        render();
+      }
+
+      canvas.addEventListener(
+        'wheel',
+        (e) => {
+          e.preventDefault();
+          const factor = e.deltaY < 0 ? 1.12 : 0.89;
+          setZoom(state.zoom * factor);
+        },
+        { passive: false }
+      );
+
+      document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(state.zoom * 1.25));
+      document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(state.zoom * 0.8));
+      document.getElementById('resetCamBtn').addEventListener('click', () => {
+        state.camX = 0;
+        state.camY = 0;
+        setZoom(1.0);
+      });
+
+      // -----------------------------------------------------------------------
+      // 9. SNAP H-TREE TO EXACT POWER-OF-2 MULTIPLE OF ULAM GRID STEP
+      // -----------------------------------------------------------------------
+      document.getElementById('snapGridBtn').addEventListener('click', () => {
+        // Choose 8 * ulamCellSize (clamped to slider range) and set decay ratio = 0.50
+        // so that lengths are 8Δ, 4Δ, 2Δ, 1Δ — landing every junction dead-center on grid coordinates!
+        const targetLen = Math.min(256, Math.max(32, state.ulamCellSize * 8));
+        state.hLen = targetLen;
+        state.hRatio = 0.50;
+
+        const hLenInput = document.getElementById('hLen');
+        const hRatioInput = document.getElementById('hRatio');
+        hLenInput.value = targetLen;
+        hRatioInput.value = 0.50;
+        document.getElementById('hLenVal').textContent = `${targetLen}px`;
+        document.getElementById('hRatioVal').textContent = '0.50';
+
+        render();
+      });
+
+      // -----------------------------------------------------------------------
+      // 10. UI CONTROL BINDINGS
+      // -----------------------------------------------------------------------
+      function bindRange(id, stateKey, valId, formatter = (v) => v) {
+        const el = document.getElementById(id);
+        const label = document.getElementById(valId);
+        el.addEventListener('input', () => {
+          const num = parseFloat(el.value);
+          state[stateKey] = num;
+          if (label) label.textContent = formatter(num);
+          render();
+        });
+      }
+
+      function bindCheckbox(id, stateKey) {
+        const el = document.getElementById(id);
+        el.addEventListener('change', () => {
+          state[stateKey] = el.checked;
+          render();
+        });
+      }
+
+      // Layer 1 bindings
+      bindCheckbox('layer1Toggle', 'l1Enabled');
+      const l1Op = document.getElementById('layer1Opacity');
+      l1Op.addEventListener('input', () => {
+        state.l1Opacity = parseInt(l1Op.value, 10) / 100;
+        document.getElementById('layer1OpacityVal').textContent = `${l1Op.value}%`;
+        render();
+      });
+      bindRange('hDepth', 'hDepth', 'hDepthVal', (v) => v);
+      bindRange('hLen', 'hLen', 'hLenVal', (v) => `${v}px`);
+      bindRange('hRatio', 'hRatio', 'hRatioVal', (v) => v.toFixed(2));
+      bindCheckbox('hShowNodes', 'hShowNodes');
+
+      // Layer 2 bindings
+      bindCheckbox('layer2Toggle', 'l2Enabled');
+      const l2Op = document.getElementById('layer2Opacity');
+      l2Op.addEventListener('input', () => {
+        state.l2Opacity = parseInt(l2Op.value, 10) / 100;
+        document.getElementById('layer2OpacityVal').textContent = `${l2Op.value}%`;
+        render();
+      });
+      bindRange('yDepth', 'yDepth', 'yDepthVal', (v) => v);
+      bindRange('yAngle', 'yAngle', 'yAngleVal', (v) => `${v}°`);
+      bindRange('yLen', 'yLen', 'yLenVal', (v) => `${v}px`);
+      bindRange('yRatio', 'yRatio', 'yRatioVal', (v) => v.toFixed(2));
+
+      // Layer 3 bindings
+      bindCheckbox('layer3Toggle', 'l3Enabled');
+      const l3Op = document.getElementById('layer3Opacity');
+      l3Op.addEventListener('input', () => {
+        state.l3Opacity = parseInt(l3Op.value, 10) / 100;
+        document.getElementById('layer3OpacityVal').textContent = `${l3Op.value}%`;
+        render();
+      });
+      bindRange('ulamCellSize', 'ulamCellSize', 'ulamCellSizeVal', (v) => `${v}px`);
+      bindRange('ulamRadius', 'ulamRadius', 'ulamRadiusVal', (v) => `${v * 2 + 1}×${v * 2 + 1}`);
+      bindCheckbox('ulamShowComposites', 'ulamShowComposites');
+
+      const ulamStartInput = document.getElementById('ulamStartInput');
+      const ulamStart1Btn = document.getElementById('ulamStart1Btn');
+      const ulamStart41Btn = document.getElementById('ulamStart41Btn');
+
+      function setUlamStart(val) {
+        const clean = Math.max(1, Math.floor(val || 1));
+        state.ulamStart = clean;
+        ulamStartInput.value = clean;
+        ulamStart1Btn.className =
+          clean === 1
+            ? 'px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px]'
+            : 'px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[9px]';
+        ulamStart41Btn.className =
+          clean === 41
+            ? 'px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px]'
+            : 'px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[9px]';
+        updateHudForCell(0, 0);
+        render();
+      }
+
+      ulamStartInput.addEventListener('input', () => setUlamStart(parseInt(ulamStartInput.value, 10)));
+      ulamStart1Btn.addEventListener('click', () => setUlamStart(1));
+      ulamStart41Btn.addEventListener('click', () => setUlamStart(41));
+
+      // Layer 4 & Analyzer bindings
+      bindCheckbox('layer4Toggle', 'l4Enabled');
+      const l4Op = document.getElementById('layer4Opacity');
+      l4Op.addEventListener('input', () => {
+        state.l4Opacity = parseInt(l4Op.value, 10) / 100;
+        document.getElementById('layer4OpacityVal').textContent = `${l4Op.value}%`;
+        render();
+      });
+      bindCheckbox('gridShowDiagonals', 'gridShowDiagonals');
+      bindCheckbox('gridShowRings', 'gridShowRings');
+      bindCheckbox('highlightHitsToggle', 'highlightHits');
+
+      // Initial render & resize hook
+      window.addEventListener('resize', render);
+      window.addEventListener('load', () => {
+        updateHudForCell(0, 0);
+        render();
+      });
+      updateHudForCell(0, 0);
+      render();
+    })();
+  </script>
+</body>
+</html>

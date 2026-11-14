@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroStream - Live Flight & ATC Nexus</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --radar-green: #00ff66;
+            --text-main: #c9d1d9;
+            --accent: #58a6ff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle, #1f2937 10%, #0d1117 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 380px;
+            background-color: var(--panel-bg);
+            border-left: 1px solid #30363d;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .data-group {
+            margin-bottom: 15px;
+            background: #21262d;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .data-label {
+            font-size: 0.75rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .data-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        .route-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin: 5px 0;
+        }
+
+        .audio-box {
+            margin-top: auto;
+            background: #1f242c;
+            border: 1px solid var(--radar-green);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .placeholder-text {
+            color: #8b949e;
+            font-style: italic;
+            text-align: center;
+            margin-auto: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- RADAR CANVAS -->
+        <div id="canvas-container">
+            <canvas id="radarCanvas"></canvas>
+        </div>
+
+        <!-- SIDEBAR INFO PANEL -->
+        <div id="sidebar">
+            <h2>Flight Nexus Panel</h2>
+            <div id="panel-content" class="placeholder-text" style="margin: auto 0;">
+                Click any active target on the radar matrix to pipe telemetry and hook live ATC streams.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('radarCanvas');
+        const ctx = canvas.getContext('2d');
+        const panelContent = document.getElementById('panel-content');
+
+        // Resize Canvas
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Architectural Note for Hobbyists:
+        // In production, swap this static mock array with a live polling loop 
+        // fetching from OpenSky Network API (ADS-B data) or FlightRadar24 endpoints.
+        // Match the airport coordinates to find the nearest LiveATC stream ID.
+        let flights = [
+            { id: 'N722BD', callsign: 'UPR722', alt: 35000, speed: 410, heading: 135, from: 'AUS', to: 'MYER', x: 200, y: 150, atcUrl: 'https://liveatc.net' },
+            { id: 'AAL442', callsign: 'AA442', alt: 12000, speed: 250, heading: 45, from: 'MIA', to: 'ORD', x: 400, y: 500, atcUrl: 'https://liveatc.net' },
+            { id: 'DL789', callsign: 'DAL789', alt: 31000, speed: 465, heading: 270, from: 'PBI', to: 'ATL', x: 600, y: 300, atcUrl: 'https://liveatc.net' }
+        ];
+
+        let selectedFlight = null;
+
+        // Interactive Click Mapping
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            let clickedAny = false;
+
+            flights.forEach(f => {
+                const dist = Math.hypot(f.x - clickX, f.y - clickY);
+                if (dist < 15) { // Hitbox radius
+                    selectedFlight = f;
+                    updateSidebar(f);
+                    clickedAny = true;
+                }
+            });
+
+            if (!clickedAny) {
+                selectedFlight = null;
+                panelContent.innerHTML = `<div class="placeholder-text">Click any active target on the radar matrix to pipe telemetry and hook live ATC streams.</div>`;
+            }
+        });
+
+        function updateSidebar(f) {
+            panelContent.innerHTML = `
+                <div class="data-group">
+                    <div class="data-label">Callsign / Tail No.</div>
+                    <div class="data-value" style="color: #fff; font-size: 1.4rem;">${f.callsign} <span style="font-size: 0.9rem; color: #8b949e;">(${f.id})</span></div>
+                </div>
+                <div class="data-group">
+                    <div class="data-label">Route Vector</div>
+                    <div class="route-display">
+                        <span>${f.from}</span>
+                        <span style="font-size: 1rem; color: #30363d;">✈——————►</span>
+                        <span>${f.to}</span>
+                    </div>
+                </div>
+                <div class="data-group">
+                    <div class="data-label">Altitude</div>
+                    <div class="data-value">${f.alt.toLocaleString()} FT</div>
+                </div>
+                <div class="data-group">
+                    <div class="data-label">Ground Speed</div>
+                    <div class="data-value">${f.speed} KTS</div>
+                </div>
+                <div class="data-group">
+                    <div class="data-label">Heading</div>
+                    <div class="data-value">${f.heading}°</div>
+                </div>
+                <div class="audio-box">
+                    <div class="data-label" style="color: #00ff66; font-weight: bold;">🔴 LIVE ATC STREAM HOT-WIRED</div>
+                    <!-- Audio element mounts instantly upon selection -->
+                    <audio controls autoplay src="${f.atcUrl}">
+                        Your browser doesn't support audio streaming.
+                    </audio>
+                    <p style="font-size: 0.7rem; color: #8b949e; margin-top: 8px; margin-bottom: 0;">
+                        Hooked into live air traffic frequency. Tap play if stream is paused.
+                    </p>
+                </div>
+            `;
+        }
+
+        // Vector Math Processing Engine
+        function updatePhysics() {
+            flights.forEach(f => {
+                // Convert heading angle to radians for canvas cartesian grid
+                const rad = (f.heading - 90) * Math.PI / 180;
+                const velocity = f.speed * 0.002; // Scaled down for screen updates
+                
+                f.x += Math.cos(rad) * velocity;
+                f.y += Math.sin(rad) * velocity;
+
+                // Screen Boundary Wrap-around Loop
+                if (f.x < -20) f.x = canvas.width + 20;
+                if (f.x > canvas.width + 20) f.x = -20;
+                if (f.y < -20) f.y = canvas.height + 20;
+                if (f.y > canvas.height + 20) f.y = -20;
+            });
+        }
+
+        // Canvas Rendering System Loop
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw concentric sweep rings (Radar Atmosphere)
+            ctx.strokeStyle = 'rgba(0, 255, 102, 0.05)';
+            ctx.lineWidth = 1;
+            const center = { x: canvas.width / 2, y: canvas.height / 2 };
+            for(let r = 100; r < Math.max(canvas.width, canvas.height); r += 100) {
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw Flights
+            flights.forEach(f => {
+                const isSelected = selectedFlight && selectedFlight.id === f.id;
+
+                // Target Core Dot
+                ctx.fillStyle = isSelected ? '#fff' : 'var(--radar-green)';
+                ctx.shadowBlur = isSelected ? 15 : 5;
+                ctx.shadowColor = 'var(--radar-green)';
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow
+
+                // Vector Ring Bounds
+                ctx.strokeStyle = isSelected ? '#fff' : 'rgba(0, 255, 102, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, 12, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Telemetry Tag Fragment
+                ctx.fillStyle = '#8b949e';
+                ctx.font = '10px monospace';
+				ctx.fillText(${f.callsign}, f.x + 18, f.y - 4);
+				ctx.fillText(FL${f.alt/100}, f.x + 18, f.y + 8);
+				
+				// Flight Path Direction Vector Line
+				const rad = (f.heading - 90) * Math.PI / 180;
+				ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
+				ctx.beginPath();
+				ctx.moveTo(f.x, f.y);
+				ctx.lineTo(f.x + Math.cos(rad) * 20, f.y + Math.sin(rad) * 20);
+				ctx.stroke();
+				});
+			}
+			
+		// App Loop Execution
+		function mainLoop() {
+		updatePhysics();
+		render();
+		requestAnimationFrame(mainLoop);
+		}
+		
+	mainLoop();
+
+</script>
+</body>
+</html>

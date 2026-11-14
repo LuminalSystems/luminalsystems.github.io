@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LUMINAL CORVID ECONOMICS // AVIAN FORAGING SANDBOX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#0B0F19',
+            panel: '#111827',
+            borderSlate: '#1E293B',
+            emeraldSignal: '#10B981',
+            cyanSignal: '#38BDF8',
+            amberSignal: '#F59E0B',
+            crimsonSignal: '#EF4444',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background-color: #0B0F19;
+      color: #E2E8F0;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    /* Custom subtle scrollbar for sidebar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B0F19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 0.4; }
+    }
+    .animate-pulse-slow {
+      animation: pulseGlow 2.4s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col lg:flex-row bg-[#0B0F19] text-slate-200 overflow-hidden">
+
+  <!-- LEFT / MAIN AREA (72% on desktop): Interactive Tactical Foraging Canvas -->
+  <div id="canvas-wrapper" class="relative w-full lg:w-[72%] h-[58vh] lg:h-full border-b lg:border-b-0 lg:border-r border-slate-800 bg-[#0B0F19] overflow-hidden">
+    <canvas id="simCanvas" class="block w-full h-full cursor-crosshair"></canvas>
+
+    <!-- Top-Left Header Overlay -->
+    <div class="absolute top-3 left-3 pointer-events-none flex flex-col gap-1.5 max-w-[90%]">
+      <div class="inline-flex items-center gap-2.5 bg-[#0B0F19]/90 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg shadow-lg">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="font-mono text-[11px] sm:text-xs font-semibold tracking-wider text-slate-100 uppercase">
+          LUMINAL CORVID ECONOMICS <span class="text-slate-500">//</span> AVIAN FORAGING SANDBOX
+        </span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 font-mono text-[10px] text-slate-400">
+        <span class="bg-[#0B0F19]/85 border border-slate-800/90 px-2 py-0.5 rounded flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 bg-[#10B981] rotate-45"></span> CROW (OPERANT AGENT)
+        </span>
+        <span class="bg-[#0B0F19]/85 border border-slate-800/90 px-2 py-0.5 rounded flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 bg-[#E2E8F0] rotate-45"></span> PIGEON (FREELOADER)
+        </span>
+        <span class="bg-[#0B0F19]/85 border border-slate-800/90 px-2 py-0.5 rounded flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 bg-[#EF4444] rotate-45"></span> HAWK (APEX DISRUPTOR)
+        </span>
+      </div>
+    </div>
+
+    <!-- Top-Right Legend / Hint Pill -->
+    <div class="hidden sm:flex absolute top-3 right-3 pointer-events-none flex-col items-end gap-1.5 font-mono text-[10px]">
+      <div class="bg-[#0B0F19]/85 backdrop-blur border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400">
+        CLICK PORCH OR PRESS <span class="text-cyan-400 font-semibold">[SPACE]</span> TO DISPENSE PEANUTS
+      </div>
+      <div id="hawk-warning-banner" class="hidden bg-red-950/90 border border-red-500/70 text-red-200 px-3 py-1 rounded-lg font-semibold tracking-wide animate-pulse">
+        ⚠ APEX HAWK RADAR CONTACT IN SECTOR
+      </div>
+      <div id="audit-freeze-banner" class="hidden bg-amber-950/95 border border-amber-500 text-amber-200 px-3 py-1 rounded-lg font-semibold tracking-wide">
+        ⚖ IRS SCHEDULE C AUDIT FREEZE ACTIVE (<span id="audit-timer">0</span>s)
+      </div>
+    </div>
+
+    <!-- Bottom-Left Tactical Hover / Selected Bird Inspector -->
+    <div id="bird-inspector" class="hidden absolute bottom-3 left-3 pointer-events-none bg-[#0B0F19]/95 backdrop-blur-md border border-cyan-500/40 rounded-lg p-3 shadow-xl font-mono text-xs min-w-[230px]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+        <span id="insp-id" class="font-bold text-cyan-400">CROW-01</span>
+        <span id="insp-state" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">FORAGING</span>
+      </div>
+      <div class="space-y-1 text-[11px]">
+        <div class="flex justify-between">
+          <span class="text-slate-400">SPECIES:</span>
+          <span id="insp-species" class="text-slate-200">CORVUS BRACHYRHYNCHOS</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">CONDITIONING:</span>
+          <span id="insp-cond" class="text-emerald-400 font-semibold">12%</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">TRUST LEVEL:</span>
+          <span id="insp-trust" class="text-cyan-300">18%</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">PAYLOAD:</span>
+          <span id="insp-cargo" class="text-amber-300">NONE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bankruptcy / Game Over Overlay Modal (In-Canvas) -->
+    <div id="bankruptcy-modal" class="hidden absolute inset-0 bg-[#0B0F19]/85 backdrop-blur-sm flex items-center justify-center p-4 z-30">
+      <div class="bg-[#111827] border border-red-500/50 rounded-xl p-6 max-w-md w-full shadow-2xl text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-500/15 border border-red-500/40 text-red-400 font-mono text-xl mb-3">
+          $0
+        </div>
+        <h2 class="font-mono text-lg font-bold text-white tracking-wide uppercase mb-1">INSOLVENCY EVENT // SEED CAPITAL DEPLETED</h2>
+        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+          Your starting capital ran dry before the local crow murder achieved positive currency conditioning. Freeloader pigeons and unconditioned junk runs ate your operating runway.
+        </p>
+        <div class="bg-[#0B0F19] border border-slate-800 rounded-lg p-3 mb-5 font-mono text-xs text-left space-y-1">
+          <div class="flex justify-between"><span class="text-slate-400">PEANUTS DISPENSED:</span><span id="fail-peanuts" class="text-slate-200">0</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">GROSS CROW REVENUE:</span><span id="fail-revenue" class="text-emerald-400">$0.00</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">PEAK CONDITIONING:</span><span id="fail-cond" class="text-cyan-400">0%</span></div>
+        </div>
+        <button id="modal-reset-btn" class="w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs rounded-lg transition cursor-pointer">
+          [ REBOOT SIMULATION ($20.00 SEED) ]
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR (28% on desktop): Live Telemetry, Economy & Progression HUD -->
+  <aside class="w-full lg:w-[28%] h-[42vh] lg:h-full bg-[#0E1320] flex flex-col overflow-hidden">
+    
+    <!-- Top Simulation Control Bar -->
+    <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800 bg-[#0B0F19]">
+      <div class="flex items-center gap-1.5">
+        <button id="btn-play-pause" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-[11px] font-medium border border-slate-700 transition cursor-pointer">
+          ❚❚ PAUSE
+        </button>
+        <button id="btn-speed" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono text-[11px] font-semibold border border-slate-700 transition cursor-pointer">
+          1X SPEED
+        </button>
+      </div>
+      <button id="btn-reset" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-red-950/60 text-slate-400 hover:text-red-300 font-mono text-[11px] border border-slate-800 hover:border-red-800/60 transition cursor-pointer">
+        ↺ RESET
+      </button>
+    </div>
+
+    <!-- Scrollable Telemetry & Controls Body -->
+    <div class="flex-1 overflow-y-auto p-3.5 space-y-3.5">
+
+      <!-- 1. CAPITAL & TREASURY PANEL -->
+      <section class="bg-[#111827]/90 border border-slate-800 rounded-xl p-3 shadow-sm">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-mono text-[10px] font-semibold tracking-wider text-slate-400 uppercase">01 // TREASURY & FLOCK TELEMETRY</span>
+          <span id="net-rate-badge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tabular-nums">
+            +$0.00/m
+          </span>
+        </div>
+
+        <div class="flex items-baseline justify-between my-1.5">
+          <div id="treasury-display" class="font-mono text-2xl sm:text-3xl font-bold text-emerald-400 tabular-nums tracking-tight">
+            $20.00
+          </div>
+          <div class="text-right font-mono text-[10px] text-slate-400">
+            <div>GROSS: <span id="gross-display" class="text-slate-200 tabular-nums">$0.00</span></div>
+            <div>EXPENSE: <span id="expense-display" class="text-amber-400 tabular-nums">$0.00</span></div>
+          </div>
+        </div>
+
+        <!-- Telemetry Mini Grid -->
+        <div class="grid grid-cols-3 gap-1.5 my-2.5 font-mono text-center">
+          <div class="bg-[#0B0F19] border border-slate-800/90 rounded-lg p-1.5">
+            <div class="text-[9px] text-slate-500">ACTIVE CROWS</div>
+            <div id="stat-crows" class="text-xs font-bold text-emerald-400 tabular-nums">4</div>
+          </div>
+          <div class="bg-[#0B0F19] border border-slate-800/90 rounded-lg p-1.5">
+            <div class="text-[9px] text-slate-500">AVG CONDITION</div>
+            <div id="stat-cond" class="text-xs font-bold text-cyan-400 tabular-nums">8%</div>
+          </div>
+          <div class="bg-[#0B0F19] border border-slate-800/90 rounded-lg p-1.5">
+            <div class="text-[9px] text-slate-500">PIGEON THREAT</div>
+            <div id="stat-pigeons" class="text-xs font-bold text-slate-300 tabular-nums">2</div>
+          </div>
+        </div>
+
+        <!-- Cup Peanut Supply Bar -->
+        <div class="mb-2.5">
+          <div class="flex justify-between font-mono text-[10px] mb-1">
+            <span class="text-slate-400">TIN CUP PEANUT STOCK</span>
+            <span id="cup-stock-label" class="text-amber-300 font-semibold tabular-nums">4 / 12</span>
+          </div>
+          <div class="w-full h-2 bg-[#0B0F19] rounded-full overflow-hidden border border-slate-800">
+            <div id="cup-stock-bar" class="h-full bg-amber-400 transition-all duration-150" style="width: 33%"></div>
+          </div>
+        </div>
+
+        <!-- Primary Action Button -->
+        <button id="btn-drop-peanuts" class="w-full py-2.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-mono font-bold text-xs tracking-wide shadow-md shadow-emerald-950/50 transition flex items-center justify-between cursor-pointer">
+          <span>[ DROP PEANUTS (+4) ]</span>
+          <span id="peanut-cost-label" class="bg-slate-950/20 px-2 py-0.5 rounded text-[11px]">-$0.50</span>
+        </button>
+
+        <!-- Auto-Feeder Toggle (Hidden until unlocked) -->
+        <div id="auto-feeder-row" class="hidden mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between font-mono text-[11px]">
+          <span class="text-cyan-300">⚙ GRAVITY AUTO-FEEDER</span>
+          <button id="btn-toggle-autofeed" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold cursor-pointer">
+            ENABLED
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. SCHEDULE C & IRS AUDIT RISK METER -->
+      <section class="bg-[#111827]/90 border border-slate-800 rounded-xl p-3 shadow-sm">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-mono text-[10px] font-semibold tracking-wider text-slate-400 uppercase">02 // IRS SCHEDULE C COMPLIANCE</span>
+          <span id="irs-percent-label" class="font-mono text-[11px] font-bold text-amber-400 tabular-nums">0%</span>
+        </div>
+
+        <div class="w-full h-2.5 bg-[#0B0F19] rounded-full overflow-hidden border border-slate-800 mb-2">
+          <div id="irs-bar" class="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 transition-all duration-200" style="width: 0%"></div>
+        </div>
+
+        <div class="flex items-center justify-between font-mono text-[10px] text-slate-400 mb-2">
+          <span>UNLOGGED LOOT: <strong id="unlogged-cash-label" class="text-slate-200 tabular-nums">$0.00</strong></span>
+          <span>DEDUCTIBLE SEED: <strong id="deductible-pool-label" class="text-cyan-400 tabular-nums">$0.00</strong></span>
+        </div>
+
+        <button id="btn-log-deduction" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500/50 text-cyan-300 font-mono text-[11px] font-semibold transition flex items-center justify-between cursor-pointer">
+          <span>[ LOG SCHEDULE C DEDUCTION ]</span>
+          <span id="deduction-effect-label" class="text-[10px] text-slate-400">-0% RISK</span>
+        </button>
+      </section>
+
+      <!-- 3. EMERGENT TECH & CONDITIONING UPGRADES -->
+      <section class="bg-[#111827]/90 border border-slate-800 rounded-xl p-3 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] font-semibold tracking-wider text-slate-400 uppercase">03 // CORVID INFRASTRUCTURE</span>
+          <span id="upgrades-count-label" class="font-mono text-[10px] text-slate-500">0 / 6</span>
+        </div>
+        <div id="upgrades-list" class="space-y-2">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </section>
+
+      <!-- 4. LIVE SYSTEM & TRANSACTION LEDGER -->
+      <section class="bg-[#111827]/90 border border-slate-800 rounded-xl p-3 shadow-sm flex flex-col">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-mono text-[10px] font-semibold tracking-wider text-slate-400 uppercase">04 // LIVE FORAGING LEDGER</span>
+          <span class="font-mono text-[9px] text-emerald-400">STREAMING</span>
+        </div>
+        <div id="ledger-feed" class="bg-[#0B0F19] border border-slate-800/90 rounded-lg p-2 h-36 overflow-y-auto font-mono text-[10px] space-y-1 leading-snug">
+          <!-- Log entries injected here -->
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <script>
+    /**
+     * LUMINAL CORVID ECONOMICS // AVIAN FORAGING SANDBOX
+     * Autonomous Boids / Operant Conditioning / Schedule C Resource Simulation
+     */
+    (() => {
+      // =========================================================================
+      // 1. DOM REFERENCES & CANVAS SETUP
+      // =========================================================================
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+      const wrapper = document.getElementById('canvas-wrapper');
+
+      const ui = {
+        treasury: document.getElementById('treasury-display'),
+        gross: document.getElementById('gross-display'),
+        expense: document.getElementById('expense-display'),
+        netRate: document.getElementById('net-rate-badge'),
+        statCrows: document.getElementById('stat-crows'),
+        statCond: document.getElementById('stat-cond'),
+        statPigeons: document.getElementById('stat-pigeons'),
+        cupLabel: document.getElementById('cup-stock-label'),
+        cupBar: document.getElementById('cup-stock-bar'),
+        btnDropPeanuts: document.getElementById('btn-drop-peanuts'),
+        peanutCostLabel: document.getElementById('peanut-cost-label'),
+        autoFeederRow: document.getElementById('auto-feeder-row'),
+        btnToggleAutofeed: document.getElementById('btn-toggle-autofeed'),
+        irsPercent: document.getElementById('irs-percent-label'),
+        irsBar: document.getElementById('irs-bar'),
+        unloggedCash: document.getElementById('unlogged-cash-label'),
+        deductiblePool: document.getElementById('deductible-pool-label'),
+        btnLogDeduction: document.getElementById('btn-log-deduction'),
+        deductionEffect: document.getElementById('deduction-effect-label'),
+        upgradesCount: document.getElementById('upgrades-count-label'),
+        upgradesList: document.getElementById('upgrades-list'),
+        ledgerFeed: document.getElementById('ledger-feed'),
+        btnPlayPause: document.getElementById('btn-play-pause'),
+        btnSpeed: document.getElementById('btn-speed'),
+        btnReset: document.getElementById('btn-reset'),
+        hawkBanner: document.getElementById('hawk-warning-banner'),
+        auditBanner: document.getElementById('audit-freeze-banner'),
+        auditTimer: document.getElementById('audit-timer'),
+        inspector: document.getElementById('bird-inspector'),
+        inspId: document.getElementById('insp-id'),
+        inspState: document.getElementById('insp-state'),
+        inspSpecies: document.getElementById('insp-species'),
+        inspCond: document.getElementById('insp-cond'),
+        inspTrust: document.getElementById('insp-trust'),
+        inspCargo: document.getElementById('insp-cargo'),
+        bankruptcyModal: document.getElementById('bankruptcy-modal'),
+        failPeanuts: document.getElementById('fail-peanuts'),
+        failRevenue: document.getElementById('fail-revenue'),
+        failCond: document.getElementById('fail-cond'),
+        modalResetBtn: document.getElementById('modal-reset-btn'),
+      };
+
+      let width = 0;
+      let height = 0;
+      let dpr = window.devicePixelRatio || 1;
+
+      function resizeCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // =========================================================================
+      // 2. SIMULATION CONFIGURATION & UPGRADE DEFINITIONS
+      // =========================================================================
+      const UPGRADE_CATALOG = [
+        {
+          id: 'bulk_peanuts',
+          name: 'Bulk Peanut Sacks',
+          cost: 8.00,
+          desc: 'Cuts drop cost ($0.50 → $0.20) & expands tin cup capacity to 24.',
+          purchased: false,
+        },
+        {
+          id: 'specimen_5',
+          name: 'Taped $5 Training Specimen',
+          cost: 15.00,
+          desc: 'Mounts $5 bill under glass by cup. +60% conditioning gain & unlocks $5 bills.',
+          purchased: false,
+        },
+        {
+          id: 'porch_awning',
+          name: 'Porch Awning & Owl Decoy',
+          cost: 25.00,
+          desc: 'Shields porch radius from Hawk raids and halves flock panic scatter.',
+          purchased: false,
+        },
+        {
+          id: 'auto_feeder',
+          name: 'Automated Gravity Feeder',
+          cost: 40.00,
+          desc: 'Auto-dispenses peanuts when cup drops below 30% capacity.',
+          purchased: false,
+        },
+        {
+          id: 'ledger_software',
+          name: 'Schedule C Ledger Software',
+          cost: 55.00,
+          desc: 'Auto-writes off seed expenses against cash inflows (-75% IRS suspicion rate).',
+          purchased: false,
+        },
+        {
+          id: 'territory_expansion',
+          name: 'Block-Wide Territory Expansion',
+          cost: 85.00,
+          desc: 'Attracts regional crow murder (up to 14 birds) & unlocks rare $20 bill drops.',
+          purchased: false,
+        },
+      ];
+
+      const LOOT_TYPES = {
+        CAP: { id: 'CAP', label: 'BOTTLE CAP', value: 0, isCash: false, color: '#94A3B8', radius: 4 },
+        FOIL: { id: 'FOIL', label: 'GUM FOIL', value: 0, isCash: false, color: '#CBD5E1', radius: 4 },
+        QUARTER: { id: 'QUARTER', label: 'QUARTER ($0.25)', value: 0.25, isCash: true, color: '#38BDF8', radius: 4.5 },
+        BILL_1: { id: 'BILL_1', label: '$1 BILL', value: 1.00, isCash: true, color: '#10B981', radius: 6 },
+        BILL_5: { id: 'BILL_5', label: '$5 BILL', value: 5.00, isCash: true, color: '#34D399', radius: 6.5 },
+        BILL_20: { id: 'BILL_20', label: '$20 BILL', value: 20.00, isCash: true, color: '#F59E0B', radius: 7.5 },
+      };
+
+      // =========================================================================
+      // 3. GAME STATE
+      // =========================================================================
+      let state = {};
+
+      function createInitialState() {
+        const upgrades = UPGRADE_CATALOG.map(u => ({ ...u, purchased: false }));
+        return {
+          paused: false,
+          speed: 1,
+          simTime: 0,
+          treasury: 20.00,
+          grossRevenue: 0.00,
+          totalExpenses: 0.00,
+          peanutsDispensedCount: 0,
+          cupPeanuts: 4,
+          cupCapacity: 12,
+          peanutDropAmount: 4,
+          peanutDropCost: 0.50,
+          autoFeederEnabled: true,
+          autoFeederCooldown: 0,
+
+          // IRS / Schedule C Mechanics
+          irsSuspicion: 0, // 0 to 100
+          unloggedCash: 0,
+          deductiblePool: 0,
+          auditFreezeTimer: 0,
+
+          // Entities
+          crows: [],
+          pigeons: [],
+          hawks: [],
+          lootNodes: [],
+          particles: [],
+          pulses: [],
+          floatingTexts: [],
+
+          // Timers & Counters
+          lootSpawnTimer: 0,
+          pigeonSpawnTimer: 6,
+          hawkSpawnTimer: 22,
+          crowRecruitTimer: 10,
+          nextBirdSeq: 1,
+          peakConditioning: 8,
+          revenueHistory: [], // { time, amount } for rolling $/min
+
+          // Interaction
+          hoveredBird: null,
+          selectedBird: null,
+          mouseX: -1000,
+          mouseY: -1000,
+
+          // Flags
+          bankrupt: false,
+          upgrades,
+        };
+      }
+
+      // =========================================================================
+      // 4. HELPER UTILITIES
+      // =========================================================================
+      function dist(x1, y1, x2, y2) {
+        return Math.hypot(x2 - x1, y2 - y1);
+      }
+
+      function clamp(val, min, max) {
+        return Math.max(min, Math.min(max, val));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function formatCurrency(val) {
+        return '$' + val.toFixed(2);
+      }
+
+      function getTimestamp() {
+        const totalSec = Math.floor(state.simTime);
+        const mins = String(Math.floor(totalSec / 60)).padStart(2, '0');
+        const secs = String(totalSec % 60).padStart(2, '0');
+        return `${mins}:${secs}`;
+      }
+
+      function hasUpgrade(id) {
+        const u = state.upgrades.find(item => item.id === id);
+        return u ? u.purchased : false;
+      }
+
+      function getPorchCenter() {
+        return { x: width * 0.5, y: height * 0.52 };
+      }
+
+      function logEvent(msg, tone = 'neutral') {
+        const colors = {
+          neutral: 'text-slate-400',
+          cash: 'text-emerald-400',
+          warn: 'text-amber-300',
+          danger: 'text-red-400',
+          info: 'text-cyan-300',
+        };
+        const row = document.createElement('div');
+        row.className = `${colors[tone] || colors.neutral} border-b border-slate-900/80 pb-0.5`;
+        row.innerHTML = `<span class="text-slate-600">[${getTimestamp()}]</span> ${msg}`;
+        ui.ledgerFeed.prepend(row);
+        while (ui.ledgerFeed.children.length > 55) {
+          ui.ledgerFeed.removeChild(ui.ledgerFeed.lastChild);
+        }
+      }
+
+      function spawnFloatingText(x, y, text, color = '#10B981') {
+        state.floatingTexts.push({
+          x,
+          y,
+          text,
+          color,
+          alpha: 1.0,
+          vy: -26,
+          life: 1.35,
+        });
+      }
+
+      function spawnPulse(x, y, maxRadius, color) {
+        state.pulses.push({
+          x,
+          y,
+          radius: 6,
+          maxRadius,
+          color,
+          alpha: 0.75,
+        });
+      }
+
+      function spawnParticles(x, y, color, count = 8) {
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+          const speed = 25 + Math.random() * 55;
+          state.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            color,
+            size: 2 + Math.random() * 2,
+            life: 0.5 + Math.random() * 0.35,
+            maxLife: 0.85,
+          });
+        }
+      }
+
+      // =========================================================================
+      // 5. ENTITY FACTORIES (CROWS, PIGEONS, HAWKS, LOOT)
+      // =========================================================================
+      function createCrow(x, y, initialCond = null) {
+        const idNum = String(state.nextBirdSeq++).padStart(2, '0');
+        const angle = Math.random() * Math.PI * 2;
+        const cond = initialCond !== null ? initialCond : (4 + Math.random() * 10);
+        return {
+          id: `CROW-${idNum}`,
+          type: 'CROW',
+          x: x ?? Math.random() * width,
+          y: y ?? Math.random() * height,
+          vx: Math.cos(angle) * 65,
+          vy: Math.sin(angle) * 65,
+          maxSpeed: 118,
+          conditioning: cond, // 0..100
+          trust: 15 + Math.random() * 15, // 0..100
+          hunger: 45 + Math.random() * 35, // > 60 wants peanuts at porch
+          state: 'FORAGING', // FORAGING, SEEK_PEANUT, RETURNING, SCATTERED, CHASING
+          cargo: null,
+          targetLoot: null,
+          scatterTimer: 0,
+          socialPulseTimer: 2 + Math.random() * 3,
+          trail: [],
+          wanderAngle: angle,
+        };
+      }
+
+      function createPigeon() {
+        const edge = Math.floor(Math.random() * 4);
+        let x = 0, y = 0;
+        if (edge === 0) { x = Math.random() * width; y = -15; }
+        else if (edge === 1) { x = width + 15; y = Math.random() * height; }
+        else if (edge === 2) { x = Math.random() * width; y = height + 15; }
+        else { x = -15; y = Math.random() * height; }
+
+        const idNum = String(state.nextBirdSeq++).padStart(2, '0');
+        return {
+          id: `PIGEON-${idNum}`,
+          type: 'PIGEON',
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          maxSpeed: 88,
+          state: 'RAIDING', // RAIDING, FLEEING
+          eatCooldown: 0,
+          fleeTimer: 0,
+          trail: [],
+        };
+      }
+
+      function createHawk() {
+        const fromLeft = Math.random() < 0.5;
+        const startX = fromLeft ? -40 : width + 40;
+        const startY = height * (0.15 + Math.random() * 0.7);
+        const endX = fromLeft ? width + 50 : -50;
+        const endY = height * (0.15 + Math.random() * 0.7);
+        const angle = Math.atan2(endY - startY, endX - startX);
+        const speed = 138;
+        const idNum = String(state.nextBirdSeq++).padStart(2, '0');
+        return {
+          id: `HAWK-${idNum}`,
+          type: 'HAWK',
+          x: startX,
+          y: startY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radarRadius: 115,
+          state: 'PATROL',
+          trail: [],
+        };
+      }
+
+      function spawnLootNode() {
+        const porch = getPorchCenter();
+        const expanded = hasUpgrade('territory_expansion');
+        const minDist = 75;
+        const maxDist = expanded ? Math.min(width, height) * 0.47 : Math.min(width, height) * 0.36;
+
+        let x, y;
+        for (let tries = 0; tries < 12; tries++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = minDist + Math.random() * Math.max(40, maxDist - minDist);
+          x = clamp(porch.x + Math.cos(a) * r, 28, width - 28);
+          y = clamp(porch.y + Math.sin(a) * r, 55, height - 28);
+          if (dist(x, y, porch.x, porch.y) >= minDist) break;
+        }
+
+        // Weighted spawn table
+        const roll = Math.random();
+        let lootSpec = LOOT_TYPES.QUARTER;
+        if (roll < 0.22) {
+          lootSpec = LOOT_TYPES.CAP;
+        } else if (roll < 0.38) {
+          lootSpec = LOOT_TYPES.FOIL;
+        } else if (roll < 0.68) {
+          lootSpec = LOOT_TYPES.QUARTER;
+        } else if (roll < 0.90) {
+          lootSpec = LOOT_TYPES.BILL_1;
+        } else if (hasUpgrade('specimen_5') && roll < 0.975) {
+          lootSpec = LOOT_TYPES.BILL_5;
+        } else if (hasUpgrade('territory_expansion')) {
+          lootSpec = LOOT_TYPES.BILL_20;
+        } else {
+          lootSpec = LOOT_TYPES.BILL_1;
+        }
+
+        state.lootNodes.push({
+          x,
+          y,
+          spec: lootSpec,
+          claimedBy: null,
+          spawnAnim: 0,
+        });
+      }
+
+      // =========================================================================
+      // 6. CORE PLAYER ACTIONS & ECONOMY LOGIC
+      // =========================================================================
+      function dispensePeanuts(isAuto = false) {
+        if (state.bankrupt || state.paused) return false;
+        if (state.cupPeanuts >= state.cupCapacity) {
+          if (!isAuto) {
+            const p = getPorchCenter();
+            spawnFloatingText(p.x, p.y - 24, 'CUP FULL', '#F59E0B');
+          }
+          return false;
+        }
+        if (state.treasury < state.peanutDropCost) {
+          if (!isAuto) {
+            const p = getPorchCenter();
+            spawnFloatingText(p.x, p.y - 24, 'INSUFFICIENT FUNDS', '#EF4444');
+          }
+          return false;
+        }
+
+        state.treasury = Math.max(0, state.treasury - state.peanutDropCost);
+        state.totalExpenses += state.peanutDropCost;
+        state.deductiblePool += state.peanutDropCost;
+        state.peanutsDispensedCount += state.peanutDropAmount;
+        state.cupPeanuts = Math.min(state.cupCapacity, state.cupPeanuts + state.peanutDropAmount);
+
+        const p = getPorchCenter();
+        spawnPulse(p.x, p.y, 85, 'rgba(245, 158, 11, 0.55)');
+        spawnParticles(p.x, p.y, '#F59E0B', 7);
+        spawnFloatingText(
+          p.x + (Math.random() * 24 - 12),
+          p.y - 18,
+          `+${state.peanutDropAmount} PEANUTS (-${formatCurrency(state.peanutDropCost)})`,
+          '#F59E0B'
+        );
+
+        if (!isAuto) {
+          logEvent(`Dispensed ${state.peanutDropAmount} peanuts (-${formatCurrency(state.peanutDropCost)})`, 'warn');
+        }
+        return true;
+      }
+
+      function logScheduleCDeduction() {
+        if (state.bankrupt || state.paused) return;
+        if (state.irsSuspicion <= 0.5) {
+          logEvent('IRS Schedule C risk already nominal (0%).', 'info');
+          return;
+        }
+
+        // Deductible expenses cover suspicion at a strong ratio, plus small administrative filing effort
+        const expenseCoverage = state.deductiblePool * 14; // e.g. $2 in peanuts clears ~28% suspicion
+        const baseReduction = 18;
+        const totalReduction = Math.min(state.irsSuspicion, baseReduction + expenseCoverage);
+
+        state.irsSuspicion = Math.max(0, state.irsSuspicion - totalReduction);
+        state.unloggedCash = Math.max(0, state.unloggedCash * 0.25);
+        state.deductiblePool = 0;
+
+        const p = getPorchCenter();
+        spawnFloatingText(p.x, p.y - 34, `SCHEDULE C FILED (-${Math.round(totalReduction)}% RISK)`, '#38BDF8');
+        logEvent(`Filed Schedule C seed write-off: IRS suspicion reduced by ${Math.round(totalReduction)}%.`, 'info');
+      }
+
+      function buyUpgrade(upgradeId) {
+        if (state.bankrupt) return;
+        const upg = state.upgrades.find(u => u.id === upgradeId);
+        if (!upg || upg.purchased || state.treasury < upg.cost) return;
+
+        state.treasury -= upg.cost;
+        state.totalExpenses += upg.cost;
+        state.deductiblePool += upg.cost * 0.85; // Business capital expense write-off
+        upg.purchased = true;
+
+        // Apply upgrade effects
+        if (upgradeId === 'bulk_peanuts') {
+          state.peanutDropCost = 0.20;
+          state.cupCapacity = 24;
+          state.peanutDropAmount = 6;
+        } else if (upgradeId === 'specimen_5') {
+          // Immediately give existing crows a pattern-matching bump
+          state.crows.forEach(c => {
+            c.conditioning = clamp(c.conditioning + 12, 0, 100);
+          });
+        } else if (upgradeId === 'porch_awning') {
+          const p = getPorchCenter();
+          spawnPulse(p.x, p.y, 130, 'rgba(56, 189, 248, 0.7)');
+        } else if (upgradeId === 'auto_feeder') {
+          state.autoFeederEnabled = true;
+          ui.autoFeederRow.classList.remove('hidden');
+        } else if (upgradeId === 'ledger_software') {
+          state.irsSuspicion = Math.max(0, state.irsSuspicion - 25);
+        } else if (upgradeId === 'territory_expansion') {
+          // Recruit 4 new regional crows immediately
+          for (let i = 0; i < 4; i++) {
+            state.crows.push(createCrow(Math.random() * width, Math.random() * height, 22));
+          }
+        }
+
+        const p = getPorchCenter();
+        spawnPulse(p.x, p.y, 120, 'rgba(16, 185, 129, 0.75)');
+        spawnFloatingText(p.x, p.y - 28, `UNLOCKED: ${upg.name.toUpperCase()}`, '#38BDF8');
+        logEvent(`Purchased upgrade [${upg.name}] (-${formatCurrency(upg.cost)})`, 'info');
+        renderUpgradesList();
+      }
+
+      // =========================================================================
+      // 7. AUTONOMOUS AGENT STEERING & SIMULATION UPDATE
+      // =========================================================================
+      function updateSimulation(dt) {
+        if (state.paused || state.bankrupt) return;
+
+        const scaledDt = dt * state.speed;
+        state.simTime += scaledDt;
+        const porch = getPorchCenter();
+
+        // Audit freeze countdown
+        if (state.auditFreezeTimer > 0) {
+          state.auditFreezeTimer = Math.max(0, state.auditFreezeTimer - scaledDt);
+          ui.auditBanner.classList.remove('hidden');
+          ui.auditTimer.textContent = Math.ceil(state.auditFreezeTimer);
+        } else {
+          ui.auditBanner.classList.add('hidden');
+        }
+
+        // Auto-feeder logic
+        if (hasUpgrade('auto_feeder') && state.autoFeederEnabled) {
+          state.autoFeederCooldown -= scaledDt;
+          if (
+            state.autoFeederCooldown <= 0 &&
+            state.cupPeanuts / state.cupCapacity < 0.3 &&
+            state.treasury >= state.peanutDropCost
+          ) {
+            dispensePeanuts(true);
+            state.autoFeederCooldown = 2.0;
+          }
+        }
+
+        // Spawn Loot Nodes
+        const maxLoot = hasUpgrade('territory_expansion') ? 18 : 12;
+        state.lootSpawnTimer -= scaledDt;
+        if (state.lootSpawnTimer <= 0 && state.lootNodes.length < maxLoot) {
+          spawnLootNode();
+          state.lootSpawnTimer = hasUpgrade('territory_expansion') ? 1.5 : 2.1;
+        }
+        state.lootNodes.forEach(node => {
+          node.spawnAnim = Math.min(1, node.spawnAnim + scaledDt * 3);
+        });
+
+        // Recruit additional crows gradually as average conditioning & cup activity grow
+        const maxCrows = hasUpgrade('territory_expansion') ? 14 : 8;
+        state.crowRecruitTimer -= scaledDt;
+        if (state.crowRecruitTimer <= 0 && state.crows.length < maxCrows) {
+          const avgCond = state.crows.reduce((s, c) => s + c.conditioning, 0) / Math.max(1, state.crows.length);
+          if (state.cupPeanuts > 0 && avgCond > 15 + state.crows.length * 4) {
+            const edgeX = Math.random() < 0.5 ? -15 : width + 15;
+            const newCrow = createCrow(edgeX, Math.random() * height, Math.max(8, avgCond * 0.45));
+            state.crows.push(newCrow);
+            logEvent(`${newCrow.id} recruited to local murder via social observation!`, 'cash');
+          }
+          state.crowRecruitTimer = 9.5;
+        }
+
+        // Spawn Freeloader Pigeons when peanuts are sitting in the cup
+        state.pigeonSpawnTimer -= scaledDt;
+        if (state.pigeonSpawnTimer <= 0) {
+          if (state.cupPeanuts > 0 && state.pigeons.length < 5) {
+            state.pigeons.push(createPigeon());
+          }
+          state.pigeonSpawnTimer = 8.5 + Math.random() * 5;
+        }
+
+        // Spawn Apex Hawks periodically
+        state.hawkSpawnTimer -= scaledDt;
+        if (state.hawkSpawnTimer <= 0) {
+          state.hawks.push(createHawk());
+          logEvent('HAWK SECTOR SWEEP DETECTED — Keep flock near porch cover!', 'danger');
+          state.hawkSpawnTimer = 26 + Math.random() * 10;
+        }
+
+        // Update Hawks
+        for (let i = state.hawks.length - 1; i >= 0; i--) {
+          const h = state.hawks[i];
+          h.x += h.vx * scaledDt;
+          h.y += h.vy * scaledDt;
+          h.trail.push({ x: h.x, y: h.y });
+          if (h.trail.length > 16) h.trail.shift();
+
+          if (h.x < -90 || h.x > width + 90 || h.y < -90 || h.y > height + 90) {
+            state.hawks.splice(i, 1);
+          }
+        }
+        if (state.hawks.length > 0) {
+          ui.hawkBanner.classList.remove('hidden');
+        } else {
+          ui.hawkBanner.classList.add('hidden');
+        }
+
+        // Count conditioned crows near porch (defends against pigeons)
+        const porchDefenders = state.crows.filter(
+          c => dist(c.x, c.y, porch.x, porch.y) < 135 && c.conditioning >= 22
+        ).length;
+
+        // Update Pigeons (Freeloader Agents)
+        for (let i = state.pigeons.length - 1; i >= 0; i--) {
+          const p = state.pigeons[i];
+          p.eatCooldown = Math.max(0, p.eatCooldown - scaledDt);
+
+          // Check if chased off by conditioned crows or hawks
+          const nearHawk = state.hawks.some(h => dist(p.x, p.y, h.x, h.y) < h.radarRadius + 30);
+          if (nearHawk || porchDefenders >= 2 || state.cupPeanuts <= 0) {
+            p.state = 'FLEEING';
+          } else {
+            p.state = 'RAIDING';
+          }
+
+          let tx = porch.x;
+          let ty = porch.y;
+          if (p.state === 'FLEEING') {
+            const awayAngle = Math.atan2(p.y - porch.y, p.x - porch.x);
+            tx = p.x + Math.cos(awayAngle) * 200;
+            ty = p.y + Math.sin(awayAngle) * 200;
+          }
+
+          const desiredAngle = Math.atan2(ty - p.y, tx - p.x);
+          const speed = p.state === 'FLEEING' ? p.maxSpeed * 1.35 : p.maxSpeed;
+          p.vx = lerp(p.vx, Math.cos(desiredAngle) * speed, scaledDt * 3.5);
+          p.vy = lerp(p.vy, Math.sin(desiredAngle) * speed, scaledDt * 3.5);
+          p.x += p.vx * scaledDt;
+          p.y += p.vy * scaledDt;
+
+          p.trail.push({ x: p.x, y: p.y });
+          if (p.trail.length > 10) p.trail.shift();
+
+          // Eat peanuts at cup if raiding
+          if (p.state === 'RAIDING' && dist(p.x, p.y, porch.x, porch.y) < 22 && p.eatCooldown <= 0) {
+            if (state.cupPeanuts > 0) {
+              state.cupPeanuts -= 1;
+              p.eatCooldown = 2.4;
+              spawnFloatingText(p.x, p.y - 12, '-1 PEANUT (PIGEON RAID)', '#94A3B8');
+              logEvent(`${p.id} raided cup (-1 peanut, zero loot deposited)`, 'warn');
+            }
+          }
+
+          // Remove fleeing pigeons once offscreen
+          if (p.state === 'FLEEING' && (p.x < -45 || p.x > width + 45 || p.y < -45 || p.y > height + 45)) {
+            state.pigeons.splice(i, 1);
+          }
+        }
+
+        // Update Crows (Autonomous Operant Agents)
+        const awningProtected = hasUpgrade('porch_awning');
+        const specimenBoost = hasUpgrade('specimen_5') ? 1.6 : 1.0;
+
+        for (let i = 0; i < state.crows.length; i++) {
+          const c = state.crows[i];
+          c.hunger = clamp(c.hunger + scaledDt * 3.8, 0, 100);
+
+          // Social learning pulse from highly conditioned crows
+          if (c.conditioning >= 45) {
+            c.socialPulseTimer -= scaledDt;
+            if (c.socialPulseTimer <= 0) {
+              c.socialPulseTimer = 4.5;
+              spawnPulse(c.x, c.y, 65, 'rgba(16, 185, 129, 0.35)');
+              state.crows.forEach(other => {
+                if (other !== c && dist(c.x, c.y, other.x, other.y) < 75 && other.conditioning < c.conditioning) {
+                  other.conditioning = clamp(other.conditioning + 1.8, 0, 100);
+                }
+              });
+            }
+          }
+
+          // Check Hawk Threat
+          let threatHawk = null;
+          for (const h of state.hawks) {
+            const safeUnderAwning = awningProtected && dist(c.x, c.y, porch.x, porch.y) < 110;
+            const effectiveRadius = awningProtected ? h.radarRadius * 0.65 : h.radarRadius;
+            if (!safeUnderAwning && dist(c.x, c.y, h.x, h.y) < effectiveRadius) {
+              threatHawk = h;
+              break;
+            }
+          }
+
+          if (threatHawk) {
+            if (c.state !== 'SCATTERED') {
+              c.state = 'SCATTERED';
+              c.scatterTimer = awningProtected ? 1.4 : 2.6;
+              if (c.cargo) {
+                logEvent(`${c.id} panicked from Hawk & dropped [${c.cargo.label}]!`, 'danger');
+                c.cargo = null;
+              }
+              if (c.targetLoot) {
+                c.targetLoot.claimedBy = null;
+                c.targetLoot = null;
+              }
+            }
+          }
+
+          // State Machine Transitions
+          if (c.state === 'SCATTERED') {
+            c.scatterTimer -= scaledDt;
+            if (c.scatterTimer <= 0) {
+              c.state = 'FORAGING';
+            }
+          } else if (c.cargo) {
+            c.state = 'RETURNING';
+          } else if (state.cupPeanuts > 0 && (c.hunger > 52 || c.conditioning < 20)) {
+            c.state = 'SEEK_PEANUT';
+          } else {
+            c.state = 'FORAGING';
+          }
+
+          // Steering Calculation
+          let steerX = 0;
+          let steerY = 0;
+          let targetSpeed = c.maxSpeed;
+
+          if (c.state === 'SCATTERED') {
+            targetSpeed = c.maxSpeed * 1.45;
+            const nearestHawk = state.hawks[0];
+            if (nearestHawk) {
+              const away = Math.atan2(c.y - nearestHawk.y, c.x - nearestHawk.x);
+              steerX = Math.cos(away) * 220;
+              steerY = Math.sin(away) * 220;
+            } else {
+              steerX = Math.cos(c.wanderAngle) * 180;
+              steerY = Math.sin(c.wanderAngle) * 180;
+            }
+          } else if (c.state === 'RETURNING') {
+            targetSpeed = c.maxSpeed * 1.12;
+            const dPorch = dist(c.x, c.y, porch.x, porch.y);
+            const a = Math.atan2(porch.y - c.y, porch.x - c.x);
+            steerX = Math.cos(a) * 180;
+            steerY = Math.sin(a) * 180;
+
+            // Deposit loot at porch cup
+            if (dPorch < 22) {
+              handleCrowDeposit(c, porch);
+            }
+          } else if (c.state === 'SEEK_PEANUT') {
+            const dPorch = dist(c.x, c.y, porch.x, porch.y);
+            const a = Math.atan2(porch.y - c.y, porch.x - c.x);
+            steerX = Math.cos(a) * 165;
+            steerY = Math.sin(a) * 165;
+
+            if (dPorch < 22) {
+              if (state.cupPeanuts > 0) {
+                state.cupPeanuts -= 1;
+                c.hunger = 5;
+                const gain = (4.5 + Math.random() * 3.5) * specimenBoost;
+                c.conditioning = clamp(c.conditioning + gain, 0, 100);
+                c.trust = clamp(c.trust + 6, 0, 100);
+                spawnParticles(porch.x, porch.y, '#10B981', 5);
+                spawnFloatingText(c.x, c.y - 14, `+${Math.round(gain)}% COND`, '#10B981');
+                c.state = 'FORAGING';
+              } else {
+                c.state = 'FORAGING';
+              }
+            }
+          } else if (c.state === 'FORAGING') {
+            // Validate existing target loot
+            if (c.targetLoot && !state.lootNodes.includes(c.targetLoot)) {
+              c.targetLoot = null;
+            }
+
+            // Acquire loot node weighted by conditioning!
+            if (!c.targetLoot && state.lootNodes.length > 0) {
+              let bestNode = null;
+              let bestScore = -Infinity;
+              const cashPreference = c.conditioning / 100; // 0 = indiscriminate, 1 = strict cash hunter
+
+              for (const node of state.lootNodes) {
+                if (node.claimedBy && node.claimedBy !== c) continue;
+                const d = dist(c.x, c.y, node.x, node.y);
+                // Unconditioned crows grab anything shiny; conditioned crows strongly prefer cash & ignore junk
+                if (!node.spec.isCash && cashPreference > 0.45 && Math.random() < cashPreference) {
+                  continue;
+                }
+                const valueWeight = node.spec.isCash ? (60 + node.spec.value * 18) * (0.35 + cashPreference) : 35 * (1 - cashPreference * 0.7);
+                const score = valueWeight - d * 0.25;
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestNode = node;
+                }
+              }
+
+              if (bestNode) {
+                c.targetLoot = bestNode;
+                bestNode.claimedBy = c;
+              }
+            }
+
+            if (c.targetLoot) {
+              const a = Math.atan2(c.targetLoot.y - c.y, c.targetLoot.x - c.x);
+              steerX = Math.cos(a) * 160;
+              steerY = Math.sin(a) * 160;
+
+              if (dist(c.x, c.y, c.targetLoot.x, c.targetLoot.y) < 15) {
+                c.cargo = c.targetLoot.spec;
+                const idx = state.lootNodes.indexOf(c.targetLoot);
+                if (idx !== -1) state.lootNodes.splice(idx, 1);
+                c.targetLoot = null;
+                c.state = 'RETURNING';
+              }
+            } else {
+              // Smooth orbital patrol around neighborhood
+              c.wanderAngle += (Math.random() - 0.5) * 2.8 * scaledDt;
+              const pullToCenterX = (porch.x - c.x) * 0.22;
+              const pullToCenterY = (porch.y - c.y) * 0.22;
+              steerX = Math.cos(c.wanderAngle) * 95 + pullToCenterX;
+              steerY = Math.sin(c.wanderAngle) * 95 + pullToCenterY;
+              targetSpeed = c.maxSpeed * 0.75;
+            }
+          }
+
+          // Boids separation between crows so they form clean dynamic formations
+          for (let j = 0; j < state.crows.length; j++) {
+            if (i === j) continue;
+            const other = state.crows[j];
+            const d = dist(c.x, c.y, other.x, other.y);
+            if (d > 0 && d < 26) {
+              const push = (26 - d) * 4.5;
+              steerX += ((c.x - other.x) / d) * push;
+              steerY += ((c.y - other.y) / d) * push;
+            }
+          }
+
+          // Integrate velocity & position
+          c.vx = lerp(c.vx, steerX, scaledDt * 4.2);
+          c.vy = lerp(c.vy, steerY, scaledDt * 4.2);
+          const vMag = Math.hypot(c.vx, c.vy);
+          if (vMag > targetSpeed) {
+            c.vx = (c.vx / vMag) * targetSpeed;
+            c.vy = (c.vy / vMag) * targetSpeed;
+          }
+
+          c.x = clamp(c.x + c.vx * scaledDt, 18, width - 18);
+          c.y = clamp(c.y + c.vy * scaledDt, 46, height - 18);
+
+          c.trail.push({ x: c.x, y: c.y });
+          if (c.trail.length > 14) c.trail.shift();
+        }
+
+        // Update Visual Effects (Pulses, Particles, Floating Texts)
+        for (let i = state.pulses.length - 1; i >= 0; i--) {
+          const p = state.pulses[i];
+          p.radius += scaledDt * 75;
+          p.alpha -= scaledDt * 0.75;
+          if (p.alpha <= 0 || p.radius >= p.maxRadius) state.pulses.splice(i, 1);
+        }
+
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const pt = state.particles[i];
+          pt.x += pt.vx * scaledDt;
+          pt.y += pt.vy * scaledDt;
+          pt.life -= scaledDt;
+          if (pt.life <= 0) state.particles.splice(i, 1);
+        }
+
+        for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = state.floatingTexts[i];
+          ft.y += ft.vy * scaledDt;
+          ft.life -= scaledDt;
+          ft.alpha = clamp(ft.life / 1.1, 0, 1);
+          if (ft.life <= 0) state.floatingTexts.splice(i, 1);
+        }
+
+        // Track Peak Conditioning
+        const avgCond = state.crows.reduce((sum, c) => sum + c.conditioning, 0) / Math.max(1, state.crows.length);
+        if (avgCond > state.peakConditioning) state.peakConditioning = avgCond;
+
+        // Prune rolling 60s revenue history
+        state.revenueHistory = state.revenueHistory.filter(entry => state.simTime - entry.time <= 60);
+
+        // Check Bankruptcy Condition: Cannot afford peanuts, cup is empty, and no cash is currently in flight
+        const cashInFlight = state.crows.some(c => c.cargo && c.cargo.isCash);
+        if (state.treasury < state.peanutDropCost && state.cupPeanuts <= 0 && !cashInFlight) {
+          triggerBankruptcy();
+        }
+      }
+
+      function handleCrowDeposit(crow, porch) {
+        const item = crow.cargo;
+        crow.cargo = null;
+        const specimenBoost = hasUpgrade('specimen_5') ? 1.6 : 1.0;
+
+        if (!item.isCash) {
+          // Junk item rejected: negative reinforcement (no peanut reward, slight conditioning adjustment)
+          spawnFloatingText(porch.x, porch.y - 16, `[${item.label}] REJECTED`, '#94A3B8');
+          logEvent(`${crow.id} brought [${item.label}] — rejected (no peanut reward)`, 'neutral');
+          crow.conditioning = clamp(crow.conditioning + 1.5, 0, 100);
+          return;
+        }
+
+        // Cash item deposited!
+        if (state.auditFreezeTimer > 0) {
+          spawnFloatingText(porch.x, porch.y - 18, `DEPOSIT SEIZED (IRS FREEZE)`, '#EF4444');
+          logEvent(`${crow.id} deposited ${item.label} — frozen by IRS audit hold!`, 'danger');
+          return;
+        }
+
+        state.treasury += item.value;
+        state.grossRevenue += item.value;
+        state.unloggedCash += item.value;
+        state.revenueHistory.push({ time: state.simTime, amount: item.value });
+
+        // Positive operant reinforcement if peanut is available in cup
+        let condGain = 3.0 * specimenBoost;
+        if (state.cupPeanuts > 0) {
+          state.cupPeanuts -= 1;
+          crow.hunger = 0;
+          condGain = (8.5 + Math.random() * 4) * specimenBoost;
+          crow.trust = clamp(crow.trust + 8, 0, 100);
+        }
+        crow.conditioning = clamp(crow.conditioning + condGain, 0, 100);
+
+        // IRS Suspicion calculation
+        const ledgerFactor = hasUpgrade('ledger_software') ? 0.25 : 1.0;
+        const suspicionGain = item.value * 4.2 * ledgerFactor;
+        state.irsSuspicion = clamp(state.irsSuspicion + suspicionGain, 0, 100);
+
+        spawnParticles(porch.x, porch.y, item.color, 10);
+        spawnPulse(porch.x, porch.y, 70, 'rgba(16, 185, 129, 0.5)');
+        spawnFloatingText(
+          porch.x,
+          porch.y - 20,
+          `+${formatCurrency(item.value)} (+${Math.round(condGain)}% COND)`,
+          item.color
+        );
+        logEvent(
+          `${crow.id} deposited ${item.label} (+${formatCurrency(item.value)} | +${Math.round(condGain)}% cond)`,
+          'cash'
+        );
+
+        // Trigger IRS Audit if Suspicion reaches 100%
+        if (state.irsSuspicion >= 100) {
+          const penalty = state.unloggedCash * 0.4;
+          const actualSeized = Math.min(state.treasury, penalty);
+          state.treasury = Math.max(0, state.treasury - actualSeized);
+          state.irsSuspicion = 20;
+          state.unloggedCash = 0;
+          state.auditFreezeTimer = 8.0;
+          logEvent(
+            `⚖ IRS AUDIT TRIGGERED! Seized ${formatCurrency(actualSeized)} in undeclared corvid revenue (8s freeze).`,
+            'danger'
+          );
+          spawnFloatingText(porch.x, porch.y - 38, `IRS AUDIT: -${formatCurrency(actualSeized)}`, '#EF4444');
+        }
+      }
+
+      function triggerBankruptcy() {
+        state.bankrupt = true;
+        ui.failPeanuts.textContent = state.peanutsDispensedCount;
+        ui.failRevenue.textContent = formatCurrency(state.grossRevenue);
+        ui.failCond.textContent = `${Math.round(state.peakConditioning)}%`;
+        ui.bankruptcyModal.classList.remove('hidden');
+        logEvent('INSOLVENCY: Seed capital exhausted before positive flock conditioning.', 'danger');
+      }
+
+      // =========================================================================
+      // 8. CANVAS RENDERING (TACTICAL OSCILLOSCOPE NEIGHBORHOOD)
+      // =========================================================================
+      function drawBackgroundGridAndMap() {
+        ctx.fillStyle = '#0B0F19';
+        ctx.fillRect(0, 0, width, height);
+
+        const porch = getPorchCenter();
+
+        // Tactical Radar Coordinate Grid
+        ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
+        ctx.lineWidth = 1;
+        const gridStep = 48;
+        for (let x = (porch.x % gridStep); x < width; x += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = (porch.y % gridStep); y < height; y += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+
+        // Neighborhood Sidewalk & Cross-Street Vectors
+        ctx.save();
+        ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+        ctx.lineWidth = 26;
+        // Horizontal neighborhood street
+        ctx.beginPath();
+        ctx.moveTo(0, porch.y + 135);
+        ctx.lineTo(width, porch.y + 135);
+        ctx.stroke();
+        // Vertical side street
+        ctx.beginPath();
+        ctx.moveTo(porch.x - 210, 0);
+        ctx.lineTo(porch.x - 210, height);
+        ctx.stroke();
+
+        // Dashed center road lines
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(0, porch.y + 135);
+        ctx.lineTo(width, porch.y + 135);
+        ctx.moveTo(porch.x - 210, 0);
+        ctx.lineTo(porch.x - 210, height);
+        ctx.stroke();
+        ctx.restore();
+
+        // Subtle Canopy / Park Zone Markers
+        const zones = [
+          { x: width * 0.22, y: height * 0.28, r: 62, label: 'OAK CANOPY SECTOR' },
+          { x: width * 0.78, y: height * 0.26, r: 58, label: 'PARK BENCH PLAZA' },
+          { x: width * 0.76, y: height * 0.78, r: 64, label: 'CORNER CAFE ALLEY' },
+        ];
+        zones.forEach(z => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.03)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.14)';
+          ctx.setLineDash([3, 5]);
+          ctx.stroke();
+          ctx.font = '9px "JetBrains Mono", monospace';
+          ctx.fillStyle = 'rgba(100, 116, 139, 0.55)';
+          ctx.textAlign = 'center';
+          ctx.fillText(z.label, z.x, z.y - z.r - 6);
+          ctx.restore();
+        });
+
+        // Foraging Territory Boundary Ring
+        const rangeRadius = hasUpgrade('territory_expansion')
+          ? Math.min(width, height) * 0.47
+          : Math.min(width, height) * 0.36;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(porch.x, porch.y, rangeRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = hasUpgrade('territory_expansion')
+          ? 'rgba(56, 189, 248, 0.22)'
+          : 'rgba(148, 163, 184, 0.14)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawPorchAndCup() {
+        const porch = getPorchCenter();
+
+        // Porch Awning Shield Ring (if unlocked)
+        if (hasUpgrade('porch_awning')) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(porch.x, porch.y, 110, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.045)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.font = '9px "JetBrains Mono", monospace';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+          ctx.textAlign = 'center';
+          ctx.fillText('[AWNING & OWL DECOY SHIELD]', porch.x, porch.y + 122);
+          ctx.restore();
+        }
+
+        // Bait Attraction / Porch Deck Ring
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(porch.x, porch.y, 44, 0, Math.PI * 2);
+        ctx.fillStyle = state.cupPeanuts > 0 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(30, 41, 59, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = state.cupPeanuts > 0 ? 'rgba(245, 158, 11, 0.55)' : 'rgba(71, 85, 105, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Peanut Capacity Pips arranged around the porch ring
+        const pipCount = state.cupCapacity;
+        for (let i = 0; i < pipCount; i++) {
+          const angle = -Math.PI / 2 + (Math.PI * 2 * i) / pipCount;
+          const px = porch.x + Math.cos(angle) * 34;
+          const py = porch.y + Math.sin(angle) * 34;
+          ctx.beginPath();
+          ctx.arc(px, py, 2.3, 0, Math.PI * 2);
+          ctx.fillStyle = i < state.cupPeanuts ? '#F59E0B' : '#1E293B';
+          ctx.fill();
+        }
+
+        // Center Tin Collection Cup
+        ctx.beginPath();
+        ctx.arc(porch.x, porch.y, 13, 0, Math.PI * 2);
+        ctx.fillStyle = '#0F172A';
+        ctx.fill();
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Taped $5 Training Specimen indicator beside cup
+        if (hasUpgrade('specimen_5')) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+          ctx.strokeStyle = '#10B981';
+          ctx.lineWidth = 1;
+          ctx.fillRect(porch.x + 17, porch.y - 7, 16, 10);
+          ctx.strokeRect(porch.x + 17, porch.y - 7, 16, 10);
+          ctx.font = '7px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#6EE7B7';
+          ctx.textAlign = 'center';
+          ctx.fillText('$5', porch.x + 25, porch.y + 0.5);
+        }
+
+        // Cup Label
+        ctx.font = 'bold 9px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#E2E8F0';
+        ctx.textAlign = 'center';
+        ctx.fillText('PORCH CUP', porch.x, porch.y - 52);
+        ctx.restore();
+      }
+
+      function drawLootNodes() {
+        state.lootNodes.forEach(node => {
+          const r = node.spec.radius * node.spawnAnim;
+          ctx.save();
+          ctx.translate(node.x, node.y);
+
+          // Glow ring for cash items
+          if (node.spec.isCash) {
+            ctx.beginPath();
+            ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+            ctx.fill();
+          }
+
+          if (node.spec.id.startsWith('BILL')) {
+            // Render crisp miniature bill rectangle
+            ctx.fillStyle = node.spec.color;
+            ctx.fillRect(-r * 1.2, -r * 0.75, r * 2.4, r * 1.5);
+            ctx.strokeStyle = '#064E3B';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-r * 1.2, -r * 0.75, r * 2.4, r * 1.5);
+          } else {
+            // Render coin or shiny scrap circle
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = node.spec.color;
+            ctx.fill();
+          }
+
+          ctx.font = '8px "JetBrains Mono", monospace';
+          ctx.fillStyle = node.spec.isCash ? '#A7F3D0' : '#64748B';
+          ctx.textAlign = 'center';
+          ctx.fillText(node.spec.isCash ? formatCurrency(node.spec.value) : node.spec.id, 0, -r - 5);
+          ctx.restore();
+        });
+      }
+
+      function drawVectorTriangle(x, y, vx, vy, size, fillColor, strokeColor, trail, trailColor) {
+        // Velocity trail
+        if (trail && trail.length > 1) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(trail[0].x, trail[0].y);
+          for (let i = 1; i < trail.length; i++) {
+            ctx.lineTo(trail[i].x, trail[i].y);
+          }
+          ctx.strokeStyle = trailColor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        const angle = Math.atan2(vy, vx);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        ctx.beginPath();
+        ctx.moveTo(size * 1.35, 0);
+        ctx.lineTo(-size * 0.9, size * 0.78);
+        ctx.lineTo(-size * 0.45, 0);
+        ctx.lineTo(-size * 0.9, -size * 0.78);
+        ctx.closePath();
+
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+        if (strokeColor) {
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawAgents() {
+        // 1. Pigeons (White Triangles)
+        state.pigeons.forEach(p => {
+          drawVectorTriangle(
+            p.x, p.y, p.vx, p.vy, 7,
+            '#E2E8F0', '#64748B',
+            p.trail, 'rgba(226, 232, 240, 0.16)'
+          );
+        });
+
+        // 2. Crows (Green Triangles — brightness scales with conditioning %)
+        state.crows.forEach(c => {
+          const condNorm = c.conditioning / 100;
+          // Interpolate from muted sage-emerald to vibrant neon emerald
+          const fill = c.state === 'SCATTERED'
+            ? '#F59E0B'
+            : (condNorm > 0.6 ? '#34D399' : condNorm > 0.25 ? '#10B981' : '#059669');
+          const stroke = (state.hoveredBird === c || state.selectedBird === c) ? '#38BDF8' : '#064E3B';
+
+          drawVectorTriangle(
+            c.x, c.y, c.vx, c.vy, 8.5,
+            fill, stroke,
+            c.trail, 'rgba(16, 185, 129, 0.22)'
+          );
+
+          // Carried Cargo Indicator
+          if (c.cargo) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(c.x, c.y - 11, 3.2, 0, Math.PI * 2);
+            ctx.fillStyle = c.cargo.color;
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Selection Ring
+          if (state.hoveredBird === c || state.selectedBird === c) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 15, 0, Math.PI * 2);
+            ctx.strokeStyle = '#38BDF8';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([3, 3]);
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+
+        // 3. Hawks (Red Triangles + Radar Threat Ring)
+        state.hawks.forEach(h => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, h.radarRadius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.06)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
+
+          drawVectorTriangle(
+            h.x, h.y, h.vx, h.vy, 11.5,
+            '#EF4444', '#FCA5A5',
+            h.trail, 'rgba(239, 68, 68, 0.28)'
+          );
+        });
+      }
+
+      function drawEffects() {
+        // Expanding Radar Pulses
+        state.pulses.forEach(p => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = p.color;
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        // Burst Particles
+        state.particles.forEach(pt => {
+          ctx.save();
+          ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+          ctx.restore();
+        });
+
+        // Floating Telemetry Texts
+        state.floatingTexts.forEach(ft => {
+          ctx.save();
+          ctx.globalAlpha = ft.alpha;
+          ctx.font = 'bold 10px "JetBrains Mono", monospace';
+          ctx.fillStyle = ft.color;
+          ctx.textAlign = 'center';
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        });
+      }
+
+      function renderCanvas() {
+        drawBackgroundGridAndMap();
+        drawPorchAndCup();
+        drawLootNodes();
+        drawAgents();
+        drawEffects();
+      }
+
+      // =========================================================================
+      // 9. SIDEBAR HUD & INSPECTOR UPDATES
+      // =========================================================================
+      function renderUpgradesList() {
+        const boughtCount = state.upgrades.filter(u => u.purchased).length;
+        ui.upgradesCount.textContent = `${boughtCount} / ${state.upgrades.length}`;
+
+        ui.upgradesList.innerHTML = '';
+        state.upgrades.forEach(upg => {
+          const canAfford = state.treasury >= upg.cost && !upg.purchased && !state.bankrupt;
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.disabled = upg.purchased || !canAfford;
+          card.className = `w-full text-left p-2.5 rounded-lg border transition font-sans cursor-pointer ${
+            upg.purchased
+              ? 'bg-emerald-950/25 border-emerald-500/35 opacity-85 cursor-default'
+              : canAfford
+              ? 'bg-[#0B0F19] hover:bg-slate-900 border-slate-700 hover:border-cyan-500/60'
+              : 'bg-[#0B0F19]/60 border-slate-800/80 opacity-50 cursor-not-allowed'
+          }`;
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1">
+              <span class="font-semibold ${upg.purchased ? 'text-emerald-400' : 'text-slate-100'}">${upg.name}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                upg.purchased
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : canAfford
+                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                  : 'bg-slate-800 text-slate-400'
+              }">
+                ${upg.purchased ? 'ACTIVE' : formatCurrency(upg.cost)}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-snug">${upg.desc}</p>
+          `;
+
+          if (!upg.purchased) {
+            card.addEventListener('click', () => buyUpgrade(upg.id));
+          }
+          ui.upgradesList.appendChild(card);
+        });
+      }
+
+      function updateHUD() {
+        ui.treasury.textContent = formatCurrency(state.treasury);
+        ui.treasury.className = `font-mono text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
+          state.treasury < 2.0 ? 'text-red-400' : 'text-emerald-400'
+        }`;
+        ui.gross.textContent = formatCurrency(state.grossRevenue);
+        ui.expense.textContent = formatCurrency(state.totalExpenses);
+
+        const rollingRev = state.revenueHistory.reduce((s, r) => s + r.amount, 0);
+        ui.netRate.textContent = `+${formatCurrency(rollingRev)}/m`;
+
+        const avgCond = state.crows.reduce((s, c) => s + c.conditioning, 0) / Math.max(1, state.crows.length);
+        ui.statCrows.textContent = state.crows.length;
+        ui.statCond.textContent = `${Math.round(avgCond)}%`;
+        ui.statPigeons.textContent = state.pigeons.length;
+
+        ui.cupLabel.textContent = `${state.cupPeanuts} / ${state.cupCapacity}`;
+        ui.cupBar.style.width = `${(state.cupPeanuts / state.cupCapacity) * 100}%`;
+
+        ui.peanutCostLabel.textContent = `-${formatCurrency(state.peanutDropCost)}`;
+        ui.btnDropPeanuts.disabled =
+          state.bankrupt || state.treasury < state.peanutDropCost || state.cupPeanuts >= state.cupCapacity;
+
+        // IRS Schedule C Meter
+        const irsPct = Math.round(state.irsSuspicion);
+        ui.irsPercent.textContent = `${irsPct}%`;
+        ui.irsPercent.className = `font-mono text-[11px] font-bold tabular-nums ${
+          irsPct >= 75 ? 'text-red-400' : irsPct >= 40 ? 'text-amber-400' : 'text-emerald-400'
+        }`;
+        ui.irsBar.style.width = `${irsPct}%`;
+        ui.unloggedCash.textContent = formatCurrency(state.unloggedCash);
+        ui.deductiblePool.textContent = formatCurrency(state.deductiblePool);
+
+        const estReduction = Math.min(irsPct, Math.round(18 + state.deductiblePool * 14));
+        ui.deductionEffect.textContent = `-${estReduction}% RISK`;
+
+        // Update upgrade affordances smoothly
+        const buttons = ui.upgradesList.querySelectorAll('button');
+        state.upgrades.forEach((upg, idx) => {
+          const btn = buttons[idx];
+          if (!btn || upg.purchased) return;
+          const canAfford = state.treasury >= upg.cost && !state.bankrupt;
+          btn.disabled = !canAfford;
+          if (canAfford) {
+            btn.className = 'w-full text-left p-2.5 rounded-lg border transition font-sans cursor-pointer bg-[#0B0F19] hover:bg-slate-900 border-slate-700 hover:border-cyan-500/60';
+          } else {
+            btn.className = 'w-full text-left p-2.5 rounded-lg border transition font-sans bg-[#0B0F19]/60 border-slate-800/80 opacity-50 cursor-not-allowed';
+          }
+        });
+
+        // Update Bird Inspector Panel
+        const targetBird = state.hoveredBird || state.selectedBird;
+        if (targetBird && (state.crows.includes(targetBird) || state.pigeons.includes(targetBird) || state.hawks.includes(targetBird))) {
+          ui.inspector.classList.remove('hidden');
+          ui.inspId.textContent = targetBird.id;
+          ui.inspState.textContent = targetBird.state;
+
+          if (targetBird.type === 'CROW') {
+            ui.inspSpecies.textContent = 'CORVUS (OPERANT AGENT)';
+            ui.inspCond.textContent = `${Math.round(targetBird.conditioning)}%`;
+            ui.inspTrust.textContent = `${Math.round(targetBird.trust)}%`;
+            ui.inspCargo.textContent = targetBird.cargo ? targetBird.cargo.label : 'NONE';
+          } else if (targetBird.type === 'PIGEON') {
+            ui.inspSpecies.textContent = 'COLUMBA (FREELOADER)';
+            ui.inspCond.textContent = 'N/A (UNCONDITIONABLE)';
+            ui.inspTrust.textContent = '0%';
+            ui.inspCargo.textContent = 'STOLEN PEANUTS';
+          } else {
+            ui.inspSpecies.textContent = 'BUTEO (APEX PREDATOR)';
+            ui.inspCond.textContent = 'HOSTILE';
+            ui.inspTrust.textContent = '0%';
+            ui.inspCargo.textContent = 'TERRITORIAL SWEEP';
+          }
+        } else {
+          ui.inspector.classList.add('hidden');
+        }
+      }
+
+      // =========================================================================
+      // 10. INPUT LISTENERS & MAIN LOOP
+      // =========================================================================
+      function findBirdAt(x, y) {
+        const allBirds = [...state.crows, ...state.pigeons, ...state.hawks];
+        let closest = null;
+        let minDist = 24;
+        for (const b of allBirds) {
+          const d = dist(x, y, b.x, b.y);
+          if (d < minDist) {
+            minDist = d;
+            closest = b;
+          }
+        }
+        return closest;
+      }
+
+      canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        state.mouseX = e.clientX - rect.left;
+        state.mouseY = e.clientY - rect.top;
+        state.hoveredBird = findBirdAt(state.mouseX, state.mouseY);
+      });
+
+      canvas.addEventListener('click', e => {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+
+        const clickedBird = findBirdAt(cx, cy);
+        if (clickedBird) {
+          state.selectedBird = state.selectedBird === clickedBird ? null : clickedBird;
+          return;
+        }
+
+        // Clicking near the porch dispenses peanuts
+        const porch = getPorchCenter();
+        if (dist(cx, cy, porch.x, porch.y) <= 95) {
+          dispensePeanuts(false);
+        } else {
+          state.selectedBird = null;
+        }
+      });
+
+      window.addEventListener('keydown', e => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          dispensePeanuts(false);
+        }
+      });
+
+      ui.btnDropPeanuts.addEventListener('click', () => dispensePeanuts(false));
+      ui.btnLogDeduction.addEventListener('click', logScheduleCDeduction);
+
+      ui.btnToggleAutofeed.addEventListener('click', () => {
+        state.autoFeederEnabled = !state.autoFeederEnabled;
+        ui.btnToggleAutofeed.textContent = state.autoFeederEnabled ? 'ENABLED' : 'PAUSED';
+        ui.btnToggleAutofeed.className = state.autoFeederEnabled
+          ? 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold cursor-pointer'
+          : 'px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-semibold cursor-pointer';
+      });
+
+      ui.btnPlayPause.addEventListener('click', () => {
+        state.paused = !state.paused;
+        ui.btnPlayPause.textContent = state.paused ? '▶ RESUME' : '❚❚ PAUSE';
+      });
+
+      ui.btnSpeed.addEventListener('click', () => {
+        state.speed = state.speed === 1 ? 2 : 1;
+        ui.btnSpeed.textContent = `${state.speed}X SPEED`;
+      });
+
+      function resetSimulation() {
+        state = createInitialState();
+        ui.bankruptcyModal.classList.add('hidden');
+        ui.autoFeederRow.classList.add('hidden');
+        ui.btnPlayPause.textContent = '❚❚ PAUSE';
+        ui.btnSpeed.textContent = '1X SPEED';
+        ui.ledgerFeed.innerHTML = '';
+
+        const porch = getPorchCenter();
+        for (let i = 0; i < 4; i++) {
+          const angle = (Math.PI * 2 * i) / 4;
+          state.crows.push(createCrow(porch.x + Math.cos(angle) * 120, porch.y + Math.sin(angle) * 120));
+        }
+        for (let i = 0; i < 6; i++) {
+          spawnLootNode();
+        }
+
+        renderUpgradesList();
+        logEvent('Initialized backyard foraging sandbox with $20.00 seed capital.', 'info');
+        logEvent('4 local crows observed near porch cup. Dispense peanuts to begin operant conditioning.', 'neutral');
+      }
+
+      ui.btnReset.addEventListener('click', resetSimulation);
+      ui.modalResetBtn.addEventListener('click', resetSimulation);
+
+      // Start Simulation
+      resetSimulation();
+
+      let lastFrameTime = performance.now();
+      function gameLoop(now) {
+        const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+        lastFrameTime = now;
+
+        updateSimulation(dt);
+        renderCanvas();
+        updateHUD();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      requestAnimationFrame(gameLoop);
+    })();
+  </script>
+</body>
+</html>

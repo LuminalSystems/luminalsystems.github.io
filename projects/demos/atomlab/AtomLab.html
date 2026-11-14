@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Atom Lab MVP</title>
+<style>
+  body {
+    margin: 0;
+    background: #050505;
+    color: #00ffe7;
+    font-family: Arial, sans-serif;
+  }
+
+  h1 {
+    text-align: center;
+    color: #d383ff;
+    text-shadow: 0 0 10px #d383ff;
+  }
+
+  #app {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  #canvas {
+    background: radial-gradient(circle, #111 0%, #050505 70%);
+    border: 2px solid #00d9ff;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #00d9ff55;
+  }
+
+  #panel {
+    width: 320px;
+    background: #151515;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px #00ffe755;
+  }
+
+  button {
+    width: 100%;
+    margin: 6px 0;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #222;
+    color: #00ffe7;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #333;
+  }
+
+  .proton { color: #ff5555; }
+  .neutron { color: #dddddd; }
+  .electron { color: #55aaff; }
+
+  #readout {
+    margin-top: 16px;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  .big {
+    font-size: 24px;
+    color: #d383ff;
+    text-shadow: 0 0 8px #d383ff;
+  }
+</style>
+</head>
+<body>
+
+<h1>Atom Lab MVP</h1>
+
+<div id="app">
+  <canvas id="canvas" width="750" height="550"></canvas>
+
+  <div id="panel">
+    <h2>Particle Controls</h2>
+
+    <button onclick="addProton()">Add Proton</button>
+    <button onclick="removeProton()">Remove Proton</button>
+
+    <button onclick="addNeutron()">Add Neutron</button>
+    <button onclick="removeNeutron()">Remove Neutron</button>
+
+    <button onclick="addElectron()">Add Electron</button>
+    <button onclick="removeElectron()">Remove Electron</button>
+
+    <button onclick="resetAtom()">Reset Atom</button>
+
+    <div id="readout"></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const readout = document.getElementById("readout");
+
+let protons = 0;
+let neutrons = 0;
+let electrons = 0;
+
+const elements = [
+  null,
+  {symbol:"H", name:"Hydrogen"},
+  {symbol:"He", name:"Helium"},
+  {symbol:"Li", name:"Lithium"},
+  {symbol:"Be", name:"Beryllium"},
+  {symbol:"B", name:"Boron"},
+  {symbol:"C", name:"Carbon"},
+  {symbol:"N", name:"Nitrogen"},
+  {symbol:"O", name:"Oxygen"},
+  {symbol:"F", name:"Fluorine"},
+  {symbol:"Ne", name:"Neon"},
+  {symbol:"Na", name:"Sodium"},
+  {symbol:"Mg", name:"Magnesium"},
+  {symbol:"Al", name:"Aluminum"},
+  {symbol:"Si", name:"Silicon"},
+  {symbol:"P", name:"Phosphorus"},
+  {symbol:"S", name:"Sulfur"},
+  {symbol:"Cl", name:"Chlorine"},
+  {symbol:"Ar", name:"Argon"},
+  {symbol:"K", name:"Potassium"},
+  {symbol:"Ca", name:"Calcium"}
+];
+
+function getElement() {
+  return elements[protons] || {symbol:"?", name:"Unknown / Superheavy"};
+}
+
+function addProton() { protons++; draw(); }
+function removeProton() { if (protons > 0) protons--; draw(); }
+
+function addNeutron() { neutrons++; draw(); }
+function removeNeutron() { if (neutrons > 0) neutrons--; draw(); }
+
+function addElectron() { electrons++; draw(); }
+function removeElectron() { if (electrons > 0) electrons--; draw(); }
+
+function resetAtom() {
+  protons = 0;
+  neutrons = 0;
+  electrons = 0;
+  draw();
+}
+
+function electronShells(e) {
+  const shells = [];
+  const caps = [2, 8, 18, 32];
+  let remaining = e;
+
+  for (let cap of caps) {
+    if (remaining <= 0) break;
+    const count = Math.min(cap, remaining);
+    shells.push(count);
+    remaining -= count;
+  }
+
+  if (remaining > 0) shells.push(remaining);
+  return shells;
+}
+
+function drawNucleus(cx, cy) {
+  const particles = [];
+
+  for (let i = 0; i < protons; i++) {
+    particles.push({type:"p", color:"#ff4444"});
+  }
+
+  for (let i = 0; i < neutrons; i++) {
+    particles.push({type:"n", color:"#dddddd"});
+  }
+
+  const radius = Math.max(28, 18 + particles.length * 2);
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#221122";
+  ctx.fill();
+  ctx.strokeStyle = "#d383ff";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  if (particles.length === 0) {
+    ctx.fillStyle = "#666";
+    ctx.font = "18px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("blank nucleus", cx, cy + 6);
+    return;
+  }
+
+  particles.forEach((p, i) => {
+    const angle = i * 2.399963; // golden angle spacing
+    const r = 8 * Math.sqrt(i);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = "#000";
+    ctx.stroke();
+
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 12px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(p.type, x, y + 4);
+  });
+}
+
+function drawElectrons(cx, cy) {
+  const shells = electronShells(electrons);
+
+  shells.forEach((count, shellIndex) => {
+    const shellRadius = 80 + shellIndex * 55;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, shellRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = "#00d9ff66";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 / count) * i + performance.now() / (900 + shellIndex * 400);
+      const x = cx + Math.cos(angle) * shellRadius;
+      const y = cy + Math.sin(angle) * shellRadius;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#55aaff";
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "10px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("e-", x, y + 3);
+    }
+  });
+}
+
+function updateReadout() {
+  const el = getElement();
+  const massNumber = protons + neutrons;
+  const charge = protons - electrons;
+
+  let chargeText = "Neutral";
+  if (charge > 0) chargeText = `+${charge} cation`;
+  if (charge < 0) chargeText = `${charge} anion`;
+
+  readout.innerHTML = `
+    <div class="big">${el.name} (${el.symbol})</div>
+    <hr>
+    <div><b>Atomic Number:</b> ${protons}</div>
+    <div><b>Protons:</b> <span class="proton">${protons}</span></div>
+    <div><b>Neutrons:</b> <span class="neutron">${neutrons}</span></div>
+    <div><b>Electrons:</b> <span class="electron">${electrons}</span></div>
+    <div><b>Mass Number:</b> ${massNumber}</div>
+    <div><b>Charge:</b> ${chargeText}</div>
+    <div><b>Shells:</b> ${electronShells(electrons).join(", ") || "none"}</div>
+  `;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  drawElectrons(cx, cy);
+  drawNucleus(cx, cy);
+  updateReadout();
+}
+
+function animate() {
+  draw();
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+
+</body>
+</html>

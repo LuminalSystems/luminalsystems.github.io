@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataMon - Autonomous Cyber-Telemetry Framework</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            400: '#f59e0b',
+                            500: '#d97706',
+                            900: '#78350f',
+                        },
+                        cyan: {
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            900: '#164e63',
+                        },
+                        darkbg: '#08080c',
+                        panelbg: 'rgba(15, 23, 42, 0.75)',
+                    },
+                    fontFamily: {
+                        mono: ['Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scanline & Retro Cyberpunk Aesthetic Effects */
+        body {
+            background-color: #050508;
+            color: #22d3ee;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+        }
+
+        /* Scanline Overlay */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Glowing text effects */
+        .glow-amber {
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.6), 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+        .glow-cyan {
+            text-shadow: 0 0 8px rgba(34, 211, 238, 0.6), 0 0 20px rgba(34, 211, 238, 0.3);
+        }
+
+        /* Cyber Borders */
+        .cyber-border {
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            box-shadow: inset 0 0 10px rgba(34, 211, 238, 0.05), 0 0 15px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        .cyber-border::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px;
+            width: 8px; height: 8px;
+            border-top: 2px solid #22d3ee;
+            border-left: 2px solid #22d3ee;
+        }
+        .cyber-border::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px;
+            width: 8px; height: 8px;
+            border-bottom: 2px solid #f59e0b;
+            border-right: 2px solid #f59e0b;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #08080c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #164e63;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #22d3ee;
+        }
+
+        /* Pulse Animations */
+        @keyframes radar-sweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .animate-radar {
+            animation: radar-sweep 4s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative select-none">
+    <!-- CRT Scanline overlay -->
+    <div class="fixed inset-0 scanlines z-50"></div>
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-cyan-900 bg-darkbg/90 backdrop-blur px-4 py-3 flex flex-wrap justify-between items-center z-40">
+        <div class="flex items-center space-x-3">
+            <div class="w-3 h-3 bg-cyan-400 rounded-full animate-ping"></div>
+            <h1 class="text-xl md:text-2xl font-bold tracking-widest text-cyan-400 glow-cyan">
+                DATAMON // <span class="text-amber-400">TELEMETRY_v1.0.4</span>
+            </h1>
+        </div>
+        <div class="flex items-center space-x-4 text-xs md:text-sm mt-2 sm:mt-0">
+            <div class="bg-cyan-950/60 border border-cyan-800 px-3 py-1 rounded flex items-center space-x-2">
+                <span class="text-gray-400">STATUS:</span>
+                <span id="system-status" class="text-emerald-400 font-bold glow-cyan">ONLINE</span>
+            </div>
+            <div class="bg-cyan-950/60 border border-cyan-800 px-3 py-1 rounded flex items-center space-x-2">
+                <span class="text-gray-400">NODE_ID:</span>
+                <span class="text-amber-400 font-bold">LS-FL-8821</span>
+            </div>
+            <button id="audio-toggle-btn" class="bg-amber-950/60 hover:bg-amber-900 border border-amber-500 text-amber-400 px-3 py-1 rounded transition text-xs">
+                AUDIO: OFF
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 z-10">
+
+        <!-- Left Column: Metrics & Controls (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- System Overview Card -->
+            <div class="cyber-border bg-panelbg p-4 rounded backdrop-blur">
+                <h2 class="text-amber-400 font-bold mb-3 text-sm tracking-wider flex items-center justify-between">
+                    <span>/// SYSTEM METRICS</span>
+                    <span id="uptime-counter" class="text-xs text-gray-500 font-normal">UPTIME: 00:00:00</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-darkbg/80 p-3 rounded border border-cyan-900/50">
+                        <div class="text-gray-400 mb-1">BUFFER CAPACITY</div>
+                        <div id="metric-buffer" class="text-lg font-bold text-cyan-400">92.4 %</div>
+                        <div class="w-full bg-cyan-950 h-1.5 mt-2 rounded overflow-hidden">
+                            <div id="bar-buffer" class="bg-cyan-400 h-full w-[92%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="bg-darkbg/80 p-3 rounded border border-cyan-900/50">
+                        <div class="text-gray-400 mb-1">PACKET LOSS</div>
+                        <div id="metric-loss" class="text-lg font-bold text-emerald-400">0.002 %</div>
+                        <div class="w-full bg-cyan-950 h-1.5 mt-2 rounded overflow-hidden">
+                            <div id="bar-loss" class="bg-emerald-400 h-full w-[2%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="bg-darkbg/80 p-3 rounded border border-cyan-900/50">
+                        <div class="text-gray-400 mb-1">LATENCY (RTT)</div>
+                        <div id="metric-latency" class="text-lg font-bold text-amber-400">14 ms</div>
+                        <div class="w-full bg-amber-950 h-1.5 mt-2 rounded overflow-hidden">
+                            <div id="bar-latency" class="bg-amber-400 h-full w-[15%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="bg-darkbg/80 p-3 rounded border border-cyan-900/50">
+                        <div class="text-gray-400 mb-1">DATAMON CLUSTER</div>
+                        <div id="metric-cluster" class="text-lg font-bold text-cyan-400">12 / 12</div>
+                        <div class="w-full bg-cyan-950 h-1.5 mt-2 rounded overflow-hidden">
+                            <div id="bar-cluster" class="bg-cyan-400 h-full w-[100%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Diagnostic Commands -->
+            <div class="cyber-border bg-panelbg p-4 rounded backdrop-blur flex-grow flex flex-col">
+                <h2 class="text-cyan-400 font-bold mb-3 text-sm tracking-wider">
+                    /// CONTROL & DIAGNOSTICS
+                </h2>
+                <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+                    <button id="btn-ping" class="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 py-2 px-3 rounded transition font-bold active:scale-95">
+                        [ PING CLUSTER ]
+                    </button>
+                    <button id="btn-purge" class="bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 hover:border-amber-400 text-amber-300 py-2 px-3 rounded transition font-bold active:scale-95">
+                        [ FLUSH BUFFER ]
+                    </button>
+                    <button id="btn-inject" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 hover:border-purple-400 text-purple-300 py-2 px-3 rounded transition font-bold active:scale-95">
+                        [ INJECT TELEMETRY ]
+                    </button>
+                    <button id="btn-mod" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 py-2 px-3 rounded transition font-bold active:scale-95">
+                        [ VIEW CODE MOD ]
+                    </button>
+                </div>
+
+                <!-- Radar Node Display -->
+                <div class="relative bg-darkbg border border-cyan-900/60 rounded flex-grow min-h-[180px] flex items-center justify-center overflow-hidden">
+                    <div class="absolute inset-0 rounded-full border border-cyan-900/30 m-4"></div>
+                    <div class="absolute inset-0 rounded-full border border-cyan-900/20 m-12"></div>
+                    <div class="absolute w-full h-[1px] bg-cyan-900/30"></div>
+                    <div class="absolute h-full w-[1px] bg-cyan-900/30"></div>
+                    
+                    <!-- Sweep line -->
+                    <div class="absolute w-1/2 h-1/2 top-0 right-0 origin-bottom-left bg-gradient-to-tr from-cyan-500/20 to-transparent animate-radar rounded-tl-full pointer-events-none"></div>
+
+                    <!-- Target Nodes -->
+                    <div id="radar-nodes" class="absolute inset-0">
+                        <!-- Dynamically populated target dots -->
+                    </div>
+
+                    <div class="absolute bottom-2 left-2 text-[10px] text-gray-500">
+                        SECTOR: ORION-FL // TOPOLOGY: MESH
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Visualizer Canvas & Live System Logs (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+
+            <!-- High Precision Telemetry Canvas Graph -->
+            <div class="cyber-border bg-panelbg p-4 rounded backdrop-blur">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-cyan-400 font-bold text-sm tracking-wider flex items-center space-x-2">
+                        <span>/// REAL-TIME WAVEFORM DISPERSION</span>
+                    </h2>
+                    <div class="flex space-x-2 text-[10px]">
+                        <span class="flex items-center space-x-1"><span class="w-2 h-2 bg-cyan-400 inline-block rounded-full"></span><span class="text-gray-400">SIGNAL A</span></span>
+                        <span class="flex items-center space-x-1"><span class="w-2 h-2 bg-amber-400 inline-block rounded-full"></span><span class="text-gray-400">HARMONIC B</span></span>
+                    </div>
+                </div>
+                <div class="w-full h-48 md:h-64 bg-darkbg/90 rounded border border-cyan-900/60 relative overflow-hidden">
+                    <canvas id="telemetryCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+            <!-- System Activity Terminal / Console Stream -->
+            <div class="cyber-border bg-panelbg p-4 rounded backdrop-blur flex-grow flex flex-col min-h-[220px]">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-amber-400 font-bold text-sm tracking-wider">
+                        /// LIVE DATAMON LOG FEED
+                    </h2>
+                    <span class="text-[10px] text-gray-400">STREAMING @ 1000ms</span>
+                </div>
+                <div id="terminal-log" class="bg-darkbg p-3 rounded border border-cyan-900/60 font-mono text-xs flex-grow overflow-y-auto max-h-[240px] space-y-1.5 leading-relaxed">
+                    <!-- Log entries automatically appended here -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Modal Window: View/Copy Modular Code Files -->
+    <div id="mod-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="cyber-border bg-darkbg border-cyan-500 max-w-4xl w-full max-h-[85vh] flex flex-col p-4 rounded">
+            <div class="flex justify-between items-center pb-3 border-b border-cyan-900 mb-3">
+                <h3 class="text-cyan-400 font-bold text-sm">DATAMON ARCHITECTURE MODULARIZER</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-amber-400 font-bold text-lg px-2">✕</button>
+            </div>
+            
+            <!-- File tabs -->
+            <div class="flex space-x-2 mb-3 text-xs border-b border-cyan-900/50 pb-2">
+                <button class="mod-tab-btn active bg-cyan-900 text-cyan-200 px-3 py-1 rounded" data-target="mod-html">index.html</button>
+                <button class="mod-tab-btn bg-darkbg border border-cyan-900 text-gray-400 hover:text-cyan-300 px-3 py-1 rounded" data-target="mod-css">css/game.css</button>
+                <button class="mod-tab-btn bg-darkbg border border-cyan-900 text-gray-400 hover:text-cyan-300 px-3 py-1 rounded" data-target="mod-js">js/game.js</button>
+                <button class="mod-tab-btn bg-darkbg border border-cyan-900 text-gray-400 hover:text-cyan-300 px-3 py-1 rounded" data-target="mod-json">datamon.json</button>
+            </div>
+
+            <!-- Code displays -->
+            <div class="flex-grow overflow-y-auto bg-black p-3 rounded border border-cyan-900 font-mono text-xs text-gray-300">
+                <pre id="mod-code-view" class="whitespace-pre-wrap break-all"></pre>
+            </div>
+
+            <div class="pt-3 flex justify-between items-center text-xs">
+                <span id="copy-status" class="text-emerald-400 font-bold"></span>
+                <button id="copy-code-btn" class="bg-amber-950 border border-amber-500 text-amber-300 hover:bg-amber-900 px-4 py-2 rounded font-bold">
+                    [ COPY CURRENT FILE FILECONTENTS ]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Information -->
+    <footer class="border-t border-cyan-900 bg-darkbg px-4 py-2 text-[11px] text-gray-500 flex justify-between items-center z-40">
+        <div>LUMINAL SYSTEMS // DATAMON PROTOCOL</div>
+        <div>LATERAL COGNITION ENGINE ENABLED</div>
+    </footer>
+
+    <!-- Complete Integrated Application Logic -->
+    <script>
+        /**
+         * DATAMON MVP ENGINE & TELEMETRY CONTROLLER
+         * Designed for single-file deployment or modular export.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- State Management ---
+            const state = {
+                audioEnabled: false,
+                startTime: Date.now(),
+                packetCount: 1420,
+                buffer: 92.4,
+                latency: 14,
+                logs: [],
+                nodes: [
+                    { id: 'ALPHA', x: 25, y: 35, status: 'nominal' },
+                    { id: 'BETA', x: 70, y: 20, status: 'nominal' },
+                    { id: 'GAMMA', x: 80, y: 75, status: 'warning' },
+                    { id: 'DELTA', x: 30, y: 80, status: 'nominal' },
+                    { id: 'EPSILON', x: 50, y: 50, status: 'nominal' },
+                ]
+            };
+
+            // --- Web Audio API Synthesizer (No external sound files) ---
+            let audioCtx = null;
+
+            function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            function playBeep(freq = 440, type = 'sine', duration = 0.08) {
+                if (!state.audioEnabled || !audioCtx) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + duration);
+                } catch (e) {
+                    console.error("Audio synth error:", e);
+                }
+            }
+
+            // Audio Toggle Listener
+            const audioBtn = document.getElementById('audio-toggle-btn');
+            audioBtn.addEventListener('click', () => {
+                initAudio();
+                state.audioEnabled = !state.audioEnabled;
+                audioBtn.innerText = `AUDIO: ${state.audioEnabled ? 'ON' : 'OFF'}`;
+                audioBtn.classList.toggle('bg-amber-950/60', !state.audioEnabled);
+                audioBtn.classList.toggle('bg-amber-500', state.audioEnabled);
+                audioBtn.classList.toggle('text-black', state.audioEnabled);
+                if (state.audioEnabled) playBeep(880, 'triangle', 0.15);
+            });
+
+            // --- Canvas Waveform Telemetry Visualizer ---
+            const canvas = document.getElementById('telemetryCanvas');
+            const ctx = canvas.getContext('2d');
+            let animationFrameId;
+            let step = 0;
+
+            function resizeCanvas() {
+                if (!canvas) return;
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            function drawWaveform() {
+                if (!canvas || !ctx) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Grid lines background
+                ctx.strokeStyle = 'rgba(22, 78, 99, 0.25)';
+                ctx.lineWidth = 1;
+                const gridSize = 20;
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+
+                // Primary Waveform Cyan
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#22d3ee';
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = canvas.height / 2 +
+                        Math.sin((x + step) * 0.02) * 25 +
+                        Math.sin((x - step * 0.5) * 0.05) * 10;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Secondary Harmonic Waveform Amber
+                ctx.beginPath();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#f59e0b';
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = canvas.height / 2 +
+                        Math.cos((x - step * 1.2) * 0.03) * 35 +
+                        Math.sin((x + step) * 0.01) * 15;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                step += 2;
+                animationFrameId = requestAnimationFrame(drawWaveform);
+            }
+            drawWaveform();
+
+            // --- Terminal Log Stream Engine ---
+            const terminalLog = document.getElementById('terminal-log');
+            const logTypes = ['INFO', 'WARN', 'SYNC', 'DATA', 'NODE'];
+            const sampleMessages = [
+                'Packet buffer recalibrated across cluster',
+                'Orionid cosmic interference handshake stabilized',
+                'Urea-Formaldehyde telemetry resin payload parsed',
+                'Hyper-dimensional dot product computed: [0.94, 0.12, -0.45]',
+                'Hypersonic shock boundary condition checked @ Mach 5.2',
+                'Rush E frequency harmonic modulated successfully'
+            ];
+
+            function addLog(msg, type = 'INFO') {
+                const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+                const colorMap = {
+                    'INFO': 'text-cyan-400',
+                    'WARN': 'text-amber-400',
+                    'SYNC': 'text-emerald-400',
+                    'DATA': 'text-purple-400',
+                    'NODE': 'text-blue-400'
+                };
+                
+                const logItem = document.createElement('div');
+                logItem.className = 'flex space-x-2 font-mono';
+                logItem.innerHTML = `
+                    <span class="text-gray-600">[${timestamp}]</span>
+                    <span class="${colorMap[type] || 'text-cyan-400'} font-bold">[${type}]</span>
+                    <span class="text-gray-300">${msg}</span>
+                `;
+                
+                terminalLog.appendChild(logItem);
+                terminalLog.scrollTop = terminalLog.scrollHeight;
+                
+                // Limit terminal logs
+                while (terminalLog.children.length > 50) {
+                    terminalLog.removeChild(terminalLog.firstChild);
+                }
+
+                playBeep(1200, 'sine', 0.02);
+            }
+
+            // Initial Logs
+            addLog('DataMon Core Framework initialized', 'SYNC');
+            addLog('Connected to Luminal Systems telemetry bus', 'INFO');
+
+            // Periodic auto stream
+            setInterval(() => {
+                const randomMsg = sampleMessages[Math.floor(Math.random() * sampleMessages.length)];
+                const randomType = logTypes[Math.floor(Math.random() * logTypes.length)];
+                addLog(randomMsg, randomType);
+                
+                // Jitter metrics
+                state.buffer = Math.min(100, Math.max(80, (state.buffer + (Math.random() - 0.5) * 2))).toFixed(1);
+                state.latency = Math.floor(Math.min(40, Math.max(8, state.latency + (Math.random() - 0.5) * 4)));
+                
+                document.getElementById('metric-buffer').innerText = `${state.buffer} %`;
+                document.getElementById('bar-buffer').style.width = `${state.buffer}%`;
+                
+                document.getElementById('metric-latency').innerText = `${state.latency} ms`;
+                document.getElementById('bar-latency').style.width = `${state.latency * 2}%`;
+            }, 2500);
+
+            // --- Uptime Counter ---
+            setInterval(() => {
+                const diff = Math.floor((Date.now() - state.startTime) / 1000);
+                const hrs = String(Math.floor(diff / 3600)).padStart(2, '0');
+                const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                const secs = String(diff % 60).padStart(2, '0');
+                document.getElementById('uptime-counter').innerText = `UPTIME: ${hrs}:${mins}:${secs}`;
+            }, 1000);
+
+            // --- Radar Target Node Population ---
+            const radarContainer = document.getElementById('radar-nodes');
+            function renderRadarNodes() {
+                radarContainer.innerHTML = '';
+                state.nodes.forEach(node => {
+                    const dot = document.createElement('div');
+                    dot.className = `absolute w-2.5 h-2.5 rounded-full border transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition hover:scale-150 ${
+                        node.status === 'warning' ? 'bg-amber-400 border-amber-200' : 'bg-cyan-400 border-cyan-100'
+                    }`;
+                    dot.style.left = `${node.x}%`;
+                    dot.style.top = `${node.y}%`;
+                    dot.title = `NODE ${node.id} (${node.status})`;
+                    dot.addEventListener('click', () => {
+                        addLog(`Node ${node.id} targeted. Diagnostics: NOMINAL. Coordinates: [${node.x}, ${node.y}]`, 'NODE');
+                        playBeep(600, 'square', 0.1);
+                    });
+                    radarContainer.appendChild(dot);
+                });
+            }
+            renderRadarNodes();
+
+            // --- Button Diagnostics Controls ---
+            document.getElementById('btn-ping').addEventListener('click', () => {
+                addLog('Manual ping broadcasted across all active cluster nodes', 'SYNC');
+                playBeep(900, 'sine', 0.1);
+            });
+
+            document.getElementById('btn-purge').addEventListener('click', () => {
+                state.buffer = 15.0;
+                addLog('BUFFER PURGE EXECUTED. Telemetry cache cleared.', 'WARN');
+                playBeep(300, 'sawtooth', 0.2);
+            });
+
+            document.getElementById('btn-inject').addEventListener('click', () => {
+                const val = (Math.random() * 100).toFixed(4);
+                addLog(`Custom synthetic payload injected: 0x${Math.floor(Math.random()*0xFFFFFF).toString(16).toUpperCase()} [${val}]`, 'DATA');
+                playBeep(1500, 'triangle', 0.08);
+            });
+
+            // --- Modular Code Viewer Modal ---
+            const modal = document.getElementById('mod-modal');
+            const modCodeView = document.getElementById('mod-code-view');
+            const copyStatus = document.getElementById('copy-status');
+            let currentTab = 'mod-html';
+
+            const sourceFiles = {
+                'mod-html': `<!-- ./projects/DataMon/index.html -->\n<!DOCTYPE html>\n<html>\n<head>\n  <link rel="stylesheet" href="css/game.css">\n</head>\n<body>\n  <div id="app">DataMon Telemetry Active</div>\n  <script src="js/game.js"><\/script>\n</body>\n</html>`,
+                'mod-css': `/* ./projects/DataMon/css/game.css */\nbody {\n  background-color: #050508;\n  color: #22d3ee;\n  font-family: 'Courier New', monospace;\n}\n.cyber-border {\n  border: 1px solid rgba(34, 211, 238, 0.3);\n}`,
+                'mod-js': `// ./projects/DataMon/js/game.js\nconsole.log("DataMon System Engine Loaded.");\nfetch('datamon.json')\n  .then(res => res.json())\n  .then(data => console.log("Loaded Cluster Config:", data));`,
+                'mod-json': `{\n  "clusterName": "Luminal-DataMon-Primary",\n  "version": "1.0.4",\n  "nodes": [\n    { "id": "ALPHA", "ip": "10.0.0.1", "status": "active" },\n    { "id": "BETA", "ip": "10.0.0.2", "status": "active" }\n  ]\n}`
+            };
+
+            document.getElementById('btn-mod').addEventListener('click', () => {
+                modal.classList.remove('hidden');
+                modCodeView.innerText = sourceFiles[currentTab];
+                copyStatus.innerText = '';
+            });
+
+            document.getElementById('close-modal-btn').addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            document.querySelectorAll('.mod-tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.mod-tab-btn').forEach(b => {
+                        b.classList.remove('bg-cyan-900', 'text-cyan-200');
+                        b.classList.add('bg-darkbg', 'text-gray-400');
+                    });
+                    e.target.classList.remove('bg-darkbg', 'text-gray-400');
+                    e.target.classList.add('bg-cyan-900', 'text-cyan-200');
+                    
+                    currentTab = e.target.getAttribute('data-target');
+                    modCodeView.innerText = sourceFiles[currentTab];
+                    copyStatus.innerText = '';
+                });
+            });
+
+            // Standard fallback clip copy
+            document.getElementById('copy-code-btn').addEventListener('click', () => {
+                const textToCopy = sourceFiles[currentTab];
+                const dummy = document.createElement('textarea');
+                document.body.appendChild(dummy);
+                dummy.value = textToCopy;
+                dummy.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummy);
+                copyStatus.innerText = 'COPIED TO CLIPBOARD!';
+            });
+
+        });
+    </script>
+</body>
+</html>
