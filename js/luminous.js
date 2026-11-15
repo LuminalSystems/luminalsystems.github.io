@@ -19,6 +19,7 @@ function injectNav() {
     <a href="/">Home</a>
     <a href="/papers/">Papers</a>
     <a href="/projects/">Projects</a>
+    <a href="/demos/">Demos</a>
     <a href="/code/">Code</a>
     <a href="${baseURL}/blog.html">Blog</a>
     <a href="${baseURL}/playground.html">Playground</a>
